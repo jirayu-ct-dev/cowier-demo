@@ -39,40 +39,44 @@
 
 | Layer / Domain | Technology | รายละเอียดและแนวปฏิบัติ |
 |---|---|---|
-| **App Framework** | **Nuxt** (Vue 3 + Nitro) | ใช้ Composition API `<script setup lang="ts">` และ TypeScript แบบเข้มงวด |
-| **Styling & UI** | **Tailwind CSS** (ไม่ใช้ `@nuxt/ui`) | พัฒนา UI Components ด้วย Tailwind CSS โดยตรง ไม่ใช้ component library สำเร็จรูป เพื่อความยืดหยุ่นและคุมดีไซน์ได้เต็มที่ |
-| **Icons** | **Lucide Icons** | ใช้ icon จากชุดเดียวกันทั้งโปรเจกต์ ไม่ผสมหลาย icon sets และไม่ใช้ emoji แทน functional icon |
-| **LINE Ecosystem** | **LINE Messaging API / LIFF / Beacon** | รองรับ Webhook (HMAC signature, Idempotency), LIFF + LINE Login (ID Token verify ผ่าน JWKS), และ LINE Beacon (BLE check-in) |
+| **App Framework** | **Nuxt 4** (Vue 3 + Nitro Engine) | ใช้ Composition API `<script setup lang="ts">` และ TypeScript แบบเข้มงวด |
+| **Styling & UI** | **Tailwind CSS + Radix UI (radix-vue / reka-ui)** | ใช้ Tailwind CSS สำหรับ Styling และ Radix UI สำหรับ Headless Accessible Primitives (ไม่ใช้ `@nuxt/ui`) |
+| **Icons** | **Lucide Icons** (`lucide-vue-next`) | ใช้ icon จากชุดเดียวกันทั้งโปรเจกต์ ไม่ผสมหลาย icon sets และไม่ใช้ emoji แทน functional icon |
+| **Date & Time** | **date-fns** | จัดการวันเวลา ปฏิทินรอบสหกิจ และตารางนิเทศ |
+| **Validation** | **Zod** | Schema validation สำหรับ Form inputs, API payloads, และ Data import validation |
+| **Database & ORM** | **Prisma ORM + PostgreSQL** | Data modeling, migrations, และ Type-safe database queries |
+| **Authentication** | **Nuxt Auth / Session Auth** | Session-based authentication พร้อม Role-Based Access Control (Admin, Lecturer, Student) |
+| **Files & Data** | **Excel & CSV Utilities** | นำเข้า/ส่งออกข้อมูลนักศึกษาและรายงานผลการนิเทศ |
 | **DevOps & Deploy** | **Docker & Docker Compose** | Multi-stage build, non-root user, healthcheck, แยก runtime config ออกจาก build-time |
 
 ---
 
 ## 3. กฎและมาตรฐานการพัฒนา (Engineering Standards)
 
-### A. Frontend & UI (Nuxt + Tailwind CSS)
+### A. Frontend & UI (Nuxt + Tailwind CSS + Radix UI)
 1. **Separation of Concerns:**
    - Business/Data Logic ให้แยกไว้ใน Composables (`composables/use*.ts`)
    - Presentational Components รับ props และ emit events
+   - ใช้ Radix UI primitives สำหรับ Dialog, DropdownMenu, Tabs, Popover เพื่อให้ได้ Accessibility ครบถ้วน โดยแต่งสไตล์ด้วย Tailwind CSS
 2. **Mandatory 4-State UI:** ทุก View/Component ที่มีการดึงข้อมูล ต้องจัดการ 4 สถานะให้ครบถ้วน:
    - **Loading State:** แสดง Skeleton loader ที่รูปทรงสอดคล้องกับ Layout จริง (หลีกเลี่ยง spinner เต็มจอ)
    - **Empty State:** กล่องข้อความแจ้งเตือนพร้อม icon และปุ่ม Action เมื่อไม่มีข้อมูล
    - **Error State:** การแจ้งเตือนข้อผิดพลาดที่ชัดเจน พร้อมปุ่ม Retry เพื่อดึงข้อมูลใหม่
    - **Data State:** แสดงผลข้อมูลจริง พร้อม responsive layout (Mobile Card / Desktop Table)
 3. **Forms & Actions:**
+   - ใช้ Zod Schema ในการ validate form ก่อน submit
    - แสดง inline validation error ให้ตรงกับ field/section ที่ผิดพลาด
    - มี Loading state และป้องกัน double submission บนปุ่ม Action
    - การกระทำที่เป็น destructive (เช่น ลบข้อมูล) ต้องมีกลไกยืนยัน (Confirmation)
    - ใช้ feedback component ของโปรเจกต์ (Toast / Modal) ไม่ใช้ browser `alert()` หรือ `confirm()`
 
-### B. Backend, API & Security
-1. **Role-Based Access Control (RBAC):** ตรวจสอบสิทธิ์ที่ Backend ทุก Endpoint อย่างเข้มงวดตาม 3 บทบาท (Admin, Lecturer, Student)
-2. **LINE Webhook Integrity:**
-   - ต้องตรวจสอบ `x-line-signature` (HMAC-SHA256 บน raw body) เสมอ หากไม่ตรงให้ปฏิเสธด้วย 401 ทันที
-   - ตอบกลับ 2xx ให้เร็วที่สุด
-   - รองรับ Idempotency โดยบันทึก `webhookEventId` ป้องกันการประมวลผล event ซ้ำ
-3. **Authentication & Token Verification:**
-   - การยืนยันตัวตนผ่าน LIFF / LINE Login ต้องส่ง ID Token ไป verify กับ LINE JWKS ที่ Backend (audience = Channel ID, algorithm = ES256)
-4. **Data Validation:** ตรวจสอบความถูกต้องของข้อมูล (Schema Validation เช่น Zod หรือ Standard Schema) ก่อนบันทึกเสมอ
+### B. Backend, Database & Security
+1. **Role-Based Access Control (RBAC):** ตรวจสอบสิทธิ์ที่ Backend ทุก Nitro Endpoint อย่างเข้มงวดตาม 3 บทบาท (Admin, Lecturer, Student)
+2. **Prisma & Database Safety:**
+   - ป้องกัน N+1 query: ใช้ `select` หรือ bounded `include` ที่เฉพาะเจาะจงเสมอ
+   - จัดการ Multi-table transaction ผ่าน `prisma.$transaction()` เมื่อมีการแก้ไขหลายตารางพร้อมกัน
+   - ปฏิบัติตาม Migration workflow อย่างเคร่งครัด
+3. **Data Validation:** ตรวจสอบความถูกต้องของข้อมูลทุก Endpoint ด้วย Zod Schema ก่อนบันทึกลงฐานข้อมูลเสมอ
 
 ---
 
@@ -83,7 +87,6 @@
 | งานที่ทำ | Skill ที่ต้องใช้งาน | เอกสารอ้างอิง |
 |---|---|---|
 | **สร้าง/แก้ไข Nuxt UI, Components, Forms, Tables ด้วย Tailwind CSS** | `web-ui-coding-standards` | [`.agents/skills/web-ui-coding-standards/SKILL.md`](./.agents/skills/web-ui-coding-standards/SKILL.md)<br>- [App Shells](./.agents/skills/web-ui-coding-standards/references/app-shells.md)<br>- [Data Tables](./.agents/skills/web-ui-coding-standards/references/data-tables.md) |
-| **พัฒนา LINE Bot, Webhook, LIFF, LINE Login, LINE Beacon** | `line-beacon-development` | [`.agents/skills/line-beacon-development/SKILL.md`](./.agents/skills/line-beacon-development/SKILL.md)<br>- [Webhook Signature](./.agents/skills/line-beacon-development/references/webhook-signature.md)<br>- [LIFF & LINE Login](./.agents/skills/line-beacon-development/references/liff-line-login.md) |
 | **สร้าง/แก้ไข Dockerfile, Docker Compose, Deployment config** | `docker-deployment-standards` | [`.agents/skills/docker-deployment-standards/SKILL.md`](./.agents/skills/docker-deployment-standards/SKILL.md) |
 | **ตรวจสอบคุณภาพโค้ด, PR, แผนงาน หรือ Architecture Review** | `scrutinize` | [`.agents/skills/scrutinize/SKILL.md`](./.agents/skills/scrutinize/SKILL.md) |
 | **สรุปสถานะและส่งต่องานให้อีก Agent** | `handoff` | [`.agents/skills/handoff/SKILL.md`](./.agents/skills/handoff/SKILL.md) |

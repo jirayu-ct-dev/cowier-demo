@@ -1,0 +1,58 @@
+services:
+  # ==============================================================================
+  # PostgreSQL Database Service
+  # ==============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: cowier-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-cowier_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cowier_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - cowier-network
+
+  # ==============================================================================
+  # Nuxt 4 Application Service
+  # ==============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cowier-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cowier_db}?schema=public
+      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:-change_this_to_at_least_32_characters_long_secret_key}
+      PORT: 3000
+      HOST: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cowier-network
+
+# ==============================================================================
+# Volumes & Networks
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  cowier-network:
+    driver: bridge
