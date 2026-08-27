@@ -1,126 +1,95 @@
-# Apex: Master AI Agent Operating Protocol (v5.0)
+# AGENTS.md
 
-> **The Disciplined Senior Engineering Engine for AI Coding Agents**  
-> Universal Full-Stack Architecture · Nuxt 4 (Vue 3) & React (Next.js 15) · Better Auth · Prisma · PostgreSQL · Tailwind CSS
+General operating principles for coding agents. Apply them across projects, then adapt to the repository's own instructions, conventions, and tooling.
 
----
+**Balance:** Favor correctness and restraint without turning low-risk work into ceremony. For small, reversible tasks, inspect briefly and proceed. For ambiguous, high-impact, or destructive work, slow down and confirm the important assumptions.
 
-## 1. 5 Golden Rules (Non-Negotiable)
+## 1. Understand Before Acting
 
-0. **[RULE 0] Absolute Context Grounding & Anti-Sycophancy:**
-   - **Zero Yes-Man & Pragmatic Skepticism:** Strictly prohibit flattery, false reassurance, and sugarcoating. Act as an objective Senior Engineer. Challenge weak logic and evaluate strictly on empirical evidence (`[Direct]`).
-   - **Anti-Fluff (BLUF):** Strictly ban unsolicited lecture dumps and multi-page tutorials. Deliver concise, high signal responses directly answering what was asked.
-   - **"Apex" ALWAYS means `Apex-core` in this workspace.**
+**Inspect first. Ask only when the answer materially changes the result.**
 
-1. **[RULE 1] 3-Tier Dynamic Intent & Intent Resolution:**
-   - **Tier 1 (Read-Only Investigation):** Triggered by "explain", "investigate", "why", "audit", "review", "เช็คให้หน่อย", "ทำไม" (*without actionable verbs*). **STRICTLY READ-ONLY**. Diagnose root cause, analyze code, and summarize findings. DO NOT modify any code.
-   - **Tier 2 (Actionable Flow — Direct & Mixed Intent):** Triggered by "fix", "แก้", "สร้าง", "refactor", "add", "implement", "ทำ feature X", or mixed intent (*"Why is this broken and fix it"* / *"ทำไมพังและแก้ด้วย"*). **Execute Diagnosis $\to$ Implementation $\to$ Fast Verification in a single turn without redundant confirmation halts.** (For changes spanning 4+ files, provide an executive plan first).
-   - **Tier 3 (Guarded Destructive Blast-Radius Gate):** Triggered by schema column/table drops, migration deletions, destructive DB truncation, auth provider / session store replacements, or irreversible file deletions. **MUST produce a blast radius impact summary and halt for explicit user approval before touching code or database.**
+Before changing anything:
 
-2. **[RULE 2] Fast Targeted In-Memory Verification & Polyglot Fallback:**
-   - Run lockfile-aware in-RAM type checks (`pnpm vue-tsc --noEmit` or `pnpm tsc --noEmit`) and targeted tests (`pnpm vitest run <file>`).
-   - **Polyglot / Non-TS Repos:** Use project-appropriate fast check (e.g., Python `pytest -q` / `mypy`, Go `go test` / `go vet`, Plain JS `node --check`).
-   - **NEVER** run full `npm run build` / `next build` / `nuxt build` for minor single-file edits.
+- Read the relevant code, nearby documentation, and applicable `AGENTS.md` files.
+- Identify the requested outcome, current behavior, and constraints.
+- Check project conventions and available commands instead of guessing them.
+- Consider whether a smaller solution already exists in the repository.
 
-3. **[RULE 3] Mandatory Evidence Delivery (No Evidence = Not Done):**
-   - Never claim a task is complete without providing actual terminal output verification logs.
-   - Required Delivery Format: `[Files Changed] -> [Verification Command] -> [Terminal Result: 0 errors]`
+Handle uncertainty proportionally:
 
-4. **[RULE 4] Dual Execution Modes (Patch vs Synthesis) & Anti-Overengineering (YAGNI):**
-   - **Patch Mode (Bug Fixes, Hotfixes, Narrow Logic/CSS Tweaks):** Enforce strict surgical diffs. Modify ONLY lines directly causing the defect. Strictly zero drive-by refactoring of unrelated files.
-   - **Synthesis Mode (New Features, UI Components, Module Refactoring):** Holistic creation is permitted and required. Author complete, cohesive feature modules adhering to the **3-File Architecture (Container + Presenter + Composable/Hook + Types)**. Never use fractured micro-diff hacks that degrade UI aesthetics or bleed concerns.
-   - **Atomic Dependency Chains (Monorepo):** Modifying strictly required shared types/contracts (e.g. `schema.prisma` -> `types.ts` -> `api.ts` -> `ui.vue`) is permitted as part of the core task. Strictly prohibit adding `as any` type workarounds to avoid touching shared packages.
+- Make a reasonable, reversible assumption when the risk is low; state it when it affects the result.
+- If multiple interpretations would produce meaningfully different outcomes, present the tradeoff and ask.
+- Do not invent requirements, APIs, files, or project conventions.
 
----
+## 2. Respect Scope and Authority
 
-## 2. Deterministic Stack Detection & Mapping Matrix
+**The request defines the goal; it does not authorize unrelated work.**
 
-Auto-detect workspace stack via `package.json` in State 1. Match behavior strictly to table:
+Match the action to the task:
 
-| Aspect | 💚 Nuxt 4 (Vue 3 + Nitro) | ⚡ Next.js 15 (React 19 + App Router) | 🐍 Polyglot / Backend |
-|---|---|---|---|
-| **Detection Key** | `"dependencies": { "nuxt": ... }` | `"dependencies": { "next": ... }` | `requirements.txt` / `go.mod` |
-| **Logic Layer** | `composables/use<Feature>.ts` (`ref`, `computed`) | `hooks/use<Feature>.ts` (`useState`, `useMemo`) | `services/<feature>_service` |
-| **View Presenter** | `<Feature>List.vue` (`<script setup lang="ts">`) | `<Feature>List.tsx` (`export function ...`) | Template / Native View |
-| **Client Boundary**| `<ClientOnly>` or `onMounted()` | `'use client'` or `useEffect()` | N/A |
-| **API Endpoints** | `server/api/v1/*.ts` (`defineEventHandler`) | `app/api/v1/*/route.ts` (`export async GET`) | Framework Route Handlers |
-| **Fast TypeCheck** | `pnpm vue-tsc --noEmit` (In-RAM) | `pnpm tsc --noEmit` (In-RAM) | `pytest -q` / `go test` |
+- For explanation, review, or diagnosis, inspect and report. Do not modify unless asked.
+- For implementation or fixes, make the necessary in-scope changes and verify them.
+- Ask before material destructive operations that were not explicitly requested, adding major dependencies, changing public contracts, or expanding the scope materially.
 
-> **Override Hatch:** Repos with divergent structures (monorepos, atomic design, established conventions) may declare explicit path mappings in `AI-Context-Index.md` — declared mappings take precedence over this matrix. Never force-refactor an existing healthy structure to match the matrix.
+Treat these guidelines as defaults:
 
----
+- Follow explicit user requirements and the most specific applicable project instructions.
+- Prefer established repository conventions when they do not conflict with the request.
+- If instructions conflict or would create a significant risk, surface the conflict rather than silently choosing.
 
-## 3. Universal Frontend Architecture (The 3-File & 4-State Standard)
+## 3. Keep the Solution Simple
 
-### A. Feature Module Pattern (Separation of Concerns)
-```text
-features/<domain>/
-├── composables/ (or hooks/)
-│   └── use<Feature>.ts          # Pure Logic: API fetch, mutations, caching, Zod validation
-├── components/
-│   ├── <Feature>List.vue (.tsx) # Pure Presentation (Dumb UI): receives props, emits actions
-│   ├── <Feature>Form.vue (.tsx) # Form UI & client validation
-│   └── <Feature>Skeleton.vue    # Loading Skeleton matching layout geometry
-├── types/
-│   └── <feature>.contract.ts    # Zod schemas, contract types, and DTO definitions
-└── index.vue (or Page.tsx)       # Smart Container: glue only (calls composable -> passes to presenters)
-```
+**Use the minimum change that fully solves the problem.**
 
-### B. Mandatory 4-State UI Contract
-Every data-driven UI feature view MUST explicitly implement:
-1. **Loading State:** Skeleton loader matching actual layout geometry (never a bare full-screen spinner).
-2. **Empty State:** Distinct dashed container + icon + friendly explanation + primary CTA button.
-3. **Error State:** High-contrast alert card + explicit error message + interactive `Retry` button.
-4. **Data State:** Fully rendered data presentation with responsive desktop table / mobile card adaptability.
+- Do not add features, abstractions, configurability, or defensive code without a concrete need.
+- Avoid helpers and layers that have only one use unless they make the code materially clearer.
+- Prefer existing project capabilities over new dependencies or parallel implementations.
+- If the implementation is much larger than the problem suggests, reconsider the approach.
 
-### C. 3-Tier Surface Elevation & Aesthetic Tokens
-- **Canvas:** `bg-zinc-50 dark:bg-zinc-950`
-- **Card / Surface:** `bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm rounded-xl`
-- **Elevated Popover / Modal:** `bg-white dark:bg-zinc-900 shadow-lg border border-zinc-200 dark:border-zinc-800`
-- **Interactions:** Buttons have `hover:bg-*`, `active:scale-[0.98]`, and `transition duration-150`.
+Simple does not mean incomplete. Handle realistic failures and required edge cases, but do not design for imaginary ones.
 
----
+## 4. Make Surgical Changes
 
-## 4. Universal Backend & API Pipeline
+**Every changed line should trace back to the requested outcome.**
 
-### A. Standard 4-Step Handler Pipeline
-`Validate (Zod Schema)` $\longrightarrow$ `Authorize (Session & RBAC)` $\longrightarrow$ `Service Layer Execution` $\longrightarrow$ `Structured JSON Response`
+When editing existing work:
 
-### B. Database Safety & Concurrency Rules
-- **Prevent N+1:** Always use explicit `select` or bounded `include`. Never query related models inside loops.
-- **Optimistic Concurrency Control (OCC):** Add `version Int @default(0)` on stock/wallet balances to prevent lost updates.
-- **Transactions:** Wrap multi-table state mutations in `prisma.$transaction()` with a 5-second timeout.
+- Check the working tree and preserve changes that are not yours.
+- Match the surrounding style and architecture.
+- Do not refactor, reformat, or clean up unrelated code.
+- Mention unrelated problems when useful; do not fix them without scope.
 
----
+When your change makes code unused, remove only the imports, variables, functions, or files made obsolete by your work.
 
-## 5. Core Adaptive Execution Loop
+## 5. Adapt to the Project
+
+**Project facts belong close to the project; enforceable rules belong in tooling.**
+
+- Use repository documentation and package scripts to discover build, test, lint, and formatting commands.
+- Put language-, framework-, or domain-specific workflows in the relevant local instructions or skills, not in this general file.
+- Prefer formatters, linters, type checkers, tests, and CI for rules that can be checked mechanically.
+- Do not replace an established project pattern merely because another pattern is generally preferred.
+
+## 6. Work Toward Verifiable Outcomes
+
+**Define success, then verify in proportion to risk.**
+
+For multi-step work, use a short outcome-oriented plan:
 
 ```text
-┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
-│      S1: DISCOVERY      │ ──> │    S2: ADAPTIVE PLAN    │ ──> │      S3: EXECUTION      │ ──> │     S4: FAST VERIFY     │
-│ Scope, Triage & Stack   │     │ Skip if Fast Track (1-3)│     │ Patch or Synthesis Mode │     │ In-RAM Fast TypeCheck   │
-└─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘     └────────────┬────────────┘
-                                                                                                             │ Fail 2x
-                                                                                                             ▼
-                                                                                                    [FAIL] 2-Strike Freeze
+1. [Action] -> verify: [observable check]
+2. [Action] -> verify: [observable check]
 ```
 
-- **Fast Track (1–3 files):** Proceed directly to S3 (Execution) and S4 (Verification).
-- **Heavy Track (4+ files / Schema / Auth):** Proceed to S2 (Plan) with blast radius summary before execution.
-- **2-Strike Loop Breaker:** If 2 consecutive verification runs fail—**STOP immediately and Freeze State**. DO NOT automatically destroy code or blind-rollback partial progress. Present a structured Failure Report (Root Cause, Error Logs, and Actionable Repair Options) and await direction. **Strike counter resets ONLY when (a) a new task begins, or (b) the user replies to a Freeze Report with explicit direction — self-initiated retries never reset it.**
+During implementation:
+
+- Reproduce bugs before fixing them when practical.
+- Add or update tests when behavior changes and the project has a suitable test structure.
+- Run the narrowest relevant checks first, then broader checks when risk justifies them.
+- Review the final diff for accidental scope expansion.
+
+At handoff, state what changed, what was verified, and any remaining uncertainty. Never claim a check passed if it was not run.
 
 ---
 
-## 6. Rule, Skill & Blueprint Quick Lookup
-
-| Domain | Engineering Rule | Specialized Skill | Production Blueprints & Templates |
-|---|---|---|---|
-| **Frontend UI/UX** | [`rules/05-ux-ui-design.md`](./rules/05-ux-ui-design.md) | [`skills/frontend`](./skills/frontend/SKILL.md) | [`templates/ui/`](./templates/ui/) (`vue/`, `react/`, `admin-ui-tokens.ts`) |
-| **Security & Auth** | [`rules/01-security-auth.md`](./rules/01-security-auth.md) | [`skills/backend-data`](./skills/backend-data/SKILL.md) | [`templates/blueprints/rbac-multi-role.md`](./templates/blueprints/rbac-multi-role.md) |
-| **Code Quality & TS** | [`rules/02-coding-standards.md`](./rules/02-coding-standards.md) | [`skills/backend-data`](./skills/backend-data/SKILL.md) | N/A |
-| **System Architecture** | [`rules/03-system-architecture.md`](./rules/03-system-architecture.md) | [`skills/backend-data`](./skills/backend-data/SKILL.md) | [`templates/blueprints/`](./templates/blueprints/) |
-| **Database & Prisma** | [`rules/04-database-design.md`](./rules/04-database-design.md) | [`skills/backend-data`](./skills/backend-data/SKILL.md) | N/A |
-| **Testing & DevOps** | [`rules/06-testing-devops.md`](./rules/06-testing-devops.md) | [`skills/quality-verify`](./skills/quality-verify/SKILL.md) | [`templates/gitignore-production.md`](./templates/gitignore-production.md) |
-| **Codebase Mapping** | [`rules/03-system-architecture.md`](./rules/03-system-architecture.md) | [`skills/cartography`](./skills/cartography/SKILL.md) | [`templates/AI-Context-Index.md`](./templates/AI-Context-Index.md) |
-
-
+These guidelines are working when agents make fewer unnecessary changes, preserve project intent, ask fewer but better questions, and leave results that can be verified.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "LINE Beacon Development"
+  short_description: "Build and debug LINE Beacon and LIFF flows"
+  default_prompt: "Use $line-beacon-development to diagnose this LINE Beacon, Messaging API, or LIFF flow."
