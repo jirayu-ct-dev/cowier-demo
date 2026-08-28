@@ -42,9 +42,9 @@ const dashboardByRole = {
   },
   student: {
     summary: [
-      { label: 'คำร้องของฉัน', value: '2', hint: 'มี 1 รายการรอเจ้าหน้าที่ตรวจสอบ', icon: ClipboardCheck },
+      { label: 'คำร้องของฉัน', value: '1', hint: 'มี 1 รายการรอแก้ไขข้อมูล', icon: ClipboardCheck },
       { label: 'สถานที่ฝึกงาน', value: '1', hint: 'ยืนยันแล้ว 1 แห่ง', icon: Building2 },
-      { label: 'นัดนิเทศของฉัน', value: '2', hint: 'ครั้งถัดไปวันที่ 2 ก.ย. 2569', icon: CalendarDays },
+      { label: 'นัดนิเทศของฉัน', value: '—', hint: 'จะแสดงเมื่อมีการจัดตารางนิเทศ', icon: CalendarDays },
     ],
     recentTitle: 'คำร้องของฉัน',
     primaryLabel: 'สถานประกอบการ',

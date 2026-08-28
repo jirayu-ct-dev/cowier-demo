@@ -239,13 +239,6 @@ const submit = async (mode: 'draft' | 'submitted') => {
             <UiButton variant="secondary" :icon="CirclePlus" @click="companyDialogOpen = true">เพิ่มสถานประกอบการใหม่</UiButton>
           </div>
 
-          <div v-if="selectedCompany" class="mt-5 rounded-panel border-2 border-primary bg-warning-soft/40 p-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div><p class="text-xs font-medium text-muted">สถานประกอบการที่เลือก</p><p class="mt-1 font-semibold text-ink">{{ selectedCompany.name }}</p><p class="mt-1 text-sm text-muted">{{ selectedCompany.branch }} · {{ selectedCompany.province }}</p><p class="mt-2 text-sm leading-6 text-muted">{{ selectedCompany.address }}</p></div>
-              <div class="flex items-center gap-2"><UiBadge :tone="companyStatusMeta[selectedCompany.status].tone">{{ companyStatusMeta[selectedCompany.status].label }}</UiBadge><Check :size="18" class="text-success" aria-hidden="true" /></div>
-            </div>
-          </div>
-
           <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <label class="block w-full text-sm font-semibold text-ink sm:max-w-sm lg:w-96 lg:flex-none">
               <span class="sr-only">ค้นหาสถานประกอบการ</span>
@@ -384,9 +377,6 @@ const submit = async (mode: 'draft' | 'submitted') => {
 
       <UiCard>
         <h3 class="font-semibold text-ink">3. ข้อมูลสำหรับออกหนังสือ</h3>
-        <UiAlert class="mt-3" tone="info" title="ข้อมูลเฉพาะคำร้องนี้">
-          ชื่อผู้รับ ตำแหน่ง และที่อยู่สำหรับออกหนังสือจะไม่ถูกบันทึกเป็นข้อมูลหลักของสถานประกอบการ เพราะอาจเปลี่ยนในแต่ละปีหรือแต่ละคำร้อง
-        </UiAlert>
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
           <div><UiInput v-model="form.recipientName" label="เรียน / ชื่อผู้รับหนังสือ" placeholder="เช่น ผู้จัดการฝ่ายทรัพยากรบุคคล" required :error="formErrors.recipientName" /></div>
           <div><UiInput v-model="form.recipientRole" label="ตำแหน่งหรือหน่วยงานของผู้รับ" required :error="formErrors.recipientRole" /></div>
