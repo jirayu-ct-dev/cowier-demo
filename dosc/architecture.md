@@ -54,10 +54,10 @@ Composable และ `useState` ของ Nuxt ก่อน เพิ่ม Pini
 | หน้าที่ | เครื่องมือ | แนวทางใช้ |
 |---|---|---|
 | API | Nuxt Nitro Server Routes | API อยู่ในโปรเจกต์เดียวกับ Nuxt |
-| Authentication | nuxt-auth-utils | Session-based authentication และตรวจ RBAC ที่ Server |
-| ORM | Prisma ORM 7 | Query แบบ type-safe และใช้ migration อย่างเป็นลำดับ |
+| Authentication | nuxt-auth-utils | ติดตั้งเมื่อเริ่ม Authentication; ใช้ Session-based authentication และตรวจ RBAC ที่ Server |
+| ORM | Prisma ORM | ติดตั้งเมื่อเริ่ม Backend; Query แบบ type-safe และใช้ migration อย่างเป็นลำดับ |
 | Database | MySQL 8.4 LTS | ใช้ `utf8mb4`; กำหนด timezone ของระบบให้ชัดเจน |
-| Import/export | ExcelJS + PapaParse | CSV/XLSX สำหรับข้อมูลนักศึกษาและอาจารย์ |
+| Import/export | ExcelJS + PapaParse | ติดตั้งเมื่อเริ่ม Import/Export; ใช้ CSV/XLSX สำหรับข้อมูลนักศึกษาและอาจารย์ |
 | PDF metadata | MySQL ผ่าน Prisma | เก็บชื่อไฟล์ รุ่น ผู้อัปโหลด และสถานะ |
 | PDF binary | Storage adapter | Development ใช้ local volume; Production ใช้ object storage |
 
@@ -85,6 +85,14 @@ Tailwind และ Reka UI ทำหน้าที่คนละส่วน �
 
 ไม่ใช้ `radix-vue` ต่อ เพราะแพ็กเกจรุ่นใหม่ของโครงการเดียวกันใช้ชื่อ `reka-ui`
 และขณะนี้ยังไม่มี UI เดิมที่ต้องแบกรับต้นทุน Migration
+
+### 4.1 UI contract ที่ผ่านการตรวจรับ
+
+รูปแบบในหน้า Development Design System (`/dev/ui`) เป็น UI contract กลางของระบบ
+ทุก Feature ต้อง reuse semantic tokens, app shell และ Component ใน `app/components/ui`
+รวมถึงใช้รูปแบบ Form, Feedback, Data Table, Mobile Card และ Shared State เดียวกัน
+การเพิ่ม pattern ใหม่ทำได้เมื่อ Component เดิมไม่รองรับงานจริง และต้องเพิ่มตัวอย่างกลับมา
+ใน Design System เพื่อให้ตรวจสอบความสม่ำเสมอได้
 
 ## 5. โครงสร้างโฟลเดอร์ที่แนะนำ
 

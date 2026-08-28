@@ -2,7 +2,8 @@
 import { RotateCcw, SlidersHorizontal, X } from '@lucide/vue'
 import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 
-const { scenario, resetScenario } = useScenario()
+const { scenario, events, resetScenario } = useScenario()
+const { resetPlacementData } = useStudentPlacements()
 const roleOptions = [
   { value: 'staff', label: 'เจ้าหน้าที่' },
   { value: 'lecturer', label: 'อาจารย์' },
@@ -13,6 +14,21 @@ const cycleOptions = [
   { value: 'ภาคฤดูร้อน/2569', label: 'ภาคฤดูร้อน/2569' },
   { value: 'ภาคเรียนที่ 1/2570', label: 'ภาคเรียนที่ 1/2570' },
 ]
+const dataSetOptions = [
+  { value: 'normal', label: 'ข้อมูลปกติ' },
+  { value: 'long', label: 'ข้อความยาว' },
+  { value: 'edge', label: 'ข้อมูลขอบเขต' },
+]
+const delayOptions = [
+  { value: 'none', label: 'ไม่หน่วงเวลา' },
+  { value: 'slow', label: 'เครือข่ายช้า (1.5 วินาที)' },
+]
+const viewStateOptions = [
+  { value: 'data', label: 'มีข้อมูล' },
+  { value: 'loading', label: 'กำลังโหลด' },
+  { value: 'empty', label: 'ไม่มีข้อมูล' },
+  { value: 'error', label: 'ผิดพลาด' },
+]
 
 const selectedRole = computed({
   get: () => scenario.value.role,
@@ -22,6 +38,29 @@ const selectedRole = computed({
     }
   },
 })
+const selectedDataSet = computed({
+  get: () => scenario.value.dataSet,
+  set: (value: string) => {
+    if (value === 'normal' || value === 'long' || value === 'edge') scenario.value.dataSet = value
+  },
+})
+const selectedDelay = computed({
+  get: () => scenario.value.networkDelay,
+  set: (value: string) => {
+    if (value === 'none' || value === 'slow') scenario.value.networkDelay = value
+  },
+})
+const selectedViewState = computed({
+  get: () => scenario.value.viewState,
+  set: (value: string) => {
+    if (value === 'data' || value === 'loading' || value === 'empty' || value === 'error') scenario.value.viewState = value
+  },
+})
+
+const resetAllMockData = () => {
+  resetScenario()
+  resetPlacementData()
+}
 </script>
 
 <template>
@@ -43,32 +82,27 @@ const selectedRole = computed({
         </div>
 
         <div class="mt-5 space-y-4">
-          <div>
-            <label id="scenario-role-label" class="block text-sm font-semibold text-ink">บทบาท</label>
-            <div class="mt-1.5"><UiSelect v-model="selectedRole" :options="roleOptions" label="บทบาท" /></div>
+          <UiSelect v-model="selectedRole" :options="roleOptions" label="บทบาท" />
+          <div><UiInput v-model="scenario.userName" label="ผู้ใช้งาน" /></div>
+          <UiSelect v-model="scenario.cycle" :options="cycleOptions" label="รอบสหกิจศึกษา" />
+          <UiSelect v-model="selectedDataSet" :options="dataSetOptions" label="ชุดข้อมูล" />
+          <UiSelect v-model="selectedDelay" :options="delayOptions" label="ความเร็วเครือข่ายจำลอง" />
+          <UiRadioGroup v-model="selectedViewState" label="สถานะข้อมูล" :options="viewStateOptions" />
+          <div class="flex items-center gap-2 text-sm font-medium text-ink">
+            <UiCheckbox v-model="scenario.forceError" label="บังคับให้เกิดข้อผิดพลาด" />
+            บังคับให้เกิดข้อผิดพลาด
           </div>
-          <label class="block text-sm font-semibold text-ink">
-            ผู้ใช้งาน
-            <input v-model="scenario.userName" class="mt-1.5 min-h-11 w-full rounded-control border border-divider bg-canvas px-3 font-normal" />
-          </label>
           <div>
-            <label id="scenario-cycle-label" class="block text-sm font-semibold text-ink">รอบสหกิจศึกษา</label>
-            <div class="mt-1.5"><UiSelect v-model="scenario.cycle" :options="cycleOptions" label="รอบสหกิจศึกษา" /></div>
-          </div>
-          <fieldset>
-            <legend class="text-sm font-semibold text-ink">สถานะข้อมูล</legend>
-            <div class="mt-2 grid grid-cols-2 gap-2">
-              <label
-                v-for="state in [{ value: 'data', label: 'มีข้อมูล' }, { value: 'loading', label: 'กำลังโหลด' }, { value: 'empty', label: 'ไม่มีข้อมูล' }, { value: 'error', label: 'ผิดพลาด' }]"
-                :key="state.value"
-                class="flex min-h-10 items-center gap-2 rounded-control border border-divider px-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-warning-soft"
-              >
-                <input v-model="scenario.viewState" type="radio" name="view-state" :value="state.value" class="accent-amber-500" />
-                {{ state.label }}
-              </label>
+            <p class="text-sm font-semibold text-ink">เหตุการณ์จำลองล่าสุด</p>
+            <div v-if="events.length" class="mt-2 max-h-32 space-y-2 overflow-y-auto rounded-control bg-surface p-3">
+              <div v-for="event in events" :key="event.id" class="text-xs leading-5 text-ink">
+                <p>{{ event.title }}</p>
+                <time class="text-muted">{{ event.createdAt }} น.</time>
+              </div>
             </div>
-          </fieldset>
-          <UiButton class="w-full" variant="secondary" :icon="RotateCcw" @click="resetScenario">คืนค่าเริ่มต้น</UiButton>
+            <p v-else class="mt-2 rounded-control bg-surface p-3 text-xs text-muted">ยังไม่มีเหตุการณ์จาก Mock action</p>
+          </div>
+          <UiButton class="w-full" variant="secondary" :icon="RotateCcw" @click="resetAllMockData">คืนค่าเริ่มต้น</UiButton>
         </div>
       </PopoverContent>
     </PopoverPortal>

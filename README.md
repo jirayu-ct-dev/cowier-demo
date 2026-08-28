@@ -98,21 +98,14 @@ cd cowier-demo
 pnpm install
 ```
 
-### 2. ตั้งค่าตัวแปรสภาพแวดล้อม (เฉพาะเมื่อต้องทดสอบ Session)
-คัดลอกไฟล์ `.env.example` เป็น `.env`:
-```bash
-cp .env.example .env
-```
-กำหนดค่าในไฟล์ `.env` โดยยังไม่ต้องใช้ `DATABASE_URL` ในระยะ UI:
-```env
-NUXT_SESSION_PASSWORD="your-secure-random-32-character-secret-key"
-```
-
-### 3. รัน Development Server
+### 2. รัน Development Server
 ```bash
 pnpm dev
 ```
 เปิดเบราว์เซอร์และเข้าไปที่ `http://localhost:3000`
+
+ระยะ UI ยังไม่เปิดใช้ Session, Prisma หรือเครื่องมือนำเข้าไฟล์ใน runtime
+Dependency เหล่านี้จะติดตั้งและตั้งค่าพร้อมกันเมื่อเริ่ม Checkpoint ที่เกี่ยวข้อง
 
 ---
 

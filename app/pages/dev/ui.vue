@@ -1,28 +1,16 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Pencil, Plus, RotateCcw, Search, Trash2, X } from '@lucide/vue'
-import {
-  CheckboxIndicator,
-  CheckboxRoot,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-  DialogTrigger,
-  TabsContent,
-  TabsList,
-  TabsRoot,
-  TabsTrigger,
-} from 'reka-ui'
+import { z } from 'zod'
+import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'Design System' })
+useHead({ title: 'Design System' })
 if (!import.meta.dev) throw createError({ statusCode: 404, statusMessage: 'Page not found' })
 
-const accepted = ref(false)
-const province = ref('buriram')
+const form = reactive({ companyName: '', province: '', positionDetails: '', accepted: false })
+const formErrors = reactive<Partial<Record<keyof typeof form, string>>>({})
 const { showToast } = useToast()
+const { recordEvent } = useScenario()
 const colors = [
   { name: 'Primary', value: '#F5B32B', class: 'bg-primary text-ink' },
   { name: 'Main', value: '#FFFFFF', class: 'border border-divider bg-canvas text-ink' },
@@ -37,8 +25,8 @@ const provinceOptions = [
   { value: 'khon-kaen', label: 'ขอนแก่น' },
 ]
 
-type RequestStatus = 'draft' | 'review' | 'approved' | 'rejected'
-type TablePreviewState = 'data' | 'loading' | 'empty' | 'error'
+type RequestStatus = 'draft' | 'review' | 'approved' | 'rejected' | 'cancelled'
+type TablePreviewState = 'data' | 'loading' | 'empty' | 'error' | 'forbidden'
 type SortDirection = 'asc' | 'desc'
 type SortKey = 'studentName' | 'submittedDate'
 
@@ -49,9 +37,15 @@ interface PlacementRequest {
   company: string
   position: string
   submittedDate: string
-  submittedAt: string
   status: RequestStatus
 }
+
+const formSchema = z.object({
+  companyName: z.string().trim().min(1, 'กรุณากรอกชื่อสถานประกอบการ'),
+  province: z.string().min(1, 'กรุณาเลือกจังหวัด'),
+  positionDetails: z.string().trim().min(10, 'กรุณากรอกรายละเอียดอย่างน้อย 10 ตัวอักษร'),
+  accepted: z.literal(true, { error: 'กรุณายืนยันความถูกต้องของข้อมูล' }),
+})
 
 const statusOptions = [
   { value: 'all', label: 'ทุกสถานะ' },
@@ -59,6 +53,7 @@ const statusOptions = [
   { value: 'review', label: 'รอตรวจสอบ' },
   { value: 'approved', label: 'ยืนยันแล้ว' },
   { value: 'rejected', label: 'ต้องแก้ไข' },
+  { value: 'cancelled', label: 'ยกเลิกแล้ว' },
 ]
 const pageSizeOptions = [
   { value: '10', label: '10' },
@@ -71,15 +66,25 @@ const tablePreviewOptions: { value: TablePreviewState, label: string }[] = [
   { value: 'loading', label: 'Loading' },
   { value: 'empty', label: 'Empty' },
   { value: 'error', label: 'Error' },
+  { value: 'forbidden', label: 'Forbidden' },
 ]
-const placementRequests: PlacementRequest[] = [
-  { id: 'REQ-001', studentId: '65011212001', studentName: 'กานต์พิชชา สุขใจ', company: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', position: 'Frontend Developer', submittedDate: '2026-08-24', submittedAt: '24 ส.ค. 2569', status: 'review' },
-  { id: 'REQ-002', studentId: '65011212008', studentName: 'ธีรภัทร วัฒนะ', company: 'โรงพยาบาลบุรีรัมย์', position: 'IT Support', submittedDate: '2026-08-23', submittedAt: '23 ส.ค. 2569', status: 'approved' },
-  { id: 'REQ-003', studentId: '65011212014', studentName: 'ปวีณ์นุช มั่นคง', company: 'บริษัท อีสานเทค จำกัด', position: 'UX/UI Designer', submittedDate: '2026-08-22', submittedAt: '22 ส.ค. 2569', status: 'draft' },
-  { id: 'REQ-004', studentId: '65011212021', studentName: 'ณัฐวุฒิ แสงทอง', company: 'สำนักงานจังหวัดบุรีรัมย์', position: 'Data Analyst', submittedDate: '2026-08-21', submittedAt: '21 ส.ค. 2569', status: 'review' },
-  { id: 'REQ-005', studentId: '65011212029', studentName: 'ศิริพร ใจดี', company: 'บริษัท โคราชซอฟต์แวร์ จำกัด', position: 'Software Tester', submittedDate: '2026-08-20', submittedAt: '20 ส.ค. 2569', status: 'rejected' },
-  { id: 'REQ-006', studentId: '65011212035', studentName: 'ภูริณัฐ ทองแท้', company: 'การไฟฟ้าส่วนภูมิภาค', position: 'Network Engineer', submittedDate: '2026-08-19', submittedAt: '19 ส.ค. 2569', status: 'approved' },
+const initialPlacementRequests: PlacementRequest[] = [
+  { id: 'REQ-001', studentId: '65011212001', studentName: 'กานต์พิชชา สุขใจ', company: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', position: 'Frontend Developer', submittedDate: '2026-08-24', status: 'review' },
+  { id: 'REQ-002', studentId: '65011212008', studentName: 'ธีรภัทร วัฒนะ', company: 'โรงพยาบาลบุรีรัมย์', position: 'IT Support', submittedDate: '2026-08-23', status: 'approved' },
+  { id: 'REQ-003', studentId: '65011212014', studentName: 'ปวีณ์นุช มั่นคง', company: 'บริษัท อีสานเทค จำกัด', position: 'UX/UI Designer', submittedDate: '2026-08-22', status: 'draft' },
+  { id: 'REQ-004', studentId: '65011212021', studentName: 'ณัฐวุฒิ แสงทอง', company: 'สำนักงานจังหวัดบุรีรัมย์', position: 'Data Analyst', submittedDate: '2026-08-21', status: 'review' },
+  { id: 'REQ-005', studentId: '65011212029', studentName: 'ศิริพร ใจดี', company: 'บริษัท โคราชซอฟต์แวร์ จำกัด', position: 'Software Tester', submittedDate: '2026-08-20', status: 'rejected' },
+  { id: 'REQ-006', studentId: '65011212035', studentName: 'ภูริณัฐ ทองแท้', company: 'การไฟฟ้าส่วนภูมิภาค', position: 'Network Engineer', submittedDate: '2026-08-19', status: 'approved' },
+  { id: 'REQ-007', studentId: '65011212042', studentName: 'ชนากานต์ บุญมี', company: 'บริษัท เน็กซ์โค้ด จำกัด', position: 'Backend Developer', submittedDate: '2026-08-18', status: 'review' },
+  { id: 'REQ-008', studentId: '65011212047', studentName: 'วรัญญา คำดี', company: 'เทศบาลเมืองบุรีรัมย์', position: 'IT Officer', submittedDate: '2026-08-17', status: 'draft' },
+  { id: 'REQ-009', studentId: '65011212053', studentName: 'พีรพัฒน์ สีหา', company: 'บริษัท สมาร์ทฟาร์ม จำกัด', position: 'IoT Developer', submittedDate: '2026-08-16', status: 'approved' },
+  { id: 'REQ-010', studentId: '65011212061', studentName: 'อรอนงค์ สายใจ', company: 'สำนักงานสาธารณสุขจังหวัดบุรีรัมย์', position: 'Data Support', submittedDate: '2026-08-15', status: 'review' },
+  { id: 'REQ-011', studentId: '65011212068', studentName: 'ภาณุพงศ์ แก้วกล้า', company: 'บริษัท คลาวด์อีสาน จำกัด', position: 'Cloud Support', submittedDate: '2026-08-14', status: 'rejected' },
+  { id: 'REQ-012', studentId: '65011212074', studentName: 'สุพิชญา มั่นหมาย', company: 'มหาวิทยาลัยราชภัฏบุรีรัมย์', position: 'Web Developer', submittedDate: '2026-08-13', status: 'approved' },
+  { id: 'REQ-013', studentId: '65011212081', studentName: 'ณรงค์ชัย พันธ์ดี', company: 'บริษัท โลจิสติกส์บุรีรัมย์ จำกัด', position: 'System Support', submittedDate: '2026-08-12', status: 'draft' },
+  { id: 'REQ-014', studentId: '65011212089', studentName: 'เบญญาภา แสงงาม', company: 'ศูนย์ดิจิทัลชุมชนบุรีรัมย์', position: 'UX Researcher', submittedDate: '2026-08-11', status: 'review' },
 ]
+const placementRequests = ref<PlacementRequest[]>(initialPlacementRequests.map(request => ({ ...request })))
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -95,11 +100,12 @@ const statusMeta: Record<RequestStatus, { label: string, tone: 'neutral' | 'warn
   review: { label: 'รอตรวจสอบ', tone: 'warning' },
   approved: { label: 'ยืนยันแล้ว', tone: 'success' },
   rejected: { label: 'ต้องแก้ไข', tone: 'danger' },
+  cancelled: { label: 'ยกเลิกแล้ว', tone: 'neutral' },
 }
 
 const filteredRequests = computed(() => {
   const keyword = searchQuery.value.trim().toLocaleLowerCase('th')
-  return placementRequests
+  return placementRequests.value
     .filter(request => statusFilter.value === 'all' || request.status === statusFilter.value)
     .filter(request => !keyword || [request.studentId, request.studentName, request.company, request.position].some(value => value.toLocaleLowerCase('th').includes(keyword)))
     .toSorted((a, b) => {
@@ -110,8 +116,8 @@ const filteredRequests = computed(() => {
     })
 })
 const pageSizeNumber = computed(() => Number(pageSize.value))
-const pageCount = computed(() => Math.max(1, Math.ceil(filteredRequests.value.length / pageSizeNumber.value)))
-const paginatedRequests = computed(() => filteredRequests.value.slice((currentPage.value - 1) * pageSizeNumber.value, currentPage.value * pageSizeNumber.value))
+const pageCount = computed(() => getPageCount(filteredRequests.value.length, pageSizeNumber.value))
+const paginatedRequests = computed(() => paginateItems(filteredRequests.value, currentPage.value, pageSizeNumber.value))
 const visibleSelectedCount = computed(() => paginatedRequests.value.filter(request => selectedIds.value.includes(request.id)).length)
 const selectAllState = computed<boolean | 'indeterminate'>(() => {
   if (!visibleSelectedCount.value) return false
@@ -124,6 +130,9 @@ const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.val
 watch([searchQuery, statusFilter, pageSize], () => {
   currentPage.value = 1
   selectedIds.value = []
+})
+watch(tablePreviewState, (state) => {
+  if (state !== 'data') selectedIds.value = []
 })
 
 const toggleSort = (key: SortKey) => {
@@ -159,11 +168,48 @@ const resetTable = () => {
   pageSize.value = '10'
   currentPage.value = 1
   selectedIds.value = []
+  placementRequests.value = initialPlacementRequests.map(request => ({ ...request }))
 }
+
+const formatThaiDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+}).format(new Date(`${date}T00:00:00+07:00`))
+
+const notifyAction = (title: string, description: string) => {
+  showToast({ title, description })
+  recordEvent(title)
+}
+
+const cancelRequest = (request: PlacementRequest) => {
+  request.status = 'cancelled'
+  selectedIds.value = selectedIds.value.filter(id => id !== request.id)
+  notifyAction('ยกเลิกคำร้องแล้ว', `${request.id} ของ ${request.studentName}`)
+}
+
+const submitExampleForm = () => {
+  Object.assign(formErrors, { companyName: undefined, province: undefined, positionDetails: undefined, accepted: undefined })
+  const result = formSchema.safeParse(form)
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const field = issue.path[0] as keyof typeof form
+      if (!formErrors[field]) formErrors[field] = issue.message
+    }
+    return
+  }
+  notifyAction('ตรวจสอบฟอร์มแล้ว', 'ข้อมูลตัวอย่างผ่าน Validation และพร้อมส่ง')
+}
+
+let retryTimer: number | undefined
 const retryTable = () => {
   tablePreviewState.value = 'loading'
-  window.setTimeout(() => { tablePreviewState.value = 'data' }, 600)
+  retryTimer = window.setTimeout(() => { tablePreviewState.value = 'data' }, 600)
 }
+
+onBeforeUnmount(() => {
+  if (retryTimer) window.clearTimeout(retryTimer)
+})
 </script>
 
 <template>
@@ -190,13 +236,13 @@ const retryTable = () => {
     <UiCard>
       <h3 class="text-lg font-bold text-ink">ปุ่มและ Feedback</h3>
       <div class="mt-4 flex flex-wrap gap-3">
-        <UiButton :icon="Plus">สร้างรายการ</UiButton>
-        <UiButton variant="secondary" :icon="Search">ค้นหา</UiButton>
-        <UiButton variant="ghost">ยกเลิก</UiButton>
-        <UiButton variant="danger" :icon="Trash2">ยุติการใช้งาน</UiButton>
+        <UiButton :icon="Plus" @click="notifyAction('ทดลองปุ่มสร้างรายการ', 'ตัวอย่าง Primary action')">สร้างรายการ</UiButton>
+        <UiButton variant="secondary" :icon="Search" @click="notifyAction('ทดลองปุ่มค้นหา', 'ตัวอย่าง Secondary action')">ค้นหา</UiButton>
+        <UiButton variant="ghost" @click="notifyAction('ทดลองปุ่มยกเลิก', 'ตัวอย่าง Ghost action')">ยกเลิก</UiButton>
+        <UiButton variant="danger" :icon="Trash2" @click="notifyAction('ทดลองปุ่มอันตราย', 'Action จริงต้องเปิดกล่องยืนยันก่อนดำเนินการ')">ยุติการใช้งาน</UiButton>
         <UiButton loading>กำลังบันทึก</UiButton>
         <UiButton disabled>ไม่มีสิทธิ์ใช้งาน</UiButton>
-        <UiButton variant="secondary" @click="showToast({ title: 'บันทึกข้อมูลแล้ว', description: 'ตัวอย่างข้อความตอบกลับระดับ Action' })">ทดลอง Toast</UiButton>
+        <UiButton variant="secondary" @click="notifyAction('บันทึกข้อมูลแล้ว', 'ตัวอย่างข้อความตอบกลับระดับ Action')">ทดลอง Toast</UiButton>
       </div>
       <div class="mt-5 grid gap-3 lg:grid-cols-2">
         <UiAlert title="ข้อมูลสำหรับตรวจสอบ">ใช้สีร่วมกับข้อความและไอคอน ไม่ใช้สีอย่างเดียวในการบอกสถานะ</UiAlert>
@@ -208,51 +254,40 @@ const retryTable = () => {
 
     <UiCard>
       <h3 class="text-lg font-bold text-ink">ฟอร์ม</h3>
-      <div class="mt-4 grid gap-5 lg:grid-cols-2">
-        <label class="block text-sm font-semibold text-ink">ชื่อสถานประกอบการ <span class="text-danger">*</span>
-          <input class="mt-1.5 min-h-11 w-full rounded-control border border-divider bg-canvas px-3 font-normal placeholder:text-gray-400" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" />
-          <span class="mt-1.5 block text-xs font-normal text-muted">ใช้ชื่อที่ปรากฏในหนังสือราชการ</span>
-        </label>
+      <form class="mt-4 grid gap-5 lg:grid-cols-2" novalidate @submit.prevent="submitExampleForm">
         <div>
-          <label id="province-label" class="block text-sm font-semibold text-ink">จังหวัด</label>
-          <div class="mt-1.5"><UiSelect v-model="province" :options="provinceOptions" label="จังหวัด" /></div>
+          <UiInput v-model="form.companyName" label="ชื่อสถานประกอบการ" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" help="ใช้ชื่อที่ปรากฏในหนังสือราชการ" :error="formErrors.companyName" required />
         </div>
-        <label class="block text-sm font-semibold text-ink lg:col-span-2">รายละเอียดตำแหน่งงาน
-          <textarea class="mt-1.5 min-h-28 w-full resize-y rounded-control border border-divider bg-canvas p-3 font-normal" placeholder="อธิบายลักษณะงานที่คาดว่าจะได้รับมอบหมาย" />
-        </label>
-        <label class="flex items-start gap-3 text-sm text-ink lg:col-span-2">
-          <CheckboxRoot v-model="accepted" class="mt-0.5 grid size-5 shrink-0 place-items-center rounded border border-divider bg-canvas data-[state=checked]:border-primary data-[state=checked]:bg-primary">
-            <CheckboxIndicator class="text-ink">✓</CheckboxIndicator>
-          </CheckboxRoot>
-          <span>ยืนยันว่าข้อมูลข้างต้นถูกต้องและสามารถนำไปจัดทำหนังสือขอฝึกงานได้</span>
-        </label>
-      </div>
+        <UiSelect v-model="form.province" :options="provinceOptions" label="จังหวัด" :error="formErrors.province" required />
+        <div class="lg:col-span-2">
+          <UiTextarea v-model="form.positionDetails" label="รายละเอียดตำแหน่งงาน" placeholder="อธิบายลักษณะงานที่คาดว่าจะได้รับมอบหมาย" :error="formErrors.positionDetails" required />
+        </div>
+        <div class="lg:col-span-2">
+          <div class="flex items-start gap-2 text-sm text-ink">
+            <UiCheckbox v-model="form.accepted" label="ยืนยันว่าข้อมูลข้างต้นถูกต้อง" />
+            <span class="pt-1.5">ยืนยันว่าข้อมูลข้างต้นถูกต้องและสามารถนำไปจัดทำหนังสือขอฝึกงานได้</span>
+          </div>
+          <p v-if="formErrors.accepted" class="mt-1.5 text-xs font-medium text-danger">{{ formErrors.accepted }}</p>
+        </div>
+        <div class="lg:col-span-2"><UiButton type="submit">ตรวจสอบฟอร์ม</UiButton></div>
+      </form>
     </UiCard>
 
     <UiCard>
       <h3 class="text-lg font-bold text-ink">Dialog และ Tabs</h3>
       <div class="mt-4">
-        <DialogRoot>
-          <DialogTrigger as-child><UiButton variant="secondary">เปิด Dialog</UiButton></DialogTrigger>
-          <DialogPortal>
-            <DialogOverlay class="fixed inset-0 z-50 bg-black/45" />
-            <DialogContent class="fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-panel border border-divider bg-canvas p-6 shadow-2xl outline-none">
-              <DialogTitle class="text-lg font-bold text-ink">ยืนยันการดำเนินการ</DialogTitle>
-              <DialogDescription class="mt-2 text-sm leading-6 text-muted">ตัวอย่าง Dialog สำหรับ Action ที่ต้องให้ผู้ใช้ตรวจสอบข้อมูลก่อนยืนยัน</DialogDescription>
-              <div class="mt-6 flex justify-end gap-3"><DialogClose as-child><UiButton variant="ghost">ยกเลิก</UiButton></DialogClose><DialogClose as-child><UiButton>ยืนยัน</UiButton></DialogClose></div>
-            </DialogContent>
-          </DialogPortal>
-        </DialogRoot>
+        <UiDialog title="ยืนยันการดำเนินการ" description="ตัวอย่าง Dialog สำหรับ Action ที่ต้องให้ผู้ใช้ตรวจสอบข้อมูลก่อนยืนยัน">
+          <template #trigger><UiButton variant="secondary">เปิด Dialog</UiButton></template>
+          <template #cancel><UiButton variant="ghost">ยกเลิก</UiButton></template>
+          <template #confirm><UiButton @click="notifyAction('ยืนยันการดำเนินการแล้ว', 'Dialog ปิดและคืน focus ไปยังปุ่มเปิด')">ยืนยัน</UiButton></template>
+        </UiDialog>
       </div>
 
-      <TabsRoot default-value="student" class="mt-6">
-        <TabsList class="inline-flex rounded-control bg-surface p-1" aria-label="ตัวอย่างมุมมองตามบทบาท">
-          <TabsTrigger v-for="tab in tabs" :key="tab.value" :value="tab.value" class="min-h-10 rounded-md px-4 text-sm font-semibold text-muted data-[state=active]:bg-canvas data-[state=active]:text-ink data-[state=active]:shadow-sm">{{ tab.label }}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="student" class="mt-4 rounded-control border border-divider p-4 text-sm text-muted">มุมมองติดตามคำร้องและตารางนิเทศของนักศึกษา</TabsContent>
-        <TabsContent value="lecturer" class="mt-4 rounded-control border border-divider p-4 text-sm text-muted">มุมมองตารางนิเทศและแบบประเมินของอาจารย์</TabsContent>
-        <TabsContent value="staff" class="mt-4 rounded-control border border-divider p-4 text-sm text-muted">มุมมองจัดการคำร้อง รอบสหกิจ และการนิเทศของเจ้าหน้าที่</TabsContent>
-      </TabsRoot>
+      <UiTabs :tabs="tabs" default-value="student" label="ตัวอย่างมุมมองตามบทบาท" class="mt-6">
+        <template #student>มุมมองติดตามคำร้องและตารางนิเทศของนักศึกษา</template>
+        <template #lecturer>มุมมองตารางนิเทศและแบบประเมินของอาจารย์</template>
+        <template #staff>มุมมองจัดการคำร้อง รอบสหกิจ และการนิเทศของเจ้าหน้าที่</template>
+      </UiTabs>
     </UiCard>
 
     <UiCard :padded="false">
@@ -260,7 +295,7 @@ const retryTable = () => {
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h3 class="text-lg font-bold text-ink">Data Table</h3>
-            <p class="mt-1 text-sm leading-6 text-muted">ตัวอย่างตารางคำร้องสถานประกอบการ รองรับค้นหา กรอง เรียง เลือกหลายรายการ เมนูต่อแถว และแบ่งหน้า</p>
+            <p class="mt-1 text-sm leading-6 text-muted">ตัวอย่างตารางคำร้องสถานประกอบการ รองรับค้นหา กรอง เรียง เลือกหลายรายการ การทำงานต่อแถว และแบ่งหน้า</p>
           </div>
           <div class="flex flex-wrap items-center justify-end gap-2">
             <div class="flex flex-wrap gap-2" aria-label="เลือกสถานะตัวอย่างตาราง">
@@ -274,7 +309,7 @@ const retryTable = () => {
                 @click="tablePreviewState = option.value"
               >{{ option.label }}</button>
             </div>
-            <UiButton :icon="Plus">สร้างคำร้อง</UiButton>
+            <UiButton :icon="Plus" @click="notifyAction('เริ่มสร้างคำร้องตัวอย่าง', 'Flow จริงจะพัฒนาใน Checkpoint 2')">สร้างคำร้อง</UiButton>
           </div>
         </div>
 
@@ -283,12 +318,12 @@ const retryTable = () => {
             <span class="sr-only">ค้นหาคำร้อง</span>
             <span class="relative block">
               <Search :size="18" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden="true" />
-              <input v-model="searchQuery" type="search" class="min-h-11 w-full rounded-control border border-divider bg-canvas pr-3 pl-10 font-normal placeholder:text-gray-400" placeholder="ค้นหารหัส ชื่อ บริษัท หรือตำแหน่ง" />
+              <input v-model="searchQuery" type="search" class="min-h-11 w-full rounded-control border border-divider bg-canvas pr-3 pl-10 font-normal placeholder:text-gray-400" placeholder="ค้นหารหัส ชื่อ บริษัท หรือตำแหน่ง">
             </span>
           </label>
           <div class="flex flex-wrap items-center justify-end gap-2 lg:ml-auto lg:flex-nowrap">
             <div class="w-full sm:w-48">
-              <UiSelect v-model="statusFilter" :options="statusOptions" label="กรองตามสถานะ" />
+              <UiSelect v-model="statusFilter" :options="statusOptions" label="กรองตามสถานะ" :label-visible="false" />
             </div>
             <button type="button" class="inline-grid size-11 shrink-0 place-items-center rounded-control border border-divider bg-canvas text-ink transition-colors hover:bg-surface" aria-label="รีเซ็ตตาราง" title="รีเซ็ตตาราง" @click="resetTable"><RotateCcw :size="18" aria-hidden="true" /></button>
           </div>
@@ -304,7 +339,7 @@ const retryTable = () => {
 
       <div v-if="selectedIds.length" class="flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-warning-soft px-5 py-3 sm:px-6" role="status">
         <p class="text-sm font-semibold text-ink">เลือกแล้ว {{ selectedIds.length }} รายการ</p>
-        <div class="flex gap-2"><UiButton size="sm" variant="secondary">ส่งออก</UiButton><UiButton size="sm" variant="ghost" @click="selectedIds = []">ยกเลิกการเลือก</UiButton></div>
+        <div class="flex gap-2"><UiButton size="sm" variant="secondary" @click="notifyAction('จำลองการส่งออกแล้ว', `เลือก ${selectedIds.length} รายการ`)">ส่งออก</UiButton><UiButton size="sm" variant="ghost" @click="selectedIds = []">ยกเลิกการเลือก</UiButton></div>
       </div>
 
       <div v-if="tablePreviewState === 'loading'" class="space-y-3 p-5 sm:p-6" aria-label="กำลังโหลดข้อมูล">
@@ -313,9 +348,10 @@ const retryTable = () => {
         </div>
       </div>
       <div v-else-if="tablePreviewState === 'error'" class="p-5 sm:p-6"><AppErrorState title="โหลดรายการคำร้องไม่สำเร็จ" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองดึงข้อมูลอีกครั้ง" @retry="retryTable" /></div>
+      <div v-else-if="tablePreviewState === 'forbidden'" class="p-5 sm:p-6"><AppForbiddenState /></div>
       <div v-else-if="tablePreviewState === 'empty' || !paginatedRequests.length" class="p-5 sm:p-6">
         <AppEmptyState :title="searchQuery || statusFilter !== 'all' ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีคำร้องสถานประกอบการ'" :description="searchQuery || statusFilter !== 'all' ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'เมื่อมีคำร้อง รายการจะแสดงในตารางนี้'">
-          <UiButton v-if="searchQuery || statusFilter !== 'all'" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton><UiButton v-else :icon="Plus">สร้างคำร้อง</UiButton>
+          <UiButton v-if="searchQuery || statusFilter !== 'all'" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton><UiButton v-else :icon="Plus" @click="notifyAction('เริ่มสร้างคำร้องตัวอย่าง', 'Flow จริงจะพัฒนาใน Checkpoint 2')">สร้างคำร้อง</UiButton>
         </AppEmptyState>
       </div>
       <template v-else>
@@ -325,9 +361,7 @@ const retryTable = () => {
             <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
               <tr>
                 <th scope="col" class="w-14 px-5 py-3 sm:px-6">
-                  <CheckboxRoot :model-value="selectAllState" class="grid size-5 place-items-center rounded border border-divider bg-canvas data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary" aria-label="เลือกทุกรายการในหน้านี้" @update:model-value="toggleSelectAll">
-                    <CheckboxIndicator class="text-ink"><span v-if="selectAllState === 'indeterminate'">−</span><span v-else>✓</span></CheckboxIndicator>
-                  </CheckboxRoot>
+                  <UiCheckbox :model-value="selectAllState" label="เลือกทุกรายการในหน้านี้" @update:model-value="toggleSelectAll" />
                 </th>
                 <th scope="col" class="px-4 py-3" :aria-sort="sortKey === 'studentName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'"><button type="button" class="inline-flex items-center gap-1 font-semibold hover:text-ink" :aria-label="`เรียงชื่อนักศึกษา ${sortKey === 'studentName' && sortDirection === 'asc' ? 'จาก ฮ ถึง ก' : 'จาก ก ถึง ฮ'}`" @click="toggleSort('studentName')">นักศึกษา <ArrowUp v-if="sortKey === 'studentName' && sortDirection === 'asc'" :size="15" aria-hidden="true" /><ArrowDown v-else-if="sortKey === 'studentName'" :size="15" aria-hidden="true" /><ArrowUpDown v-else :size="15" aria-hidden="true" /></button></th>
                 <th scope="col" class="px-4 py-3">สถานประกอบการ / ตำแหน่ง</th>
@@ -338,16 +372,20 @@ const retryTable = () => {
             </thead>
             <tbody class="divide-y divide-divider">
               <tr v-for="request in paginatedRequests" :key="request.id" class="transition-colors hover:bg-surface/70" :class="selectedIds.includes(request.id) && 'bg-warning-soft/60'">
-                <td class="px-5 py-4 sm:px-6"><CheckboxRoot :model-value="selectedIds.includes(request.id)" class="grid size-5 place-items-center rounded border border-divider bg-canvas data-[state=checked]:border-primary data-[state=checked]:bg-primary" :aria-label="`เลือกคำร้องของ ${request.studentName}`" @update:model-value="toggleRow(request.id, $event)"><CheckboxIndicator class="text-ink">✓</CheckboxIndicator></CheckboxRoot></td>
+                <td class="px-5 py-4 sm:px-6"><UiCheckbox :model-value="selectedIds.includes(request.id)" :label="`เลือกคำร้องของ ${request.studentName}`" @update:model-value="toggleRow(request.id, $event)" /></td>
                 <td class="px-4 py-4"><p class="font-semibold text-ink">{{ request.studentName }}</p><p class="mt-1 text-xs text-muted">{{ request.studentId }} · {{ request.id }}</p></td>
                 <td class="px-4 py-4"><p class="font-medium text-ink">{{ request.company }}</p><p class="mt-1 text-xs text-muted">{{ request.position }}</p></td>
-                <td class="whitespace-nowrap px-4 py-4 text-muted">{{ request.submittedAt }}</td>
+                <td class="whitespace-nowrap px-4 py-4 text-muted">{{ formatThaiDate(request.submittedDate) }}</td>
                 <td class="px-4 py-4"><UiBadge :tone="statusMeta[request.status].tone">{{ statusMeta[request.status].label }}</UiBadge></td>
                 <td class="px-4 py-4 text-right">
                   <div class="inline-flex items-center justify-end">
-                    <button type="button" class="inline-grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียดคำร้องของ ${request.studentName}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></button>
-                    <button type="button" class="inline-grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`แก้ไขคำร้องของ ${request.studentName}`" title="แก้ไข"><Pencil :size="15" aria-hidden="true" /></button>
-                    <button type="button" class="inline-grid size-7 place-items-center rounded-md text-danger transition-colors hover:bg-danger-soft" :aria-label="`ยุติการใช้งานคำร้องของ ${request.studentName}`" title="ยุติการใช้งาน"><Trash2 :size="15" aria-hidden="true" /></button>
+                    <button type="button" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียดคำร้องของ ${request.studentName}`" title="ดูรายละเอียด" @click="notifyAction('เปิดรายละเอียดคำร้อง', request.id)"><Eye :size="15" aria-hidden="true" /></button>
+                    <button type="button" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`แก้ไขคำร้องของ ${request.studentName}`" title="แก้ไข" @click="notifyAction('เปิดแบบแก้ไขคำร้อง', request.id)"><Pencil :size="15" aria-hidden="true" /></button>
+                    <UiDialog v-if="request.status !== 'cancelled'" title="ยืนยันการยกเลิกคำร้อง" :description="`คำร้อง ${request.id} ของ ${request.studentName} จะเปลี่ยนเป็นสถานะยกเลิกแล้ว`">
+                      <template #trigger><button type="button" class="inline-grid size-8 place-items-center rounded-md text-danger transition-colors hover:bg-danger-soft" :aria-label="`ยกเลิกคำร้องของ ${request.studentName}`" title="ยกเลิกคำร้อง"><Trash2 :size="15" aria-hidden="true" /></button></template>
+                      <template #cancel><UiButton variant="ghost">กลับ</UiButton></template>
+                      <template #confirm><UiButton variant="danger" @click="cancelRequest(request)">ยืนยันยกเลิก</UiButton></template>
+                    </UiDialog>
                   </div>
                 </td>
               </tr>
@@ -358,8 +396,20 @@ const retryTable = () => {
         <div class="divide-y divide-divider md:hidden">
           <article v-for="request in paginatedRequests" :key="request.id" class="p-5" :class="selectedIds.includes(request.id) && 'bg-warning-soft/60'">
             <div class="flex items-start gap-3">
-              <CheckboxRoot :model-value="selectedIds.includes(request.id)" class="mt-0.5 grid size-5 shrink-0 place-items-center rounded border border-divider bg-canvas data-[state=checked]:border-primary data-[state=checked]:bg-primary" :aria-label="`เลือกคำร้องของ ${request.studentName}`" @update:model-value="toggleRow(request.id, $event)"><CheckboxIndicator class="text-ink">✓</CheckboxIndicator></CheckboxRoot>
-              <div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ request.studentName }}</h4><p class="mt-0.5 text-xs text-muted">{{ request.studentId }}</p></div><UiBadge :tone="statusMeta[request.status].tone">{{ statusMeta[request.status].label }}</UiBadge></div><dl class="mt-4 grid gap-3 text-sm"><div><dt class="text-xs text-muted">สถานประกอบการ</dt><dd class="mt-0.5 font-medium text-ink">{{ request.company }}</dd></div><div class="grid grid-cols-2 gap-3"><div><dt class="text-xs text-muted">ตำแหน่ง</dt><dd class="mt-0.5 text-ink">{{ request.position }}</dd></div><div><dt class="text-xs text-muted">วันที่ยื่น</dt><dd class="mt-0.5 text-ink">{{ request.submittedAt }}</dd></div></div></dl><div class="mt-4 flex flex-wrap gap-2"><UiButton size="sm" variant="secondary" :icon="Eye">ดูรายละเอียด</UiButton><UiButton size="sm" variant="ghost" :icon="Pencil">แก้ไข</UiButton><UiButton size="sm" variant="danger" :icon="Trash2">ยุติการใช้งาน</UiButton></div></div>
+              <UiCheckbox :model-value="selectedIds.includes(request.id)" :label="`เลือกคำร้องของ ${request.studentName}`" @update:model-value="toggleRow(request.id, $event)" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ request.studentName }}</h4><p class="mt-0.5 text-xs text-muted">{{ request.studentId }}</p></div><UiBadge :tone="statusMeta[request.status].tone">{{ statusMeta[request.status].label }}</UiBadge></div>
+                <dl class="mt-4 grid gap-3 text-sm"><div><dt class="text-xs text-muted">สถานประกอบการ</dt><dd class="mt-0.5 font-medium text-ink">{{ request.company }}</dd></div><div class="grid grid-cols-2 gap-3"><div><dt class="text-xs text-muted">ตำแหน่ง</dt><dd class="mt-0.5 text-ink">{{ request.position }}</dd></div><div><dt class="text-xs text-muted">วันที่ยื่น</dt><dd class="mt-0.5 text-ink">{{ formatThaiDate(request.submittedDate) }}</dd></div></div></dl>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <UiButton size="sm" variant="secondary" :icon="Eye" @click="notifyAction('เปิดรายละเอียดคำร้อง', request.id)">ดูรายละเอียด</UiButton>
+                  <UiButton size="sm" variant="ghost" :icon="Pencil" @click="notifyAction('เปิดแบบแก้ไขคำร้อง', request.id)">แก้ไข</UiButton>
+                  <UiDialog v-if="request.status !== 'cancelled'" title="ยืนยันการยกเลิกคำร้อง" :description="`คำร้อง ${request.id} ของ ${request.studentName} จะเปลี่ยนเป็นสถานะยกเลิกแล้ว`">
+                    <template #trigger><UiButton size="sm" variant="danger" :icon="Trash2">ยกเลิกคำร้อง</UiButton></template>
+                    <template #cancel><UiButton variant="ghost">กลับ</UiButton></template>
+                    <template #confirm><UiButton variant="danger" @click="cancelRequest(request)">ยืนยันยกเลิก</UiButton></template>
+                  </UiDialog>
+                </div>
+              </div>
             </div>
           </article>
         </div>
@@ -367,7 +417,7 @@ const retryTable = () => {
         <div class="flex flex-col gap-3 border-t border-divider px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div class="flex items-center gap-3">
             <p class="whitespace-nowrap text-muted">แสดง {{ resultStart }}–{{ resultEnd }} จาก {{ filteredRequests.length }} รายการ</p>
-            <div class="w-20 shrink-0"><UiSelect v-model="pageSize" :options="pageSizeOptions" label="จำนวนรายการต่อหน้า" /></div>
+            <div class="w-20 shrink-0"><UiSelect v-model="pageSize" :options="pageSizeOptions" label="จำนวนรายการต่อหน้า" :label-visible="false" /></div>
           </div>
           <nav class="flex items-center gap-2" aria-label="การแบ่งหน้าตาราง"><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45" :disabled="currentPage === 1" aria-label="หน้าก่อนหน้า" @click="currentPage--"><ChevronLeft :size="18" aria-hidden="true" /></button><span class="min-w-20 text-center font-semibold text-ink">หน้า {{ currentPage }} / {{ pageCount }}</span><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45" :disabled="currentPage === pageCount" aria-label="หน้าถัดไป" @click="currentPage++"><ChevronRight :size="18" aria-hidden="true" /></button></nav>
         </div>
@@ -377,7 +427,7 @@ const retryTable = () => {
     <UiCard>
       <h3 class="text-lg font-bold text-ink">Shared States</h3>
       <p class="mt-1 text-sm text-muted">ใช้แผง “จำลองสถานการณ์” มุมขวาล่างเพื่อดู Loading, Empty, Error และ Data state บนหน้าภาพรวม</p>
-      <div class="mt-5 grid gap-4 lg:grid-cols-2"><AppEmptyState title="ไม่พบรายการที่ค้นหา" description="ลองล้างตัวกรองหรือค้นหาด้วยคำอื่น" /><AppErrorState /></div>
+      <div class="mt-5 grid gap-4 lg:grid-cols-3"><AppEmptyState title="ไม่พบรายการที่ค้นหา" description="ลองล้างตัวกรองหรือค้นหาด้วยคำอื่น" /><AppErrorState /><AppForbiddenState /></div>
     </UiCard>
   </div>
 </template>

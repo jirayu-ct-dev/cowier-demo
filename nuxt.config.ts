@@ -4,8 +4,17 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['nuxt-auth-utils'],
+  modules: ['@nuxt/eslint'],
+  app: {
+    head: {
+      htmlAttrs: { lang: 'th' },
+      title: 'CWIE BRU',
+      titleTemplate: '%s | CWIE BRU',
+    },
+  },
   css: [
+    '@fontsource/prompt/thai-300.css',
+    '@fontsource/prompt/latin-300.css',
     '@fontsource/prompt/thai-400.css',
     '@fontsource/prompt/latin-400.css',
     '@fontsource/prompt/thai-500.css',
@@ -24,7 +33,7 @@ export default defineNuxtConfig({
   ],
   vite: {
     plugins: [
-      tailwindcss()
-    ]
-  }
+      tailwindcss(),
+    ],
+  },
 })

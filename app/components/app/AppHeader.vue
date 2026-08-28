@@ -1,24 +1,31 @@
 <script setup lang="ts">
-import { Bell, ChevronDown, LogOut, Menu, Settings, UserRound } from '@lucide/vue'
+import { Bell, ChevronDown, Menu } from '@lucide/vue'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRoot,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
 
 const emit = defineEmits<{ openNavigation: [] }>()
 const route = useRoute()
-const { scenario } = useScenario()
+const { scenario, recordEvent } = useScenario()
+const notificationRead = useState<boolean>('mock-notification-read', () => false)
 
 const roleLabel = computed(() => ({
   staff: 'เจ้าหน้าที่',
   lecturer: 'อาจารย์นิเทศ',
   student: 'นักศึกษา',
 }[scenario.value.role]))
-const pageTitle = computed(() => String(route.meta.title ?? 'ภาพรวมระบบ'))
+const pageTitle = computed(() => String(route.meta.title ?? 'หน้าหลัก'))
+const unreadNotificationCount = computed(() => scenario.value.role === 'student' && !notificationRead.value ? 1 : 0)
+const markNotificationRead = () => {
+  if (!unreadNotificationCount.value) return
+  notificationRead.value = true
+  recordEvent('อ่านการแจ้งเตือน: มีการเผยแพร่ตารางนิเทศ')
+}
 </script>
 
 <template>
@@ -34,18 +41,43 @@ const pageTitle = computed(() => String(route.meta.title ?? 'ภาพรวม�
       </button>
 
       <div class="min-w-0 flex-1">
-        <p class="truncate text-xs text-muted">CWIE BRU / {{ pageTitle }}</p>
+        <nav aria-label="เส้นทางนำทาง">
+          <ol class="flex min-w-0 items-center gap-1 truncate text-xs text-muted">
+            <li>CWIE BRU</li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" class="truncate">{{ pageTitle }}</li>
+          </ol>
+        </nav>
         <h1 class="truncate text-base font-bold text-ink sm:text-lg">{{ pageTitle }}</h1>
       </div>
 
-      <button
-        type="button"
-        disabled
-        class="relative grid size-11 shrink-0 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink"
-        aria-label="การแจ้งเตือน ยังไม่มีรายการใหม่"
-      >
-        <Bell :size="19" aria-hidden="true" />
-      </button>
+      <DropdownMenuRoot>
+        <DropdownMenuTrigger
+          class="relative grid size-11 shrink-0 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink"
+          :aria-label="unreadNotificationCount ? `การแจ้งเตือน มี ${unreadNotificationCount} รายการใหม่` : 'การแจ้งเตือน ไม่มีรายการใหม่'"
+        >
+          <Bell :size="19" aria-hidden="true" />
+          <span v-if="unreadNotificationCount" class="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-danger text-[10px] font-semibold leading-none text-white">
+            {{ unreadNotificationCount }}
+          </span>
+        </DropdownMenuTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuContent :side-offset="8" align="end" class="z-50 w-[calc(100vw-2rem)] max-w-sm rounded-panel border border-divider bg-canvas p-2 shadow-xl">
+            <DropdownMenuLabel class="px-3 py-2 text-sm font-semibold text-ink">การแจ้งเตือน</DropdownMenuLabel>
+            <DropdownMenuItem
+              v-if="unreadNotificationCount"
+              class="cursor-pointer rounded-control bg-info-soft px-3 py-3 outline-none data-[highlighted]:bg-blue-100"
+              @select="markNotificationRead"
+            >
+              <div>
+                <p class="text-sm font-medium text-ink">มีการเผยแพร่ตารางนิเทศ</p>
+                <p class="mt-1 text-xs leading-5 text-muted">ตารางนิเทศครั้งถัดไปวันที่ 2 ก.ย. 2569</p>
+              </div>
+            </DropdownMenuItem>
+            <p v-else class="rounded-control bg-surface px-3 py-3 text-sm text-muted">ไม่มีการแจ้งเตือนใหม่</p>
+          </DropdownMenuContent>
+        </DropdownMenuPortal>
+      </DropdownMenuRoot>
 
       <DropdownMenuRoot>
         <DropdownMenuTrigger class="flex min-h-12 items-center gap-2.5 rounded-control border border-divider bg-canvas px-3 text-left hover:bg-surface">
@@ -58,16 +90,11 @@ const pageTitle = computed(() => String(route.meta.title ?? 'ภาพรวม�
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
           <DropdownMenuContent :side-offset="8" align="end" class="z-50 min-w-64 rounded-panel border border-divider bg-canvas p-2 shadow-xl">
-            <DropdownMenuItem disabled class="flex min-h-12 items-center gap-3 rounded-control px-4 text-sm opacity-55 outline-none">
-              <UserRound :size="16" aria-hidden="true" /> ข้อมูลบัญชี
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled class="flex min-h-12 items-center gap-3 rounded-control px-4 text-sm opacity-55 outline-none">
-              <Settings :size="16" aria-hidden="true" /> ตั้งค่ารหัสผ่าน
-            </DropdownMenuItem>
-            <DropdownMenuSeparator class="my-1.5 h-px bg-divider" />
-            <DropdownMenuItem disabled class="flex min-h-12 items-center gap-3 rounded-control px-4 text-sm text-danger opacity-55 outline-none">
-              <LogOut :size="16" aria-hidden="true" /> ออกจากระบบ
-            </DropdownMenuItem>
+            <DropdownMenuLabel class="px-3 py-2 outline-none">
+              <span class="block text-sm font-semibold text-ink">{{ scenario.userName }}</span>
+              <span class="mt-0.5 block text-xs font-normal text-muted">{{ roleLabel }} · ข้อมูลจำลอง</span>
+            </DropdownMenuLabel>
+            <p class="rounded-control bg-surface px-3 py-2 text-xs leading-5 text-muted">เมนูบัญชีจะเปิดใช้งานใน Checkpoint Authentication</p>
           </DropdownMenuContent>
         </DropdownMenuPortal>
       </DropdownMenuRoot>

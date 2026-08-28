@@ -54,6 +54,12 @@
 ## 3. กฎและมาตรฐานการพัฒนา (Engineering Standards)
 
 ### A. Frontend & UI (Nuxt + Tailwind CSS + Reka UI)
+0. **Design System เป็นแหล่งอ้างอิงหลัก (Single Source of Truth):**
+   - หน้า [`/dev/ui`](./app/pages/dev/ui.vue) คือมาตรฐาน UI กลางของระบบ ทุกหน้าต้องยึดรูปแบบสี, typography, spacing, ขนาด control, card, form, modal, badge, state และ interaction จากหน้านี้
+   - ก่อนสร้างหรือแก้ UI ให้ตรวจองค์ประกอบที่มีใน `/dev/ui` และ reuse shared component กับ pattern เดิมก่อน ห้ามสร้างรูปแบบหน้าตาหรือ interaction ใหม่ที่ขัดกับ Design System หากจำเป็นต้องมี pattern ใหม่ ให้เพิ่มตัวอย่างใน `/dev/ui` เพื่อให้ตรวจสอบก่อนนำไปใช้ในหน้าจริง
+   - Data table ทุกหน้าต้องยึดโครงเดียวกับส่วน **Data Table** ใน `/dev/ui`: ลำดับหัวข้อและ primary action, search, filter ฝั่งขวา, ปุ่ม reset แบบ icon-only, active-filter chips, sortable header, row actions, loading/empty/error/data state, mobile card และ footer แบ่งหน้า
+   - เพิ่ม checkbox, bulk action, column, filter หรือ row action เฉพาะเมื่อ flow ของหน้านั้นต้องใช้จริง โดยยังคงรูปแบบการแสดงผลและ interaction ตาม `/dev/ui`
+   - ใช้ design token และ shared UI component ที่มีอยู่ ห้าม hard-code สีหรือสร้าง component ซ้ำเมื่อ Design System มีองค์ประกอบนั้นอยู่แล้ว
 1. **Separation of Concerns:**
    - Business/Data Logic ให้แยกไว้ใน Composables (`composables/use*.ts`)
    - Presentational Components รับ props และ emit events

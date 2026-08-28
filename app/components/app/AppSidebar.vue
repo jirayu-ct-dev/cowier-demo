@@ -1,12 +1,27 @@
 <script setup lang="ts">
-import { Blocks, LayoutDashboard } from '@lucide/vue'
+import { Blocks, ClipboardList, LayoutDashboard, PlusCircle } from '@lucide/vue'
 
 const emit = defineEmits<{ navigate: [] }>()
 const route = useRoute()
-const navigation = [
-  { label: 'ภาพรวมระบบ', to: '/', icon: LayoutDashboard },
-  ...(import.meta.dev ? [{ label: 'Design System', to: '/dev/ui', icon: Blocks }] : []),
-]
+const { scenario } = useScenario()
+const navigation = computed(() => [
+  { label: 'หน้าหลัก', to: '/', icon: LayoutDashboard, exact: true },
+  ...(scenario.value.role === 'student' || route.path.startsWith('/student')
+    ? [
+        { label: 'คำร้องของฉัน', to: '/student/placements', icon: ClipboardList, exact: false },
+        { label: 'แจ้งข้อมูลที่ฝึกงาน', to: '/student/placements/new', icon: PlusCircle, exact: true },
+      ]
+    : []),
+  ...(import.meta.dev ? [{ label: 'Design System', to: '/dev/ui', icon: Blocks, exact: true }] : []),
+])
+
+const isActive = (to: string, exact: boolean) => {
+  if (exact) return route.path === to
+  if (to === '/student/placements') {
+    return route.path === to || (route.path.startsWith(`${to}/`) && route.path !== `${to}/new`)
+  }
+  return route.path.startsWith(to)
+}
 </script>
 
 <template>
@@ -24,9 +39,11 @@ const navigation = [
         v-for="item in navigation"
         :key="item.to"
         :to="item.to"
+        active-class=""
+        exact-active-class=""
         class="flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-medium transition-colors"
-        :class="route.path === item.to ? 'bg-primary text-ink' : 'text-white/72 hover:bg-white/8 hover:text-white'"
-        :aria-current="route.path === item.to ? 'page' : undefined"
+        :class="isActive(item.to, item.exact) ? 'bg-primary text-ink' : 'text-white/72 hover:bg-white/8 hover:text-white'"
+        :aria-current="isActive(item.to, item.exact) ? 'page' : undefined"
         @click="emit('navigate')"
       >
         <component :is="item.icon" :size="18" aria-hidden="true" />
@@ -36,7 +53,7 @@ const navigation = [
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 1</p>
+      <p>UI Prototype · Checkpoint 2</p>
     </div>
   </aside>
 </template>
