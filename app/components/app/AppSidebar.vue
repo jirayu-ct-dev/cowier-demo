@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Blocks, ClipboardList, LayoutDashboard, PlusCircle } from '@lucide/vue'
+import { Blocks, ClipboardList, FileCheck2, LayoutDashboard, PlusCircle } from '@lucide/vue'
 
 const emit = defineEmits<{ navigate: [] }>()
 const route = useRoute()
@@ -10,7 +10,10 @@ const navigation = computed(() => [
     ? [
         { label: 'คำร้องของฉัน', to: '/student/placements', icon: ClipboardList, exact: false },
         { label: 'แจ้งข้อมูลที่ฝึกงาน', to: '/student/placements/new', icon: PlusCircle, exact: true },
-      ]
+    ]
+    : []),
+  ...(scenario.value.role === 'staff' || route.path.startsWith('/staff')
+    ? [{ label: 'ตรวจคำร้อง', to: '/staff/placements', icon: FileCheck2, exact: false }]
     : []),
   ...(import.meta.dev ? [{ label: 'Design System', to: '/dev/ui', icon: Blocks, exact: true }] : []),
 ])
