@@ -1,7 +1,10 @@
-# 🎓 Cowier Co-op Supervision System
+# 🎓 CWIE BRU — Co-op Supervision System
 
 > **ระบบบริหารจัดการและนิเทศงานสหกิจศึกษา (Cooperative Education Management & Supervision System)**  
 > ระบบสำหรับบริหารจัดการและติดตามการฝึกงานสหกิจศึกษาของนักศึกษา ตั้งแต่การเลือกสถานประกอบการ การจัดสรรอาจารย์นิเทศ การวางแผนตารางนิเทศ การบันทึกผลและประเมินผล ไปจนถึงการคำนวณค่าใช้จ่ายในการนิเทศ
+
+> **สถานะปัจจุบัน:** เริ่มพัฒนาเฉพาะ UI ด้วย Mock Data ก่อน โดยยังไม่เชื่อม Backend
+> หรือฐานข้อมูล ดูแนวทางที่ [`dosc/architecture.md`](./dosc/architecture.md)
 
 ---
 
@@ -39,11 +42,11 @@
 | ส่วนของระบบ | เทคโนโลยีที่เลือกใช้ |
 |---|---|
 | **App Framework** | [Nuxt 4](https://nuxt.com/) (Vue 3 Composition API + Nitro Engine) |
-| **Styling & UI** | [Tailwind CSS v4](https://tailwindcss.com/) + [Radix UI](https://www.radix-vue.com/) (Headless Primitives) |
+| **Styling & UI** | [Tailwind CSS v4](https://tailwindcss.com/) + [Reka UI](https://reka-ui.com/) (Headless Primitives) |
 | **Icons** | [Lucide Icons](https://lucide.dev/) (`@lucide/vue`) |
 | **Date & Time** | [date-fns](https://date-fns.org/) |
 | **Schema Validation** | [Zod](https://zod.dev/) |
-| **Database & ORM** | [PostgreSQL 16](https://www.postgresql.org/) + [Prisma ORM](https://www.prisma.io/) |
+| **Database & ORM (ระยะ Backend)** | [MySQL 8.4 LTS](https://dev.mysql.com/doc/refman/8.4/en/) + [Prisma ORM](https://www.prisma.io/) |
 | **Authentication** | [nuxt-auth-utils](https://github.com/atinux/nuxt-auth-utils) (Session-based RBAC) |
 | **Data Processing** | [exceljs](https://github.com/exceljs/exceljs) + [papaparse](https://www.papaparse.com/) |
 | **DevOps & Deploy** | Docker (Multi-stage build) + Docker Compose |
@@ -67,11 +70,13 @@ cowier-demo/
 │   ├── middleware/               # Server-side Auth & RBAC Middleware
 │   └── utils/                    # Server Utilities
 ├── prisma/
-│   └── schema.prisma             # PostgreSQL Database Schema
+│   └── schema.prisma             # Deferred until the Backend phase
 ├── dosc/
-│   └── requirement.md            # Requirement Documentation
+│   ├── requirement.md            # Requirement Documentation
+│   ├── architecture.md           # UI-first Architecture
+│   └── ui-plan.md                # UI Checkpoints and Acceptance Plan
 ├── Dockerfile                    # Multi-stage Production Dockerfile
-├── docker-compose.yml            # App + PostgreSQL Services
+├── docker-compose.yml            # Legacy Backend scaffold; migrate as one unit later
 ├── nuxt.config.ts                # Nuxt Configuration
 ├── package.json
 └── AGENTS.md                     # Coding Guidelines for AI & Developers
@@ -84,7 +89,7 @@ cowier-demo/
 ### ความต้องการของระบบ (Prerequisites)
 - **Node.js**: `v20` หรือ `v22+`
 - **Package Manager**: `pnpm` (แนะนำเวอร์ชัน 10 ขึ้นไป)
-- **Database**: PostgreSQL 16 หรือ Docker
+- ระยะ UI ยังไม่ต้องติดตั้งหรือเปิด Database
 
 ### 1. โคลนโปรเจกต์และติดตั้ง Dependencies
 ```bash
@@ -93,27 +98,17 @@ cd cowier-demo
 pnpm install
 ```
 
-### 2. ตั้งค่าตัวแปรสภาพแวดล้อม (Environment Variables)
+### 2. ตั้งค่าตัวแปรสภาพแวดล้อม (เฉพาะเมื่อต้องทดสอบ Session)
 คัดลอกไฟล์ `.env.example` เป็น `.env`:
 ```bash
 cp .env.example .env
 ```
-กำหนดค่าในไฟล์ `.env`:
+กำหนดค่าในไฟล์ `.env` โดยยังไม่ต้องใช้ `DATABASE_URL` ในระยะ UI:
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cowier_db?schema=public"
 NUXT_SESSION_PASSWORD="your-secure-random-32-character-secret-key"
 ```
 
-### 3. ตั้งค่าฐานข้อมูล (Database Migration)
-```bash
-# สร้าง Prisma Client
-pnpm exec prisma generate
-
-# อัปเดตโครงสร้างตารางลงในฐานข้อมูล
-pnpm exec prisma db push
-```
-
-### 4. รัน Development Server
+### 3. รัน Development Server
 ```bash
 pnpm dev
 ```
@@ -121,24 +116,13 @@ pnpm dev
 
 ---
 
-## 🐳 การรันด้วย Docker (Docker & Docker Compose)
+## 🐳 Docker และฐานข้อมูล
 
-คุณสามารถรันระบบทั้งหมด (ทั้ง Nuxt App และ PostgreSQL) ได้ง่ายๆ ด้วยคำสั่งเดียว:
+ระยะ UI ให้รันด้วย `pnpm dev` เป็นหลัก ส่วน Docker Compose เดิมยังเป็น Backend scaffold
+ของ PostgreSQL และไม่ใช่สถาปัตยกรรมเป้าหมาย ห้ามนำไปใช้เป็นฐานสำหรับงานใหม่
 
-```bash
-# เริ่มการทำงานของ Container ทั้งหมด
-docker compose up -d --build
-
-# ดู Logs การทำงาน
-docker compose logs -f
-
-# หยุดการทำงาน
-docker compose down
-```
-
-เมื่อเริ่มทำงานแล้ว สามารถเข้าใช้งานผ่านเบราว์เซอร์ที่:
-- **Web Application**: `http://localhost:3000`
-- **PostgreSQL Database**: `localhost:5432`
+เมื่อเริ่ม Backend จะเปลี่ยน Prisma provider, connection string, Docker Compose และ
+migration เป็น MySQL 8.4 LTS พร้อมกันตามแผนใน `dosc/architecture.md`
 
 ---
 
@@ -157,9 +141,7 @@ pnpm build
 # พรีวิว Production Build
 pnpm preview
 
-# จัดรูปแบบและตรวจสอบ Prisma Schema
-pnpm exec prisma validate
-pnpm exec prisma format
+# Prisma validation/migration จะเริ่มใช้ในระยะ Backend
 ```
 
 ---

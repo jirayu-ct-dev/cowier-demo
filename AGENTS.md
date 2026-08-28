@@ -1,4 +1,4 @@
-# AGENTS.md — Cowier Co-op Supervision System
+# AGENTS.md — CWIE BRU Co-op Supervision System
 
 แนวทางการทำงานสำหรับ Coding Agents ในโปรเจกต์ **ระบบบริหารจัดการและนิเทศงานสหกิจศึกษา (Cooperative Education Management & Supervision System)**
 
@@ -40,11 +40,11 @@
 | Layer / Domain | Technology | รายละเอียดและแนวปฏิบัติ |
 |---|---|---|
 | **App Framework** | **Nuxt 4** (Vue 3 + Nitro Engine) | ใช้ Composition API `<script setup lang="ts">` และ TypeScript แบบเข้มงวด |
-| **Styling & UI** | **Tailwind CSS + Radix UI (radix-vue / reka-ui)** | ใช้ Tailwind CSS สำหรับ Styling และ Radix UI สำหรับ Headless Accessible Primitives (ไม่ใช้ `@nuxt/ui`) |
-| **Icons** | **Lucide Icons** (`lucide-vue-next`) | ใช้ icon จากชุดเดียวกันทั้งโปรเจกต์ ไม่ผสมหลาย icon sets และไม่ใช้ emoji แทน functional icon |
+| **Styling & UI** | **Tailwind CSS + Reka UI** | ใช้ Tailwind CSS สำหรับ Styling และ Reka UI สำหรับ Headless Accessible Primitives (ไม่ใช้ `@nuxt/ui`) |
+| **Icons** | **Lucide Icons** (`@lucide/vue`) | ใช้ icon จากชุดเดียวกันทั้งโปรเจกต์ ไม่ผสมหลาย icon sets และไม่ใช้ emoji แทน functional icon |
 | **Date & Time** | **date-fns** | จัดการวันเวลา ปฏิทินรอบสหกิจ และตารางนิเทศ |
 | **Validation** | **Zod** | Schema validation สำหรับ Form inputs, API payloads, และ Data import validation |
-| **Database & ORM** | **Prisma ORM + PostgreSQL** | Data modeling, migrations, และ Type-safe database queries |
+| **Database & ORM** | **Prisma ORM + MySQL 8.4 LTS** | Data modeling, migrations, และ Type-safe database queries โดยเริ่มเชื่อมต่อเมื่อเข้าสู่ระยะ Backend |
 | **Authentication** | **Nuxt Auth / Session Auth** | Session-based authentication พร้อม Role-Based Access Control (Admin, Lecturer, Student) |
 | **Files & Data** | **Excel & CSV Utilities** | นำเข้า/ส่งออกข้อมูลนักศึกษาและรายงานผลการนิเทศ |
 | **DevOps & Deploy** | **Docker & Docker Compose** | Multi-stage build, non-root user, healthcheck, แยก runtime config ออกจาก build-time |
@@ -53,11 +53,11 @@
 
 ## 3. กฎและมาตรฐานการพัฒนา (Engineering Standards)
 
-### A. Frontend & UI (Nuxt + Tailwind CSS + Radix UI)
+### A. Frontend & UI (Nuxt + Tailwind CSS + Reka UI)
 1. **Separation of Concerns:**
    - Business/Data Logic ให้แยกไว้ใน Composables (`composables/use*.ts`)
    - Presentational Components รับ props และ emit events
-   - ใช้ Radix UI primitives สำหรับ Dialog, DropdownMenu, Tabs, Popover เพื่อให้ได้ Accessibility ครบถ้วน โดยแต่งสไตล์ด้วย Tailwind CSS
+   - ใช้ Reka UI primitives สำหรับ Dialog, DropdownMenu, Tabs, Popover เพื่อให้ได้ Accessibility ครบถ้วน โดยแต่งสไตล์ด้วย Tailwind CSS
 2. **Mandatory 4-State UI:** ทุก View/Component ที่มีการดึงข้อมูล ต้องจัดการ 4 สถานะให้ครบถ้วน:
    - **Loading State:** แสดง Skeleton loader ที่รูปทรงสอดคล้องกับ Layout จริง (หลีกเลี่ยง spinner เต็มจอ)
    - **Empty State:** กล่องข้อความแจ้งเตือนพร้อม icon และปุ่ม Action เมื่อไม่มีข้อมูล
@@ -106,4 +106,3 @@
    - ทุกบรรทัดที่เปลี่ยนแปลงต้องสืบย้อนไปยังเป้าหมายของงานได้ รักษา format และ style ของโค้ดเดิม
 5. **Work Toward Verifiable Outcomes (ตรวจสอบผลลัพธ์ได้จริง):**
    - วางแผนขั้นตอนการทดสอบและรันคำสั่งตรวจสอบ (TypeCheck, Lint, Build, Test) ก่อนส่งมอบงานเสมอ
-
