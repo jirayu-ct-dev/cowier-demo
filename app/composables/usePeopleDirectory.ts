@@ -104,6 +104,24 @@ const initialPeople: PersonRecord[] = [
     accountStatus: 'suspended',
     activities: [{ id: 'ACT-006', action: 'ระงับบัญชีชั่วคราว', detail: 'ระงับการสร้าง Session ใหม่', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-27T16:10:00+07:00' }],
   },
+  {
+    id: 'L0021',
+    type: 'lecturer',
+    firstName: 'กมลชนก',
+    lastName: 'ศรีสวัสดิ์',
+    recordStatus: 'active',
+    accountStatus: 'active',
+    activities: [{ id: 'ACT-008', action: 'สร้างข้อมูลและบัญชี', detail: 'บัญชีอาจารย์พร้อมใช้งาน', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-20T10:00:00+07:00' }],
+  },
+  {
+    id: 'L0030',
+    type: 'lecturer',
+    firstName: 'วรัญญา',
+    lastName: 'ทองใบ',
+    recordStatus: 'active',
+    accountStatus: 'active',
+    activities: [{ id: 'ACT-009', action: 'สร้างข้อมูลและบัญชี', detail: 'บัญชีอาจารย์พร้อมใช้งาน', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-18T13:45:00+07:00' }],
+  },
 ]
 
 const applicationHistory: Record<string, StudentApplicationHistory[]> = {

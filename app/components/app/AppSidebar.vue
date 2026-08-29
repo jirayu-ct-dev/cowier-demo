@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   Presentation,
+  UsersRound,
 } from "@lucide/vue";
 
 const emit = defineEmits<{ navigate: [] }>();
@@ -26,6 +27,12 @@ const navigation = computed(() => [
           label: "ข้อมูลอาจารย์",
           to: "/staff/master-data/lecturers",
           icon: Presentation,
+          exact: false,
+        },
+        {
+          label: "จัดกลุ่มนิเทศ",
+          to: "/staff/supervision/groups",
+          icon: UsersRound,
           exact: false,
         },
       ]
@@ -116,7 +123,7 @@ const isActive = (to: string, exact: boolean) => {
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 5B</p>
+      <p>UI Prototype · Checkpoint 6A</p>
     </div>
   </aside>
 </template>
