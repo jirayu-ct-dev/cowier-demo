@@ -50,7 +50,7 @@ const dashboardByRole = {
     primaryLabel: 'สถานประกอบการ',
     secondaryLabel: 'ขั้นตอนถัดไป',
     recentItems: [
-      { id: 'REQ-0269-018', primary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', secondary: 'รอหนังสือขอฝึกงานจากเจ้าหน้าที่', status: 'รอออกหนังสือ', tone: 'info' as const },
+      { id: 'REQ-0269-018', primary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', secondary: 'รอหนังสือขอฝึกงานจากอาจารย์', status: 'รอออกหนังสือ', tone: 'info' as const },
       { id: 'REQ-0269-006', primary: 'บริษัท อีสานเทค จำกัด', secondary: 'ตรวจสอบเหตุผลที่ส่งกลับ', status: 'ต้องแก้ไข', tone: 'warning' as const },
     ],
   },

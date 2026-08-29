@@ -146,7 +146,7 @@ const createCompany = () => {
   resetCompanyTable()
   companyDialogOpen.value = false
   recordEvent(`เพิ่มสถานประกอบการใหม่: ${company.name}`)
-  showToast({ title: 'เพิ่มสถานประกอบการแล้ว', description: 'รายการมีสถานะรอเจ้าหน้าที่ตรวจสอบและถูกเลือกในคำร้องนี้' })
+  showToast({ title: 'เพิ่มสถานประกอบการแล้ว', description: 'รายการมีสถานะรออาจารย์ตรวจสอบและถูกเลือกในคำร้องนี้' })
 }
 
 const validatePlacement = async () => {
@@ -180,7 +180,7 @@ const submit = async (mode: 'draft' | 'submitted') => {
     recordEvent(`${mode === 'submitted' ? 'ส่ง' : 'บันทึก'}คำร้อง ${request.id}`)
     showToast({
       title: mode === 'submitted' ? 'ส่งคำร้องแล้ว' : 'บันทึกฉบับร่างแล้ว',
-      description: mode === 'submitted' ? 'เจ้าหน้าที่จะตรวจสอบข้อมูลในขั้นตอนถัดไป' : 'คุณกลับมาแก้ไขและส่งภายหลังได้',
+      description: mode === 'submitted' ? 'อาจารย์จะตรวจสอบข้อมูลในขั้นตอนถัดไป' : 'คุณกลับมาแก้ไขและส่งภายหลังได้',
     })
     reviewDialogOpen.value = false
     await navigateTo(`/student/placements/${request.id}`)
@@ -224,7 +224,7 @@ const submit = async (mode: 'draft' | 'submitted') => {
       </div>
     </UiCard>
 
-    <UiAlert v-if="editingRequest?.returnReason" class="mb-5" tone="warning" title="เหตุผลที่เจ้าหน้าที่ส่งกลับ">
+    <UiAlert v-if="editingRequest?.returnReason" class="mb-5" tone="warning" title="เหตุผลที่อาจารย์ส่งกลับ">
       {{ editingRequest.returnReason }}
     </UiAlert>
 
@@ -354,7 +354,7 @@ const submit = async (mode: 'draft' | 'submitted') => {
         v-model:open="companyDialogOpen"
         :close-on-confirm="false"
         title="เพิ่มสถานประกอบการใหม่"
-        description="กรอกเฉพาะข้อมูลหลัก รายการนี้จะถูกบันทึกให้ผู้อื่นค้นหาและใช้ต่อได้ โดยมีสถานะรอเจ้าหน้าที่ตรวจสอบ"
+        description="กรอกเฉพาะข้อมูลหลัก รายการนี้จะถูกบันทึกให้ผู้อื่นค้นหาและใช้ต่อได้ โดยมีสถานะรออาจารย์ตรวจสอบ"
       >
         <div class="grid gap-4 sm:grid-cols-2">
           <div class="sm:col-span-2"><UiInput v-model="newCompany.name" label="ชื่อสถานประกอบการ" required :error="companyErrors.name" /></div>
@@ -395,7 +395,7 @@ const submit = async (mode: 'draft' | 'submitted') => {
         v-model:open="reviewDialogOpen"
         :close-on-confirm="false"
         title="ตรวจสอบข้อมูลก่อนส่งคำร้อง"
-        description="กรุณาตรวจสอบข้อมูลให้ถูกต้อง เมื่อยืนยันแล้วระบบจะส่งคำร้องให้เจ้าหน้าที่ทันที"
+        description="กรุณาตรวจสอบข้อมูลให้ถูกต้อง เมื่อยืนยันแล้วระบบจะส่งคำร้องให้อาจารย์ทันที"
       >
         <div class="space-y-5">
           <section>

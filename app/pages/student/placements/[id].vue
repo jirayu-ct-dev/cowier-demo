@@ -64,7 +64,7 @@ const confirmCancel = () => {
 
       <UiAlert v-if="request.returnReason" class="mb-5" tone="warning" title="ต้องแก้ไขก่อนดำเนินการต่อ">{{ request.returnReason }}</UiAlert>
       <UiAlert v-else-if="isLocked" class="mb-5" tone="info" title="คำร้องถูกล็อกแล้ว">
-        คำร้องนี้ถูกรวมในชุดหนังสือ จึงไม่สามารถแก้ไขเองได้ หากต้องการแก้ไขให้ติดต่อเจ้าหน้าที่เพื่อส่งกลับคำร้องก่อน
+        คำร้องนี้ถูกรวมในชุดหนังสือ จึงไม่สามารถแก้ไขเองได้ หากต้องการแก้ไขให้ติดต่ออาจารย์เพื่อส่งกลับคำร้องก่อน
       </UiAlert>
       <UiAlert v-else class="mb-5" :tone="request.status === 'cancelled' ? 'warning' : 'success'" :title="placementStatusMeta[request.status].label">
         ขั้นตอนถัดไป: {{ placementStatusMeta[request.status].nextStep }}
