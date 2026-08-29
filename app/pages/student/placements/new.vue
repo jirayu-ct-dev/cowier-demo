@@ -9,6 +9,7 @@ useHead({ title: 'แจ้งข้อมูลที่ฝึกงาน' })
 
 const route = useRoute()
 const { scenario, recordEvent } = useScenario()
+const { selectedCycle } = useCoopCycles()
 const { companies, activeRequest, findRequest, findCompany, addCompany, saveRequest } = useStudentPlacements()
 const { showToast } = useToast()
 
@@ -19,6 +20,7 @@ const editingRequest = computed(() => {
 })
 const isEditing = computed(() => Boolean(editingRequest.value))
 const hasExistingActiveRequest = computed(() => !isEditing.value && Boolean(activeRequest.value))
+const canUseForm = computed(() => isEditing.value || selectedCycle.value.status === 'open')
 const activeCompany = computed(() => activeRequest.value ? findCompany(activeRequest.value.companyId) : undefined)
 const companySearch = ref('')
 const companyStatusFilter = ref('all')
@@ -188,8 +190,10 @@ const submit = async (mode: 'draft' | 'submitted') => {
   catch (error) {
     console.error(error)
     submitError.value = error instanceof Error && error.message === 'active-placement-request-exists'
-      ? 'คุณมีคำร้องที่กำลังดำเนินการอยู่แล้ว กรุณาดำเนินการคำร้องเดิมให้เสร็จสิ้น'
-      : 'ไม่สามารถบันทึกคำร้องได้ในขณะนี้ ข้อมูลที่กรอกยังอยู่ครบ กรุณาลองอีกครั้ง'
+      ? 'คุณมีรอบหรือคำร้องที่กำลังดำเนินการอยู่แล้ว กรุณาดำเนินการรายการเดิมให้เสร็จสิ้น'
+      : error instanceof Error && error.message === 'cycle-not-open'
+        ? 'รอบสหกิจศึกษานี้ยังไม่เปิดรับคำร้องใหม่'
+        : 'ไม่สามารถบันทึกคำร้องได้ในขณะนี้ ข้อมูลที่กรอกยังอยู่ครบ กรุณาลองอีกครั้ง'
   }
   finally {
     isSaving.value = false
@@ -204,7 +208,6 @@ const submit = async (mode: 'draft' | 'submitted') => {
     </button>
 
     <div class="mb-6">
-      <p class="text-sm font-medium text-warning">{{ scenario.cycle }}</p>
       <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ isEditing ? `แก้ไขข้อมูล ${editId}` : 'แจ้งข้อมูลที่ฝึกงาน' }}</h2>
       <p class="mt-1 text-sm leading-6 text-muted">กรอกข้อมูลสถานประกอบการและผู้รับหนังสือ เพื่อให้ผู้รับผิดชอบจัดทำหนังสือขอฝึกงานส่งกลับมาให้คุณ</p>
     </div>
@@ -228,7 +231,11 @@ const submit = async (mode: 'draft' | 'submitted') => {
       {{ editingRequest.returnReason }}
     </UiAlert>
 
-    <form v-if="!hasExistingActiveRequest" class="space-y-5" novalidate @submit.prevent="reviewSubmission">
+    <UiAlert v-if="!hasExistingActiveRequest && !canUseForm" tone="warning" title="รอบนี้ยังไม่เปิดรับคำร้องใหม่">
+      คุณสามารถดูบริบทรอบได้ แต่ยังสร้างคำร้องไม่ได้จนกว่าสถานะรอบจะเป็นเปิดยื่นสถานประกอบการ
+    </UiAlert>
+
+    <form v-if="!hasExistingActiveRequest && canUseForm" class="space-y-5" novalidate @submit.prevent="reviewSubmission">
       <UiCard :padded="false">
         <div class="border-b border-divider p-5 sm:p-6">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

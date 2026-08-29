@@ -3,8 +3,10 @@ import {
   Blocks,
   ClipboardList,
   FileCheck2,
+  GraduationCap,
   LayoutDashboard,
   PlusCircle,
+  Presentation,
 } from "@lucide/vue";
 
 const emit = defineEmits<{ navigate: [] }>();
@@ -12,6 +14,22 @@ const route = useRoute();
 const { scenario } = useScenario();
 const navigation = computed(() => [
   { label: "หน้าหลัก", to: "/", icon: LayoutDashboard, exact: true },
+  ...(scenario.value.role === "staff" || route.path.startsWith("/staff")
+    ? [
+        {
+          label: "ข้อมูลนักศึกษา",
+          to: "/staff/master-data/students",
+          icon: GraduationCap,
+          exact: false,
+        },
+        {
+          label: "ข้อมูลอาจารย์",
+          to: "/staff/master-data/lecturers",
+          icon: Presentation,
+          exact: false,
+        },
+      ]
+    : []),
   ...(scenario.value.role === "student" || route.path.startsWith("/student")
     ? [
         {
@@ -34,6 +52,12 @@ const navigation = computed(() => [
           label: "ตรวจคำร้องและหนังสือ",
           to: "/lecturer/placements",
           icon: FileCheck2,
+          exact: false,
+        },
+        {
+          label: "ข้อมูลนักศึกษา",
+          to: "/lecturer/students",
+          icon: GraduationCap,
           exact: false,
         },
       ]
@@ -76,7 +100,7 @@ const isActive = (to: string, exact: boolean) => {
         :to="item.to"
         active-class=""
         exact-active-class=""
-        class="flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-medium transition-colors"
+        class="flex min-h-11 items-center gap-3 rounded-control px-3 py-2 text-sm font-medium transition-colors"
         :class="
           isActive(item.to, item.exact)
             ? 'bg-primary text-ink'
@@ -86,13 +110,13 @@ const isActive = (to: string, exact: boolean) => {
         @click="emit('navigate')"
       >
         <component :is="item.icon" :size="18" aria-hidden="true" />
-        {{ item.label }}
+        <span class="whitespace-pre-line leading-5">{{ item.label }}</span>
       </NuxtLink>
     </nav>
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 3</p>
+      <p>UI Prototype · Checkpoint 5A</p>
     </div>
   </aside>
 </template>

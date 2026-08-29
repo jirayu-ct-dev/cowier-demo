@@ -1,5 +1,7 @@
+import type { StudentWorkStatus } from './useCoopCycles'
+
 export type CompanyStatus = 'active' | 'pending' | 'inactive'
-export type PlacementStatus = 'draft' | 'submitted' | 'returned' | 'batched' | 'letter-issued' | 'cancelled'
+export type PlacementStatus = 'draft' | 'submitted' | 'returned' | 'batched' | 'letter-issued' | 'confirmed' | 'cancelled'
 
 export interface Company {
   id: string
@@ -20,6 +22,7 @@ export interface PlacementTimelineItem {
 
 export interface PlacementRequest {
   id: string
+  cycleId: string
   companyId: string
   position: string
   details: string
@@ -29,6 +32,8 @@ export interface PlacementRequest {
   letterAddress: string
   status: PlacementStatus
   returnReason?: string
+  workStatus?: StudentWorkStatus
+  confirmedAt?: string
   updatedAt: string
   timeline: PlacementTimelineItem[]
 }
@@ -91,6 +96,7 @@ const initialCompanies: Company[] = [
 const initialRequests: PlacementRequest[] = [
   {
     id: 'REQ-0269-018',
+    cycleId: 'CYCLE-2569-2',
     companyId: 'COM-001',
     position: 'นักพัฒนาเว็บไซต์',
     details: 'พัฒนาและทดสอบระบบงานภายในด้วย Vue และ TypeScript',
@@ -98,10 +104,12 @@ const initialRequests: PlacementRequest[] = [
     recipientName: 'ผู้จัดการฝ่ายทรัพยากรบุคคล',
     recipientRole: 'ฝ่ายทรัพยากรบุคคล',
     letterAddress: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด 88 ถนนจิระ ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000',
-    status: 'cancelled',
+    status: 'confirmed',
+    workStatus: 'not_started',
+    confirmedAt: '2026-08-28T09:30:00+07:00',
     updatedAt: '2026-08-28T09:30:00+07:00',
     timeline: [
-      { id: 'TL-018-4', title: 'ยกเลิกคำร้อง', description: 'คำร้องนี้สิ้นสุดแล้วและเก็บไว้เป็นประวัติ', createdAt: '2026-08-28T09:30:00+07:00' },
+      { id: 'TL-018-4', title: 'ยืนยันสถานประกอบการ', description: 'อาจารย์ตรวจเอกสารตอบกลับและยืนยันสถานที่ฝึกงานแล้ว', createdAt: '2026-08-28T09:30:00+07:00' },
       { id: 'TL-018-3', title: 'รวมในชุดหนังสือแล้ว', description: 'อาจารย์รับคำร้องเข้าชุดหนังสือ คำร้องจึงถูกล็อกชั่วคราว', createdAt: '2026-08-27T09:30:00+07:00' },
       { id: 'TL-018-2', title: 'ส่งคำร้องแล้ว', description: 'ส่งข้อมูลให้อาจารย์ตรวจสอบ', createdAt: '2026-08-24T14:20:00+07:00' },
       { id: 'TL-018-1', title: 'สร้างฉบับร่าง', description: 'บันทึกข้อมูลคำร้องครั้งแรก', createdAt: '2026-08-24T13:55:00+07:00' },
@@ -109,6 +117,7 @@ const initialRequests: PlacementRequest[] = [
   },
   {
     id: 'REQ-0269-006',
+    cycleId: 'CYCLE-2569-SUMMER',
     companyId: 'COM-002',
     position: 'นักวิเคราะห์ข้อมูล',
     details: 'จัดเตรียมข้อมูลและสร้างรายงานสำหรับทีมวางแผนธุรกิจ',
@@ -116,10 +125,11 @@ const initialRequests: PlacementRequest[] = [
     recipientName: 'คุณศุภชัย พัฒนกิจ',
     recipientRole: 'ผู้จัดการทั่วไป',
     letterAddress: 'บริษัท อีสานเทค จำกัด สาขานครราชสีมา 199 ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา 30000',
-    status: 'returned',
+    status: 'cancelled',
     returnReason: 'กรุณาตรวจสอบชื่อตำแหน่งฝึกงานให้ตรงกับหนังสือตอบรับเบื้องต้น และแก้ชื่อผู้รับหนังสือเป็นผู้จัดการฝ่ายบุคคล',
     updatedAt: '2026-08-22T10:15:00+07:00',
     timeline: [
+      { id: 'TL-006-4', title: 'ยกเลิกคำร้อง', description: 'คำร้องนี้สิ้นสุดแล้วและเก็บไว้เป็นประวัติ', createdAt: '2026-08-23T09:00:00+07:00' },
       { id: 'TL-006-3', title: 'ส่งกลับให้แก้ไข', description: 'อาจารย์พบข้อมูลที่ต้องปรับก่อนจัดทำหนังสือ', createdAt: '2026-08-22T10:15:00+07:00' },
       { id: 'TL-006-2', title: 'ส่งคำร้องแล้ว', description: 'ส่งข้อมูลให้อาจารย์ตรวจสอบ', createdAt: '2026-08-18T16:40:00+07:00' },
       { id: 'TL-006-1', title: 'สร้างฉบับร่าง', description: 'บันทึกข้อมูลคำร้องครั้งแรก', createdAt: '2026-08-18T16:10:00+07:00' },
@@ -127,6 +137,7 @@ const initialRequests: PlacementRequest[] = [
   },
   {
     id: 'REQ-0269-002',
+    cycleId: 'CYCLE-2570-1',
     companyId: 'COM-003',
     position: 'ผู้ช่วยออกแบบ UX/UI',
     details: 'ออกแบบต้นแบบและทดสอบการใช้งานผลิตภัณฑ์ดิจิทัล',
@@ -167,6 +178,7 @@ export const placementStatusMeta: Record<PlacementStatus, { label: string, tone:
   returned: { label: 'ส่งกลับให้แก้ไข', tone: 'danger', nextStep: 'ตรวจเหตุผล แก้ข้อมูล แล้วส่งคำร้องอีกครั้ง' },
   batched: { label: 'รวมในชุดหนังสือแล้ว', tone: 'info', nextStep: 'รออาจารย์จัดทำหนังสือขอฝึกงาน' },
   'letter-issued': { label: 'ออกหนังสือแล้ว', tone: 'success', nextStep: 'ดาวน์โหลดหนังสือและนำส่งสถานประกอบการ' },
+  confirmed: { label: 'ยืนยันสถานประกอบการแล้ว', tone: 'success', nextStep: 'ติดตามวันเริ่มปฏิบัติงานตามรอบสหกิจศึกษา' },
   cancelled: { label: 'ยกเลิกคำร้อง', tone: 'neutral', nextStep: 'รายการนี้สิ้นสุดแล้ว' },
 }
 
@@ -177,12 +189,15 @@ export const companyStatusMeta: Record<CompanyStatus, { label: string, tone: 'su
 }
 
 export const useStudentPlacements = () => {
+  const { selectedCycle } = useCoopCycles()
   const companies = useState<Company[]>('mock-placement-companies', cloneCompanies)
   const requests = useState<PlacementRequest[]>('mock-placement-requests', cloneRequests)
-  const activeRequest = computed(() => requests.value.find(request => request.status !== 'cancelled'))
-
   const findCompany = (id: string) => companies.value.find(company => company.id === id)
   const findRequest = (id: string) => requests.value.find(request => request.id === id)
+  const cycleRequests = computed(() => requests.value.filter(request => request.cycleId === selectedCycle.value.id))
+  const activeRequest = computed(() => cycleRequests.value.find(request => request.status !== 'cancelled'))
+  const confirmedRequest = computed(() => cycleRequests.value.find(request => request.status === 'confirmed'))
+  const confirmedCompany = computed(() => confirmedRequest.value ? findCompany(confirmedRequest.value.companyId) : undefined)
 
   const addCompany = (value: NewCompanyValue) => {
     const company: Company = {
@@ -217,12 +232,20 @@ export const useStudentPlacements = () => {
       return existing
     }
 
-    if (activeRequest.value) {
+    if (selectedCycle.value.status !== 'open') {
+      throw new Error('cycle-not-open')
+    }
+
+    const ongoingCycleIds = new Set(requests.value
+      .filter(request => request.status !== 'cancelled' && !(request.status === 'confirmed' && ['completed', 'terminated'].includes(request.workStatus ?? '')))
+      .map(request => request.cycleId))
+    if (activeRequest.value || (ongoingCycleIds.size && !ongoingCycleIds.has(selectedCycle.value.id))) {
       throw new Error('active-placement-request-exists')
     }
 
     const request: PlacementRequest = {
       id: `REQ-0269-${String(requests.value.length + 21).padStart(3, '0')}`,
+      cycleId: selectedCycle.value.id,
       ...value,
       status: mode,
       updatedAt: now,
@@ -256,5 +279,5 @@ export const useStudentPlacements = () => {
     requests.value = cloneRequests()
   }
 
-  return { companies, requests, activeRequest, findCompany, findRequest, addCompany, saveRequest, cancelRequest, resetPlacementData }
+  return { companies, requests, cycleRequests, activeRequest, confirmedRequest, confirmedCompany, findCompany, findRequest, addCompany, saveRequest, cancelRequest, resetPlacementData }
 }

@@ -1,14 +1,12 @@
 export type PlacementReviewStatus =
   | "submitted"
   | "returned"
-  | "letter_draft"
   | "waiting_response"
   | "response_uploaded"
   | "confirmed"
   | "not_accepted"
   | "cancelled";
 export type LetterBatchStatus =
-  | "draft"
   | "waiting_response"
   | "response_uploaded"
   | "completed"
@@ -45,9 +43,7 @@ export interface LetterDocumentVersion {
 export interface LetterBatch {
   id: string;
   requestIds: string[];
-  coordinatorId: string | null;
   status: LetterBatchStatus;
-  letterNumber: string;
   letterDate: string;
   outgoingDocuments: LetterDocumentVersion[];
   responseDocuments: LetterDocumentVersion[];
@@ -58,16 +54,6 @@ export interface LetterBatch {
 
 export interface SaveLetterBatchPayload {
   requestIds: string[];
-  coordinatorId: string | null;
-  publish: boolean;
-  letterNumber?: string;
-  letterDate?: string;
-  fileName?: string;
-}
-
-export interface PublishLetterBatchPayload {
-  coordinatorId: string | null;
-  letterNumber: string;
   letterDate: string;
   fileName: string;
 }
@@ -222,9 +208,7 @@ const batchesSeed: LetterBatch[] = [
   {
     id: "LB-001",
     requestIds: ["REQ-021", "REQ-023"],
-    coordinatorId: "65011212021",
     status: "waiting_response",
-    letterNumber: "อว 0624.12/2569-018",
     letterDate: "2026-08-25",
     outgoingDocuments: [
       {
@@ -243,9 +227,7 @@ const batchesSeed: LetterBatch[] = [
   {
     id: "LB-002",
     requestIds: ["REQ-030", "REQ-031"],
-    coordinatorId: "65011212030",
     status: "response_uploaded",
-    letterNumber: "อว 0624.12/2569-017",
     letterDate: "2026-08-20",
     outgoingDocuments: [
       {
@@ -336,21 +318,17 @@ export const useLetterBatches = () => {
     const batch: LetterBatch = {
       id: batchId,
       requestIds: selected.map((request) => request.id),
-      coordinatorId: payload.coordinatorId,
-      status: payload.publish ? "waiting_response" : "draft",
-      letterNumber: payload.letterNumber ?? "",
-      letterDate: payload.letterDate ?? "",
-      outgoingDocuments: payload.publish
-        ? [
-            {
-              version: 1,
-              fileName: payload.fileName!,
-              uploadedAt: now,
-              uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
-              status: "active",
-            },
-          ]
-        : [],
+      status: "waiting_response",
+      letterDate: payload.letterDate,
+      outgoingDocuments: [
+        {
+          version: 1,
+          fileName: payload.fileName,
+          uploadedAt: now,
+          uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
+          status: "active",
+        },
+      ],
       responseDocuments: [],
       results: Object.fromEntries(
         selected.map((request) => [request.id, "waiting"]),
@@ -361,34 +339,6 @@ export const useLetterBatches = () => {
     batches.value.unshift(batch);
     selected.forEach((request) => {
       request.batchId = batchId;
-      request.status = payload.publish ? "waiting_response" : "letter_draft";
-    });
-    return batch;
-  };
-
-  const publishLetterBatch = (
-    batchId: string,
-    payload: PublishLetterBatchPayload,
-  ) => {
-    const batch = getBatch(batchId);
-    if (!batch || batch.status !== "draft")
-      throw new Error("ชุดหนังสือนี้ไม่สามารถเผยแพร่ได้");
-    const now = new Date().toISOString();
-    Object.assign(batch, {
-      coordinatorId: payload.coordinatorId,
-      letterNumber: payload.letterNumber,
-      letterDate: payload.letterDate,
-      status: "waiting_response" as const,
-      updatedAt: now,
-    });
-    batch.outgoingDocuments.push({
-      version: batch.outgoingDocuments.length + 1,
-      fileName: payload.fileName,
-      uploadedAt: now,
-      uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
-      status: "active",
-    });
-    getBatchRequests(batchId).forEach((request) => {
       request.status = "waiting_response";
     });
     return batch;
@@ -434,7 +384,6 @@ export const useLetterBatches = () => {
     getCompatibleRequests,
     returnRequest,
     saveLetterBatch,
-    publishLetterBatch,
     returnResponseDocument,
     confirmBatchResults,
   };

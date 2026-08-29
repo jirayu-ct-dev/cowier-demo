@@ -19,7 +19,16 @@ const roleLabel = computed(() => ({
   lecturer: 'อาจารย์นิเทศ',
   student: 'นักศึกษา',
 }[scenario.value.role]))
-const pageTitle = computed(() => String(route.meta.title ?? 'หน้าหลัก'))
+const pageTitle = computed(() => {
+  const path = route.path
+  if (path.startsWith('/staff/master-data/students/new')) return 'เพิ่มนักศึกษา'
+  if (/^\/staff\/master-data\/students\/[^/]+$/.test(path)) return 'รายละเอียดนักศึกษา'
+  if (path.startsWith('/staff/master-data/students')) return 'ข้อมูลนักศึกษา'
+  if (path.startsWith('/staff/master-data/lecturers/new')) return 'เพิ่มอาจารย์'
+  if (/^\/staff\/master-data\/lecturers\/[^/]+$/.test(path)) return 'รายละเอียดอาจารย์'
+  if (path.startsWith('/staff/master-data/lecturers')) return 'ข้อมูลอาจารย์'
+  return String(route.meta.title ?? 'หน้าหลัก')
+})
 const unreadNotificationCount = computed(() => scenario.value.role === 'student' && !notificationRead.value ? 1 : 0)
 const markNotificationRead = () => {
   if (!unreadNotificationCount.value) return

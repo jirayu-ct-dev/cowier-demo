@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, FilePlus2, RotateCcw, Search, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Building2, ChevronLeft, ChevronRight, Eye, FilePlus2, RotateCcw, Search, X } from '@lucide/vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'คำร้องของฉัน', middleware: 'student-prototype' })
 useHead({ title: 'คำร้องของฉัน' })
 
 const { scenario } = useScenario()
-const { requests, activeRequest, findCompany } = useStudentPlacements()
+const { selectedCycle } = useCoopCycles()
+const { cycleRequests, activeRequest, confirmedRequest, confirmedCompany, findCompany } = useStudentPlacements()
 
 const search = ref('')
 const status = ref('all')
@@ -14,6 +15,7 @@ const sortDirection = ref<'asc' | 'desc'>('desc')
 const currentPage = ref(1)
 const pageSize = ref('10')
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
+const canCreateRequest = computed(() => selectedCycle.value.status === 'open' && !activeRequest.value)
 
 const statusOptions = [
   { value: 'all', label: 'ทุกสถานะ' },
@@ -31,7 +33,7 @@ const pageSizeOptions = [
 const filteredRequests = computed(() => {
   if (scenario.value.viewState === 'empty') return []
   const keyword = search.value.trim().toLocaleLowerCase('th')
-  return requests.value
+  return cycleRequests.value
     .filter((request) => {
       const company = findCompany(request.companyId)
       const matchesSearch = !keyword || [request.id, request.position, company?.name, company?.branch]
@@ -91,10 +93,32 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
 <template>
   <div>
     <div class="mb-6">
-      <p class="text-sm font-medium text-warning">{{ scenario.cycle }}</p>
       <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">ข้อมูลที่ฝึกงานของฉัน</h2>
       <p class="mt-1 text-sm leading-6 text-muted">ติดตามข้อมูลที่ส่งให้ผู้รับผิดชอบจัดทำหนังสือขอฝึกงาน และดูประวัติในรอบปัจจุบัน</p>
     </div>
+
+    <UiCard class="mb-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex items-start gap-3">
+          <span class="grid size-10 shrink-0 place-items-center rounded-control bg-info-soft text-info">
+            <Building2 :size="20" aria-hidden="true" />
+          </span>
+          <div>
+            <h3 class="font-semibold text-ink">สถานะการปฏิบัติงานของฉัน</h3>
+            <p class="mt-1 text-sm text-muted">
+              {{ confirmedCompany ? `${confirmedCompany.name} · ${confirmedCompany.branch}` : 'ยังไม่มีสถานประกอบการที่ยืนยันในรอบนี้' }}
+            </p>
+          </div>
+        </div>
+        <UiBadge v-if="confirmedRequest?.workStatus" :tone="workStatusMeta[confirmedRequest.workStatus].tone">
+          {{ workStatusMeta[confirmedRequest.workStatus].label }}
+        </UiBadge>
+        <UiBadge v-else tone="neutral">รอยืนยันสถานประกอบการ</UiBadge>
+      </div>
+      <p class="mt-4 border-t border-divider pt-4 text-xs leading-5 text-muted">
+        สถานะการปฏิบัติงานเป็นข้อมูลของรอบนี้และไม่เปลี่ยนอัตโนมัติตามวันที่ ตารางนิเทศ หรือผลประเมิน
+      </p>
+    </UiCard>
 
     <UiCard :padded="false">
       <div class="border-b border-divider p-5 sm:p-6">
@@ -104,7 +128,8 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
             <p class="mt-1 text-sm leading-6 text-muted">นักศึกษามีคำร้องที่กำลังดำเนินการได้ครั้งละหนึ่งรายการต่อรอบ</p>
           </div>
           <UiButton v-if="activeRequest" class="shrink-0" :icon="Eye" @click="navigateTo(`/student/placements/${activeRequest.id}`)">ดูคำร้องปัจจุบัน</UiButton>
-          <UiButton v-else class="shrink-0" :icon="FilePlus2" @click="navigateTo('/student/placements/new')">แจ้งข้อมูลที่ฝึกงาน</UiButton>
+          <UiButton v-else-if="canCreateRequest" class="shrink-0" :icon="FilePlus2" @click="navigateTo('/student/placements/new')">แจ้งข้อมูลที่ฝึกงาน</UiButton>
+          <UiButton v-else class="shrink-0" variant="secondary" disabled>รอบยังไม่เปิดรับคำร้อง</UiButton>
         </div>
 
         <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -144,7 +169,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
       <div v-else-if="scenario.viewState === 'empty' || !paginatedRequests.length" class="p-5 sm:p-6">
         <AppEmptyState :title="hasActiveFilters ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีคำร้องในรอบนี้'" :description="hasActiveFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'เริ่มค้นหาและเลือกสถานประกอบการที่ต้องการฝึกงาน แล้วกรอกข้อมูลสำหรับออกหนังสือ'">
           <UiButton v-if="hasActiveFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
-          <UiButton v-else :icon="FilePlus2" @click="navigateTo('/student/placements/new')">แจ้งข้อมูลที่ฝึกงาน</UiButton>
+          <UiButton v-else-if="canCreateRequest" :icon="FilePlus2" @click="navigateTo('/student/placements/new')">แจ้งข้อมูลที่ฝึกงาน</UiButton>
         </AppEmptyState>
       </div>
 

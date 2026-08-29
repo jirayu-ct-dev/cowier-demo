@@ -1,63 +1,112 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, RotateCcw, Search, Users, X } from '@lucide/vue'
+import type { Component } from 'vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'หน้าหลัก' })
 useHead({ title: 'หน้าหลัก' })
 
 const { scenario } = useScenario()
-const roleLabel = computed(() => ({ staff: 'เจ้าหน้าที่', lecturer: 'อาจารย์นิเทศ', student: 'นักศึกษา' }[scenario.value.role]))
+const { cycles, selectedCycle } = useCoopCycles()
+const roleLabel = computed(() => ({ staff: 'เจ้าหน้าที่', lecturer: 'อาจารย์', student: 'นักศึกษา' }[scenario.value.role]))
 
-const dashboardByRole = {
+type DashboardTone = 'neutral' | 'warning' | 'info' | 'success' | 'danger'
+
+interface DashboardData {
+  summary: Array<{ label: string, value: string, hint: string, icon: Component }>
+  recentTitle: string
+  primaryLabel: string
+  secondaryLabel: string
+  recentItems: Array<{ id: string, primary: string, secondary: string, status: string, tone: DashboardTone }>
+}
+
+const currentCycleDashboard: { staff: DashboardData, lecturer: DashboardData, student: DashboardData } = {
   staff: {
     summary: [
-      { label: 'คำร้องรอตรวจสอบ', value: '12', hint: 'เพิ่มขึ้น 3 รายการวันนี้', icon: ClipboardCheck },
-      { label: 'นักศึกษาในรอบ', value: '248', hint: 'ยืนยันสถานประกอบการแล้ว 81%', icon: Users },
-      { label: 'สถานประกอบการ', value: '96', hint: 'มีรายการใหม่รอตรวจ 2 แห่ง', icon: Building2 },
-      { label: 'ตารางนิเทศเดือนนี้', value: '18', hint: 'มีรายการต้องจัดเวลา 4 รายการ', icon: CalendarDays },
+      { label: 'นักศึกษาในรอบ', value: '248', hint: 'ยืนยันสถานประกอบการแล้ว 201 คน', icon: Users },
+      { label: 'ยืนยันสถานประกอบการแล้ว', value: '201', hint: 'คิดเป็น 81% ของนักศึกษาในรอบ', icon: Building2 },
+      { label: 'รอจัดกลุ่มนิเทศ', value: '47', hint: 'นักศึกษาที่ยังไม่อยู่ในกลุ่มอาจารย์นิเทศ', icon: ClipboardCheck },
+      { label: 'กลุ่มอาจารย์นิเทศ', value: '18', hint: 'ครอบคลุม 74 สถานประกอบการ', icon: CalendarDays },
     ],
-    recentTitle: 'คำร้องล่าสุด',
+    recentTitle: 'สถานะนักศึกษาในรอบ',
     primaryLabel: 'นักศึกษา',
     secondaryLabel: 'สถานประกอบการ',
     recentItems: [
-      { id: 'REQ-0269-041', primary: 'นายธนกฤต พูนทรัพย์', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'รอตรวจสอบ', tone: 'warning' as const },
-      { id: 'REQ-0269-040', primary: 'นางสาวปภาวดี นาคแก้ว', secondary: 'บริษัท ไอทีโซลูชัน จำกัด', status: 'รอออกหนังสือ', tone: 'info' as const },
-      { id: 'REQ-0269-039', primary: 'นายณัฐวุฒิ ทองดี', secondary: 'โรงพยาบาลบุรีรัมย์', status: 'ยืนยันแล้ว', tone: 'success' as const },
+      { id: 'STU-66010041', primary: 'นายธนกฤต พูนทรัพย์', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'ยังไม่เริ่มปฏิบัติงาน', tone: 'warning' },
+      { id: 'STU-66010040', primary: 'นางสาวปภาวดี นาคแก้ว', secondary: 'บริษัท ไอทีโซลูชัน จำกัด', status: 'กำลังปฏิบัติงาน', tone: 'info' },
+      { id: 'STU-66010039', primary: 'นายณัฐวุฒิ ทองดี', secondary: 'โรงพยาบาลบุรีรัมย์', status: 'ปฏิบัติงานเสร็จแล้ว', tone: 'success' },
     ],
   },
   lecturer: {
     summary: [
+      { label: 'คำร้องรอตรวจ', value: '12', hint: 'อาจารย์ทุกคนสามารถเปิดตรวจได้', icon: ClipboardCheck },
+      { label: 'หนังสือตอบกลับรอตรวจ', value: '5', hint: 'รอยืนยันผลรายบุคคล', icon: Building2 },
       { label: 'รายการนิเทศที่รับผิดชอบ', value: '6', hint: 'ครั้งที่ 1 จำนวน 4 รายการ', icon: CalendarDays },
-      { label: 'นักศึกษาที่เกี่ยวข้อง', value: '18', hint: 'จาก 7 สถานประกอบการ', icon: Users },
-      { label: 'งานประเมินค้าง', value: '4', hint: 'ควรดำเนินการหลังนิเทศเสร็จ', icon: ClipboardCheck },
-      { label: 'นัดถัดไป', value: '2 ก.ย.', hint: 'ช่วงเช้า · บริษัท บุรีรัมย์ดิจิทัล', icon: Building2 },
+      { label: 'งานประเมินค้าง', value: '4', hint: 'จากนักศึกษาที่นิเทศเสร็จแล้ว', icon: Users },
     ],
-    recentTitle: 'ตารางนิเทศของฉัน',
-    primaryLabel: 'สถานประกอบการ',
-    secondaryLabel: 'วันและช่วงเวลา',
+    recentTitle: 'งานที่ต้องดำเนินการ',
+    primaryLabel: 'นักศึกษา / สถานประกอบการ',
+    secondaryLabel: 'รายละเอียดงาน',
     recentItems: [
-      { id: 'SUP-0269-014', primary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', secondary: '2 ก.ย. 2569 · ช่วงเช้า', status: 'รอการนิเทศ', tone: 'info' as const },
-      { id: 'SUP-0269-011', primary: 'โรงพยาบาลบุรีรัมย์', secondary: '5 ก.ย. 2569 · ช่วงบ่าย', status: 'รอการนิเทศ', tone: 'info' as const },
+      { id: 'REQ-0269-041', primary: 'นายธนกฤต พูนทรัพย์', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'รอตรวจคำร้อง', tone: 'warning' },
+      { id: 'REQ-0269-037', primary: 'นางสาวปภาวดี นาคแก้ว', secondary: 'บริษัท ไอทีโซลูชัน จำกัด', status: 'รอตรวจหนังสือตอบกลับ', tone: 'info' },
+      { id: 'SUP-0269-014', primary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', secondary: '2 ก.ย. 2569 · ช่วงเช้า', status: 'รอการนิเทศ', tone: 'info' },
     ],
   },
   student: {
     summary: [
-      { label: 'คำร้องของฉัน', value: '1', hint: 'มี 1 รายการรอแก้ไขข้อมูล', icon: ClipboardCheck },
-      { label: 'สถานที่ฝึกงาน', value: '1', hint: 'ยืนยันแล้ว 1 แห่ง', icon: Building2 },
-      { label: 'นัดนิเทศของฉัน', value: '—', hint: 'จะแสดงเมื่อมีการจัดตารางนิเทศ', icon: CalendarDays },
+      { label: 'สถานะคำร้อง', value: 'ยืนยันแล้ว', hint: 'หนังสือตอบกลับได้รับการตรวจแล้ว', icon: ClipboardCheck },
+      { label: 'สถานที่ฝึกงาน', value: 'ยืนยันแล้ว', hint: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', icon: Building2 },
+      { label: 'สถานะการปฏิบัติงาน', value: 'ยังไม่เริ่ม', hint: 'เปลี่ยนโดยเจ้าหน้าที่และไม่เปลี่ยนตามวันที่อัตโนมัติ', icon: Users },
+      { label: 'นัดนิเทศถัดไป', value: 'ยังไม่มี', hint: 'จะแสดงเมื่ออาจารย์เผยแพร่ตารางนิเทศ', icon: CalendarDays },
     ],
-    recentTitle: 'คำร้องของฉัน',
-    primaryLabel: 'สถานประกอบการ',
-    secondaryLabel: 'ขั้นตอนถัดไป',
+    recentTitle: 'ความคืบหน้าของฉัน',
+    primaryLabel: 'รายการ',
+    secondaryLabel: 'รายละเอียด',
     recentItems: [
-      { id: 'REQ-0269-018', primary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', secondary: 'รอหนังสือขอฝึกงานจากอาจารย์', status: 'รอออกหนังสือ', tone: 'info' as const },
-      { id: 'REQ-0269-006', primary: 'บริษัท อีสานเทค จำกัด', secondary: 'ตรวจสอบเหตุผลที่ส่งกลับ', status: 'ต้องแก้ไข', tone: 'warning' as const },
+      { id: 'REQ-0269-018', primary: 'คำร้องสถานประกอบการ', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'ยืนยันแล้ว', tone: 'success' },
+      { id: 'WORK-0269-018', primary: 'การปฏิบัติงาน', secondary: 'รอถึงช่วงฝึกงานและการอัปเดตสถานะจากเจ้าหน้าที่', status: 'ยังไม่เริ่มปฏิบัติงาน', tone: 'warning' },
     ],
   },
 }
 
-const dashboard = computed(() => dashboardByRole[scenario.value.role])
-const summaryGridClass = computed(() => scenario.value.role === 'student' ? 'xl:grid-cols-3' : 'xl:grid-cols-4')
+const emptyStaffDashboard = (studentCount: string, studentHint: string): DashboardData => ({
+  summary: [
+    { label: 'นักศึกษาในรอบ', value: studentCount, hint: studentHint, icon: Users },
+    { label: 'ยืนยันสถานประกอบการแล้ว', value: '0', hint: 'ยังไม่มีการยืนยันสถานประกอบการ', icon: Building2 },
+    { label: 'รอจัดกลุ่มนิเทศ', value: '0', hint: 'ยังไม่มีนักศึกษาที่พร้อมจัดกลุ่ม', icon: ClipboardCheck },
+    { label: 'กลุ่มอาจารย์นิเทศ', value: '0', hint: 'จะเริ่มจัดหลังยืนยันสถานที่ฝึกงาน', icon: CalendarDays },
+  ],
+  recentTitle: 'สถานะนักศึกษาในรอบ', primaryLabel: 'นักศึกษา', secondaryLabel: 'สถานประกอบการ', recentItems: [],
+})
+
+const emptyLecturerDashboard: DashboardData = {
+  summary: [
+    { label: 'คำร้องรอตรวจ', value: '0', hint: 'รอบยังไม่เปิดรับคำร้อง', icon: ClipboardCheck },
+    { label: 'หนังสือตอบกลับรอตรวจ', value: '0', hint: 'ยังไม่มีเอกสารตอบกลับ', icon: Building2 },
+    { label: 'รายการนิเทศที่รับผิดชอบ', value: '0', hint: 'ยังไม่มีการมอบหมาย', icon: CalendarDays },
+    { label: 'งานประเมินค้าง', value: '0', hint: 'ยังไม่เริ่มการนิเทศ', icon: Users },
+  ],
+  recentTitle: 'งานที่ต้องดำเนินการ', primaryLabel: 'นักศึกษา / สถานประกอบการ', secondaryLabel: 'รายละเอียดงาน', recentItems: [],
+}
+
+const dashboardByCycle: Record<string, { staff: DashboardData, lecturer: DashboardData }> = {
+  'CYCLE-2569-2': { staff: currentCycleDashboard.staff, lecturer: currentCycleDashboard.lecturer },
+  'CYCLE-2569-SUMMER': { staff: emptyStaffDashboard('42', 'เตรียมข้อมูลก่อนเปิดรับคำร้อง'), lecturer: emptyLecturerDashboard },
+  'CYCLE-2570-1': { staff: emptyStaffDashboard('0', 'ยังไม่ได้เพิ่มนักศึกษาเข้ารอบ'), lecturer: emptyLecturerDashboard },
+}
+
+const canSelectDashboardCycle = computed(() => scenario.value.role === 'staff' || scenario.value.role === 'lecturer')
+const dashboardCycleId = ref(selectedCycle.value.id)
+const cycleOptions = cycles.map(cycle => ({ value: cycle.id, label: `${cycle.label} · ${cycle.cohort}` }))
+const dashboardCycle = computed(() => canSelectDashboardCycle.value
+  ? cycles.find(cycle => cycle.id === dashboardCycleId.value) ?? selectedCycle.value
+  : selectedCycle.value)
+const dashboard = computed<DashboardData>(() => {
+  if (scenario.value.role === 'student') return currentCycleDashboard.student
+  return dashboardByCycle[dashboardCycle.value.id]?.[scenario.value.role] ?? emptyLecturerDashboard
+})
+const summaryGridClass = 'xl:grid-cols-4'
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 const search = ref('')
 const status = ref('all')
@@ -129,7 +178,11 @@ watch([search, status, pageSize], () => {
 watch(pageCount, (count) => {
   if (currentPage.value > count) currentPage.value = count
 })
-watch(() => scenario.value.role, resetTable)
+watch(() => scenario.value.role, () => {
+  dashboardCycleId.value = selectedCycle.value.id
+  resetTable()
+})
+watch(dashboardCycleId, resetTable)
 
 onBeforeUnmount(() => {
   if (retryTimer) window.clearTimeout(retryTimer)
@@ -138,14 +191,28 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
       <div>
-        <p class="text-sm font-medium text-warning">{{ scenario.cycle }}</p>
+        <p class="text-sm font-medium text-warning">{{ dashboardCycle.label }}</p>
         <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">สวัสดี {{ scenario.userName }}</h2>
-        <p class="mt-1 text-sm text-muted">มุมมองสำหรับ{{ roleLabel }} · ข้อมูลตัวอย่างเพื่อยืนยันรูปแบบ UI</p>
+        <p class="mt-1 text-sm text-muted">มุมมองสำหรับ{{ roleLabel }} · สรุปข้อมูลตามรอบสหกิจศึกษา</p>
       </div>
-      <UiBadge tone="success">รอบกำลังดำเนินการ</UiBadge>
+      <div class="flex w-full flex-col gap-2 sm:w-auto sm:min-w-72">
+        <UiSelect
+          v-if="canSelectDashboardCycle"
+          v-model="dashboardCycleId"
+          :options="cycleOptions"
+          label="รอบสหกิจศึกษา"
+        />
+        <div class="flex justify-start sm:justify-end">
+          <UiBadge :tone="cycleStatusMeta[dashboardCycle.status].tone">
+            {{ cycleStatusMeta[dashboardCycle.status].label }}
+          </UiBadge>
+        </div>
+      </div>
     </div>
+
+    <CycleContextPanel class="mb-6" :cycle="dashboardCycle" />
 
     <template v-if="effectiveViewState === 'loading'">
       <div class="grid gap-4 sm:grid-cols-2" :class="summaryGridClass" aria-label="กำลังโหลดหน้าหลัก">
@@ -189,7 +256,7 @@ onBeforeUnmount(() => {
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 class="text-lg font-bold text-ink">{{ dashboard.recentTitle }}</h3>
-              <p class="mt-1 text-sm leading-6 text-muted">รายการล่าสุดตามขอบเขตของ{{ roleLabel }}</p>
+              <p class="mt-1 text-sm leading-6 text-muted">รายการล่าสุดของ{{ roleLabel }}ใน {{ dashboardCycle.label }}</p>
             </div>
             <span class="text-xs font-medium text-muted">{{ dashboard.recentItems.length }} รายการล่าสุด</span>
           </div>
@@ -221,8 +288,11 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-if="!paginatedRecentItems.length" class="p-5 sm:p-6">
-          <AppEmptyState title="ไม่พบรายการที่ตรงกับตัวกรอง" description="ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่">
-            <UiButton variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
+          <AppEmptyState
+            :title="hasActiveFilters ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีรายการในรอบนี้'"
+            :description="hasActiveFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'เมื่อมีข้อมูล รายการล่าสุดจะแสดงที่นี่'"
+          >
+            <UiButton v-if="hasActiveFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
           </AppEmptyState>
         </div>
 
