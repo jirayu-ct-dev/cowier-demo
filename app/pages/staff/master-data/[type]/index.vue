@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, Plus, RotateCcw, Search, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Eye, Plus, RotateCcw, Search, Upload, X } from '@lucide/vue'
+import type { PeopleFileFormat } from '~/composables/usePeopleImport'
 import type { PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
 
@@ -7,7 +8,9 @@ definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff-
 
 const route = useRoute()
 const { scenario } = useScenario()
+const { showToast } = useToast()
 const { people } = usePeopleDirectory()
+const { exportPeople } = usePeopleImport()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
@@ -24,6 +27,8 @@ const accountStatus = ref('all')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 const pageSize = ref('10')
 const currentPage = ref(1)
+const exportFormat = ref<PeopleFileFormat>('xlsx')
+const isExporting = ref(false)
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 
 const recordStatusOptions = [
@@ -39,6 +44,10 @@ const accountStatusOptions = [
   { value: 'terminated', label: 'ยุติการใช้งาน' },
 ]
 const pageSizeOptions = ['10', '20', '50', '100'].map(value => ({ value, label: value }))
+const exportFormatOptions = [
+  { value: 'xlsx', label: 'Excel (.xlsx)' },
+  { value: 'csv', label: 'CSV (.csv)' },
+]
 
 const filteredPeople = computed(() => {
   if (scenario.value.viewState === 'empty') return []
@@ -79,6 +88,21 @@ const retry = () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
 }
+const handleExport = async () => {
+  if (isExporting.value) return
+  isExporting.value = true
+  try {
+    await exportPeople(people.value, personType.value, exportFormat.value)
+    showToast({ title: `ส่งออก${context.value.title}แล้ว`, description: `${people.value.filter(person => person.type === personType.value).length} รายการ · ${exportFormat.value.toUpperCase()}` })
+  }
+  catch (error) {
+    console.error(error)
+    showToast({ title: 'ส่งออกข้อมูลไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
+  }
+  finally {
+    isExporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -88,7 +112,16 @@ const retry = () => {
         <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ context.title }}</h2>
         <p class="mt-1 text-sm leading-6 text-muted">ค้นหา เพิ่ม แก้ไข และจัดการสถานะข้อมูลกับบัญชีโดยไม่ลบประวัติเดิม</p>
       </div>
-      <UiButton class="shrink-0" :icon="Plus" @click="navigateTo(`/staff/master-data/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
+      <div class="flex flex-wrap gap-2 sm:justify-end">
+        <UiButton variant="secondary" :icon="Upload" @click="navigateTo({ path: '/staff/master-data/import', query: { type: personType } })">นำเข้าข้อมูล</UiButton>
+        <UiDialog :title="`ส่งออก${context.title}`" description="ไฟล์จะมีรหัส ชื่อ นามสกุล และสถานะข้อมูล โดยไม่รวมรหัสผ่านหรือข้อมูลยืนยันตัวตน">
+          <template #trigger><UiButton variant="secondary" :icon="Download">ส่งออกข้อมูล</UiButton></template>
+          <UiSelect v-model="exportFormat" :options="exportFormatOptions" :placeholder="exportFormatOptions.find(item => item.value === exportFormat)?.label" label="รูปแบบไฟล์" />
+          <template #cancel><UiButton variant="ghost">ยกเลิก</UiButton></template>
+          <template #confirm><UiButton :loading="isExporting" :icon="Download" @click="handleExport">ดาวน์โหลดไฟล์</UiButton></template>
+        </UiDialog>
+        <UiButton :icon="Plus" @click="navigateTo(`/staff/master-data/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
+      </div>
     </div>
 
     <UiCard :padded="false">

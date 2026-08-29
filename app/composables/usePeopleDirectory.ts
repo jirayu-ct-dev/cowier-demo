@@ -221,6 +221,23 @@ export const usePeopleDirectory = () => {
     addActivity(person, 'รีเซ็ตรหัสผ่าน', 'ยกเลิก Session เดิมและบังคับเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป')
   }
 
+  const importPeople = (type: PersonType, rows: PersonInput[]) => {
+    let created = 0
+    let updated = 0
+    rows.forEach((input) => {
+      const person = findPerson(type, input.id)
+      if (person) {
+        updatePerson(person, { ...input, cycle: person.cycle })
+        updated += 1
+        return
+      }
+      createPerson(type, input)
+      created += 1
+    })
+    recordEvent(`นำเข้าข้อมูล${type === 'student' ? 'นักศึกษา' : 'อาจารย์'}สำเร็จ: เพิ่ม ${created} อัปเดต ${updated}`)
+    return { created, updated }
+  }
+
   return {
     people,
     findPerson,
@@ -232,5 +249,6 @@ export const usePeopleDirectory = () => {
     terminatePerson,
     restorePerson,
     resetPassword,
+    importPeople,
   }
 }
