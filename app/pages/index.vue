@@ -25,7 +25,7 @@ const currentCycleDashboard: { staff: DashboardData, lecturer: DashboardData, st
     summary: [
       { label: 'นักศึกษาในรอบ', value: '248', hint: 'ยืนยันสถานประกอบการแล้ว 201 คน', icon: Users },
       { label: 'ยืนยันสถานประกอบการแล้ว', value: '201', hint: 'คิดเป็น 81% ของนักศึกษาในรอบ', icon: Building2 },
-      { label: 'รอจัดกลุ่มนิเทศ', value: '47', hint: 'นักศึกษาที่ยังไม่อยู่ในกลุ่มอาจารย์นิเทศ', icon: ClipboardCheck },
+      { label: 'รอมอบหมายกลุ่มนิเทศ', value: '6', hint: 'สถานประกอบการที่ยังไม่มีกลุ่มอาจารย์รับผิดชอบ', icon: ClipboardCheck },
       { label: 'กลุ่มอาจารย์นิเทศ', value: '18', hint: 'ครอบคลุม 74 สถานประกอบการ', icon: CalendarDays },
     ],
     recentTitle: 'สถานะนักศึกษาในรอบ',
@@ -74,7 +74,7 @@ const emptyStaffDashboard = (studentCount: string, studentHint: string): Dashboa
   summary: [
     { label: 'นักศึกษาในรอบ', value: studentCount, hint: studentHint, icon: Users },
     { label: 'ยืนยันสถานประกอบการแล้ว', value: '0', hint: 'ยังไม่มีการยืนยันสถานประกอบการ', icon: Building2 },
-    { label: 'รอจัดกลุ่มนิเทศ', value: '0', hint: 'ยังไม่มีนักศึกษาที่พร้อมจัดกลุ่ม', icon: ClipboardCheck },
+    { label: 'รอมอบหมายกลุ่มนิเทศ', value: '0', hint: 'ไม่มีสถานประกอบการรอมอบหมายกลุ่มอาจารย์', icon: ClipboardCheck },
     { label: 'กลุ่มอาจารย์นิเทศ', value: '0', hint: 'จะเริ่มจัดหลังยืนยันสถานที่ฝึกงาน', icon: CalendarDays },
   ],
   recentTitle: 'สถานะนักศึกษาในรอบ', primaryLabel: 'นักศึกษา', secondaryLabel: 'สถานประกอบการ', recentItems: [],

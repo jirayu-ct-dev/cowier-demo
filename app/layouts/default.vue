@@ -4,6 +4,7 @@ import { DialogContent, DialogOverlay, DialogPortal, DialogRoot } from 'reka-ui'
 const mobileNavigationOpen = ref(false)
 const route = useRoute()
 const isDevelopment = import.meta.dev
+const hasDashboardToolbar = computed(() => route.path.startsWith('/staff/supervision/groups'))
 
 watch(() => route.fullPath, () => {
   mobileNavigationOpen.value = false
@@ -25,6 +26,7 @@ watch(() => route.fullPath, () => {
 
     <div class="lg:pl-64">
       <AppHeader @open-navigation="mobileNavigationOpen = true" />
+      <DashboardToolbar v-if="hasDashboardToolbar" />
       <main id="main-content" class="mx-auto w-full max-w-[1480px] p-4 sm:p-6 lg:p-8"><slot /></main>
     </div>
 

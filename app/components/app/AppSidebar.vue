@@ -30,7 +30,7 @@ const navigation = computed(() => [
           exact: false,
         },
         {
-          label: "จัดกลุ่มนิเทศ",
+          label: "จัดกลุ่มอาจารย์นิเทศ",
           to: "/staff/supervision/groups",
           icon: UsersRound,
           exact: false,
