@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import type { PersonRecord, PersonType } from './usePeopleDirectory'
+import { personPrefixOptions, personPrefixValues } from './usePeopleDirectory'
+import type { PersonPrefix, PersonRecord, PersonType } from './usePeopleDirectory'
 
 export type PeopleFileFormat = 'csv' | 'xlsx'
 export type ImportRowStatus = 'new' | 'update' | 'invalid'
@@ -7,6 +8,7 @@ export type ImportRowStatus = 'new' | 'update' | 'invalid'
 export interface PeopleImportRow {
   rowNumber: number
   id: string
+  prefix: PersonPrefix | ''
   firstName: string
   lastName: string
   status: ImportRowStatus
@@ -15,12 +17,14 @@ export interface PeopleImportRow {
 
 const rowSchema = z.object({
   id: z.string().trim().min(1, 'ไม่พบรหัส'),
+  prefix: z.enum(personPrefixValues, { error: 'ไม่พบหรือคำนำหน้าไม่ถูกต้อง' }),
   firstName: z.string().trim().min(1, 'ไม่พบชื่อ'),
   lastName: z.string().trim().min(1, 'ไม่พบนามสกุล'),
 })
 
 const getHeaders = (type: PersonType) => ({
   id: type === 'student' ? 'รหัสนักศึกษา' : 'รหัสอาจารย์',
+  prefix: 'คำนำหน้า',
   firstName: 'ชื่อ',
   lastName: 'นามสกุล',
 })
@@ -77,6 +81,7 @@ const toWorksheetRows = (people: PersonRecord[], type: PersonType) => {
     .filter(person => person.type === type)
     .map(person => ({
       [headers.id]: person.id,
+      [headers.prefix]: person.prefix,
       [headers.firstName]: person.firstName,
       [headers.lastName]: person.lastName,
       สถานะข้อมูล: person.recordStatus === 'active' ? 'ใช้งาน' : 'ยุติการใช้งาน',
@@ -98,6 +103,7 @@ export const usePeopleImport = () => {
     const normalized = rawRows.map((row, index) => ({
       rowNumber: index + 2,
       id: readCell(row, idAliases),
+      prefix: readCell(row, ['คำนำหน้า', 'prefix', 'title']) as PersonPrefix | '',
       firstName: readCell(row, ['ชื่อ', 'first name', 'first_name', 'firstname']),
       lastName: readCell(row, ['นามสกุล', 'last name', 'last_name', 'lastname']),
     }))
@@ -115,11 +121,14 @@ export const usePeopleImport = () => {
           reason: result.error.issues.map(issue => issue.message).join(', '),
         }
       }
+      if (!personPrefixOptions[type].some(option => option.value === row.prefix)) {
+        return { ...row, status: 'invalid' as const, reason: `คำนำหน้าไม่เหมาะกับข้อมูล${type === 'student' ? 'นักศึกษา' : 'อาจารย์'}` }
+      }
       if ((idCounts.get(row.id) ?? 0) > 1) {
         return { ...row, status: 'invalid' as const, reason: 'รหัสซ้ำมากกว่าหนึ่งแถวภายในไฟล์' }
       }
       if (existingIds.has(row.id)) {
-        return { ...row, status: 'update' as const, reason: 'พบรหัสเดิมในระบบ จะอัปเดตชื่อ–นามสกุลโดยคงบัญชีเดิม' }
+        return { ...row, status: 'update' as const, reason: 'พบรหัสเดิมในระบบ จะอัปเดตคำนำหน้าและชื่อ–นามสกุลโดยคงบัญชีเดิม' }
       }
       return { ...row, status: 'new' as const, reason: 'ข้อมูลครบถ้วน พร้อมสร้างข้อมูลและบัญชีใหม่' }
     })
@@ -151,6 +160,7 @@ export const usePeopleImport = () => {
     const headers = getHeaders(type)
     await downloadWorkbook([{
       [headers.id]: type === 'student' ? '66123456789' : 'L0099',
+      [headers.prefix]: type === 'student' ? 'นางสาว' : 'อาจารย์',
       [headers.firstName]: 'ตัวอย่าง',
       [headers.lastName]: 'ข้อมูล',
     }], `${type === 'student' ? 'student' : 'lecturer'}-import-template`, format)
@@ -165,6 +175,7 @@ export const usePeopleImport = () => {
     await downloadWorkbook(rows.filter(row => row.status === 'invalid').map(row => ({
       แถว: row.rowNumber,
       [headers.id]: row.id,
+      [headers.prefix]: row.prefix,
       [headers.firstName]: row.firstName,
       [headers.lastName]: row.lastName,
       เหตุผล: row.reason,

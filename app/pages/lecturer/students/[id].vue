@@ -13,12 +13,12 @@ if (!student.value) throw createError({ statusCode: 404, statusMessage: 'ไม�
 const applications = computed(() => getStudentApplicationHistory(String(route.params.id)))
 const isEditing = ref(false)
 const isSaving = ref(false)
-const form = reactive({ firstName: '', lastName: '' })
-const errors = reactive<{ firstName?: string, lastName?: string }>({})
-const schema = z.object({ firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ').max(100), lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล').max(100) })
-const startEditing = () => { if (!student.value) return; form.firstName = student.value.firstName; form.lastName = student.value.lastName; errors.firstName = undefined; errors.lastName = undefined; isEditing.value = true }
+const form = reactive({ prefix: 'นาย', firstName: '', lastName: '' })
+const errors = reactive<{ prefix?: string, firstName?: string, lastName?: string }>({})
+const schema = z.object({ prefix: z.enum(personPrefixValues, { error: 'กรุณาเลือกคำนำหน้า' }), firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ').max(100), lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล').max(100) })
+const startEditing = () => { if (!student.value) return; form.prefix = student.value.prefix; form.firstName = student.value.firstName; form.lastName = student.value.lastName; errors.prefix = undefined; errors.firstName = undefined; errors.lastName = undefined; isEditing.value = true }
 const save = async () => {
-  errors.firstName = undefined; errors.lastName = undefined
+  errors.prefix = undefined; errors.firstName = undefined; errors.lastName = undefined
   const result = schema.safeParse(form)
   if (!result.success) { result.error.issues.forEach(issue => { errors[issue.path[0] as keyof typeof errors] = issue.message }); return }
   if (!student.value) return
@@ -37,12 +37,12 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', { day: 'nu
 <template>
   <div v-if="student">
     <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-canvas hover:text-ink" @click="navigateTo('/lecturer/students')"><ArrowLeft :size="17" aria-hidden="true" />กลับไปข้อมูลนักศึกษา</button>
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ student.firstName }} {{ student.lastName }}</h2><p class="mt-1 text-sm text-muted">รหัสนักศึกษา {{ student.id }}</p></div><UiButton v-if="!isEditing" :icon="Pencil" @click="startEditing">แก้ไขชื่อ–นามสกุล</UiButton></div>
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ getPersonFullName(student) }}</h2><p class="mt-1 text-sm text-muted">รหัสนักศึกษา {{ student.id }}</p></div><UiButton v-if="!isEditing" :icon="Pencil" @click="startEditing">แก้ไขชื่อ–นามสกุล</UiButton></div>
     <div class="grid gap-6 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.7fr)]">
       <UiCard class="self-start">
         <div class="flex items-center justify-between gap-3"><h3 class="text-lg font-bold text-ink">ข้อมูลนักศึกษา</h3><UiBadge :tone="recordStatusMeta[student.recordStatus].tone">{{ recordStatusMeta[student.recordStatus].label }}</UiBadge></div>
-        <form v-if="isEditing" class="mt-5" novalidate @submit.prevent="save"><div class="grid gap-5"><UiInput v-model="form.firstName" label="ชื่อ" :error="errors.firstName" required /><UiInput v-model="form.lastName" label="นามสกุล" :error="errors.lastName" required /></div><UiAlert tone="info" title="ขอบเขตของอาจารย์" class="mt-5">อาจารย์แก้ไขได้เฉพาะชื่อและนามสกุล การเปลี่ยนรหัส สถานะข้อมูล บัญชี หรือรอบสหกิจต้องดำเนินการโดยเจ้าหน้าที่</UiAlert><div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-divider pt-5"><UiButton variant="ghost" @click="isEditing = false">ยกเลิก</UiButton><UiButton type="submit" :icon="Save" :loading="isSaving">บันทึก</UiButton></div></form>
-        <dl v-else class="mt-5 grid gap-5"><div><dt class="text-xs text-muted">รหัสนักศึกษา</dt><dd class="mt-1 font-semibold text-ink">{{ student.id }}</dd></div><div><dt class="text-xs text-muted">ชื่อ–นามสกุล</dt><dd class="mt-1 text-ink">{{ student.firstName }} {{ student.lastName }}</dd></div><div><dt class="text-xs text-muted">รอบสหกิจศึกษา</dt><dd class="mt-1 text-ink">{{ student.cycle || 'ยังไม่กำหนด' }}</dd></div><div><dt class="text-xs text-muted">สถานประกอบการที่ยืนยัน</dt><dd class="mt-1 text-ink">{{ student.company || 'ยังไม่มี' }}</dd></div></dl>
+        <form v-if="isEditing" class="mt-5" novalidate @submit.prevent="save"><div class="grid gap-5"><UiSelect v-model="form.prefix" :options="personPrefixOptions.student" label="คำนำหน้า" :error="errors.prefix" required /><UiInput v-model="form.firstName" label="ชื่อ" :error="errors.firstName" required /><UiInput v-model="form.lastName" label="นามสกุล" :error="errors.lastName" required /></div><UiAlert tone="info" title="ขอบเขตของอาจารย์" class="mt-5">อาจารย์แก้ไขได้เฉพาะคำนำหน้า ชื่อ และนามสกุล การเปลี่ยนรหัส สถานะข้อมูล บัญชี หรือรอบสหกิจต้องดำเนินการโดยเจ้าหน้าที่</UiAlert><div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-divider pt-5"><UiButton variant="ghost" @click="isEditing = false">ยกเลิก</UiButton><UiButton type="submit" :icon="Save" :loading="isSaving">บันทึก</UiButton></div></form>
+        <dl v-else class="mt-5 grid gap-5"><div><dt class="text-xs text-muted">รหัสนักศึกษา</dt><dd class="mt-1 font-semibold text-ink">{{ student.id }}</dd></div><div><dt class="text-xs text-muted">ชื่อ–นามสกุล</dt><dd class="mt-1 text-ink">{{ getPersonFullName(student) }}</dd></div><div><dt class="text-xs text-muted">รอบสหกิจศึกษา</dt><dd class="mt-1 text-ink">{{ student.cycle || 'ยังไม่กำหนด' }}</dd></div><div><dt class="text-xs text-muted">สถานประกอบการที่ยืนยัน</dt><dd class="mt-1 text-ink">{{ student.company || 'ยังไม่มี' }}</dd></div></dl>
       </UiCard>
       <UiCard :padded="false">
         <div class="border-b border-divider p-5 sm:p-6"><h3 class="text-lg font-bold text-ink">ประวัติคำร้องสถานประกอบการ</h3><p class="mt-1 text-sm text-muted">แสดงบริษัท ตำแหน่ง วันที่สมัคร และสถานะของคำร้องทั้งหมด</p></div>

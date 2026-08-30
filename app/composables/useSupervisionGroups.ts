@@ -74,6 +74,14 @@ const companyDetails: Record<string, Pick<SupervisionCompany, 'address' | 'conta
   'SC-008': { address: '700/12 นิคมอุตสาหกรรมอมตะซิตี้ ตำบลคลองตำหรุ อำเภอเมืองชลบุรี จังหวัดชลบุรี 20000', contactName: 'คุณภาคภูมิ วงศ์อนันต์', contactPhone: '038-458-721' },
 }
 
+const studentPrefixes: Record<string, 'นาย' | 'นางสาว'> = {
+  '66123456701': 'นาย', '66123456702': 'นางสาว', '66123456704': 'นางสาว', '66123456708': 'นาย', '66123456711': 'นางสาว',
+  '66123456715': 'นางสาว', '66123456720': 'นาย', '66123456725': 'นางสาว', '66123456723': 'นาย', '66123456727': 'นางสาว',
+  '66123456731': 'นาย', '66123456734': 'นางสาว', '66123456738': 'นาย', '66123456742': 'นางสาว', '66123456746': 'นาย',
+}
+
+const getStudentFullName = (placement: SupervisionPlacement) => `${studentPrefixes[placement.studentId] ?? 'นาย'}${placement.studentName}`
+
 const groupsSeed: SupervisionGroup[] = [
   { id: 'SG-001', cycleId: 'CYCLE-2569-2', round: 1, name: 'กลุ่มอาจารย์ 1', lecturerIds: ['L0012'], companyIds: ['SC-001', 'SC-002'], createdAt: '2026-08-29T10:00:00+07:00' },
   { id: 'SG-002', cycleId: 'CYCLE-2569-2', round: 2, name: 'กลุ่มอาจารย์ 1', lecturerIds: ['L0021'], companyIds: ['SC-001', 'SC-003'], createdAt: '2026-08-30T09:30:00+07:00' },
@@ -81,7 +89,7 @@ const groupsSeed: SupervisionGroup[] = [
 ]
 
 export const useSupervisionGroups = () => {
-  const placements = useState<SupervisionPlacement[]>('supervision-placements-v3', () => structuredClone(placementsSeed))
+  const placements = useState<SupervisionPlacement[]>('supervision-placements-v4', () => structuredClone(placementsSeed))
   const groups = useState<SupervisionGroup[]>('supervision-groups-v3', () => structuredClone(groupsSeed))
   const { recordEvent } = useScenario()
 
@@ -89,7 +97,7 @@ export const useSupervisionGroups = () => {
     const byCompany = new Map<string, SupervisionCompany>()
     placements.value.filter(item => item.cycleId === cycleId).forEach((placement) => {
       const company = byCompany.get(placement.companyId)
-      const student = { id: placement.id, studentId: placement.studentId, studentName: placement.studentName, position: placement.position }
+      const student = { id: placement.id, studentId: placement.studentId, studentName: getStudentFullName(placement), position: placement.position }
       if (company) {
         company.students.push(student)
         company.studentCount = company.students.length

@@ -54,7 +54,7 @@ const filteredPeople = computed(() => {
   const keyword = search.value.trim().toLocaleLowerCase('th')
   return people.value
     .filter(person => person.type === personType.value)
-    .filter(person => !keyword || [person.id, person.firstName, person.lastName, person.company]
+    .filter(person => !keyword || [person.id, person.prefix, person.firstName, person.lastName, person.company]
       .some(value => value?.toLocaleLowerCase('th').includes(keyword)))
     .filter(person => recordStatus.value === 'all' || person.recordStatus === recordStatus.value)
     .filter(person => accountStatus.value === 'all' || person.accountStatus === accountStatus.value)
@@ -178,11 +178,11 @@ const handleExport = async () => {
             <tbody class="divide-y divide-divider">
               <tr v-for="person in paginatedPeople" :key="person.id" class="transition-colors hover:bg-surface/70">
                 <td class="whitespace-nowrap px-6 py-4 font-semibold text-ink">{{ person.id }}</td>
-                <td class="px-4 py-4"><p class="font-semibold text-ink">{{ person.firstName }} {{ person.lastName }}</p><p class="mt-1 text-xs text-muted">ชื่อผู้ใช้: {{ person.id }}</p></td>
+                <td class="px-4 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(person) }}</p><p class="mt-1 text-xs text-muted">ชื่อผู้ใช้: {{ person.id }}</p></td>
                 <td v-if="personType === 'student'" class="max-w-sm px-4 py-4"><p class="text-ink">{{ person.cycle || 'ยังไม่กำหนดรอบ' }}</p><p class="mt-1 truncate text-xs text-muted">{{ person.company || 'ยังไม่มีสถานประกอบการที่ยืนยัน' }}</p></td>
                 <td class="px-4 py-4"><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></td>
                 <td class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4 text-right"><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${person.firstName} ${person.lastName}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></NuxtLink></td>
+                <td class="px-4 py-4 text-right"><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${getPersonFullName(person)}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></NuxtLink></td>
               </tr>
             </tbody>
           </table>
@@ -190,7 +190,7 @@ const handleExport = async () => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ person.firstName }} {{ person.lastName }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}</p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
+            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}</p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
             <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><UiButton size="sm" variant="secondary" :icon="Eye" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูรายละเอียด</UiButton></div>
           </article>
         </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Download, FileSpreadsheet, RotateCcw, Search, Upload, X } from '@lucide/vue'
 import type { ImportRowStatus, PeopleFileFormat, PeopleImportRow } from '~/composables/usePeopleImport'
-import type { PersonType } from '~/composables/usePeopleDirectory'
+import type { PersonPrefix, PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'นำเข้าข้อมูลบุคคล', middleware: 'staff-prototype' })
@@ -52,12 +52,12 @@ const summary = computed(() => ({
   update: rows.value.filter(row => row.status === 'update').length,
   invalid: rows.value.filter(row => row.status === 'invalid').length,
 }))
-const importableRows = computed(() => rows.value.filter(row => row.status !== 'invalid'))
+const importableRows = computed(() => rows.value.filter((row): row is PeopleImportRow & { prefix: PersonPrefix } => row.status !== 'invalid' && row.prefix !== ''))
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLocaleLowerCase('th')
   return rows.value
     .filter(row => statusFilter.value === 'all' || row.status === statusFilter.value)
-    .filter(row => !keyword || [row.id, row.firstName, row.lastName, row.reason]
+    .filter(row => !keyword || [row.id, row.prefix, row.firstName, row.lastName, row.reason]
       .some(value => value.toLocaleLowerCase('th').includes(keyword)))
 })
 const pageSizeNumber = computed(() => Number(pageSize.value))
@@ -157,6 +157,7 @@ const handleImport = async () => {
   try {
     const imported = importPeople(selectedType.value, importableRows.value.map(row => ({
       id: row.id,
+      prefix: row.prefix,
       firstName: row.firstName,
       lastName: row.lastName,
     })))
@@ -224,7 +225,7 @@ const handleImport = async () => {
       </div>
 
       <UiAlert v-if="summary.update" class="mb-5" tone="info" title="พบรหัสเดิมในระบบ">
-        รายการเหล่านี้นำเข้าได้ โดยระบบจะอัปเดตเฉพาะชื่อ–นามสกุล และไม่สร้างบัญชีใหม่หรือเปลี่ยนรหัสผ่านเดิม
+        รายการเหล่านี้นำเข้าได้ โดยระบบจะอัปเดตเฉพาะคำนำหน้าและชื่อ–นามสกุล และไม่สร้างบัญชีใหม่หรือเปลี่ยนรหัสผ่านเดิม
       </UiAlert>
 
       <UiCard :padded="false">
@@ -252,10 +253,10 @@ const handleImport = async () => {
             <table class="w-full min-w-[900px] border-collapse text-left text-sm">
               <caption class="sr-only">ผลตรวจข้อมูลก่อนนำเข้า</caption>
               <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th scope="col" class="w-20 px-6 py-3">แถว</th><th scope="col" class="px-4 py-3">{{ context.idLabel }}</th><th scope="col" class="px-4 py-3">ชื่อ–นามสกุล</th><th scope="col" class="px-4 py-3">ผลการตรวจ</th><th scope="col" class="px-4 py-3">รายละเอียด</th></tr></thead>
-              <tbody class="divide-y divide-divider"><tr v-for="row in paginatedRows" :key="row.rowNumber" class="hover:bg-surface/70"><td class="px-6 py-4 text-muted">{{ row.rowNumber }}</td><td class="whitespace-nowrap px-4 py-4 font-semibold text-ink">{{ row.id || '—' }}</td><td class="px-4 py-4 text-ink">{{ [row.firstName, row.lastName].filter(Boolean).join(' ') || '—' }}</td><td class="px-4 py-4"><UiBadge :tone="statusMeta[row.status].tone">{{ statusMeta[row.status].label }}</UiBadge></td><td class="max-w-md px-4 py-4 text-muted">{{ row.reason }}</td></tr></tbody>
+              <tbody class="divide-y divide-divider"><tr v-for="row in paginatedRows" :key="row.rowNumber" class="hover:bg-surface/70"><td class="px-6 py-4 text-muted">{{ row.rowNumber }}</td><td class="whitespace-nowrap px-4 py-4 font-semibold text-ink">{{ row.id || '—' }}</td><td class="px-4 py-4 text-ink">{{ row.prefix }}{{ [row.firstName, row.lastName].filter(Boolean).join(' ') || '—' }}</td><td class="px-4 py-4"><UiBadge :tone="statusMeta[row.status].tone">{{ statusMeta[row.status].label }}</UiBadge></td><td class="max-w-md px-4 py-4 text-muted">{{ row.reason }}</td></tr></tbody>
             </table>
           </div>
-          <div class="divide-y divide-divider md:hidden"><article v-for="row in paginatedRows" :key="row.rowNumber" class="p-5"><div class="flex items-start justify-between gap-3"><div><p class="font-semibold text-ink">{{ row.id || `แถว ${row.rowNumber}` }}</p><p class="mt-1 text-sm text-muted">{{ [row.firstName, row.lastName].filter(Boolean).join(' ') || 'ข้อมูลชื่อไม่ครบ' }}</p></div><UiBadge :tone="statusMeta[row.status].tone">{{ statusMeta[row.status].label }}</UiBadge></div><p class="mt-3 border-t border-divider pt-3 text-sm leading-6 text-muted">{{ row.reason }}</p></article></div>
+          <div class="divide-y divide-divider md:hidden"><article v-for="row in paginatedRows" :key="row.rowNumber" class="p-5"><div class="flex items-start justify-between gap-3"><div><p class="font-semibold text-ink">{{ row.id || `แถว ${row.rowNumber}` }}</p><p class="mt-1 text-sm text-muted">{{ row.prefix }}{{ [row.firstName, row.lastName].filter(Boolean).join(' ') || 'ข้อมูลชื่อไม่ครบ' }}</p></div><UiBadge :tone="statusMeta[row.status].tone">{{ statusMeta[row.status].label }}</UiBadge></div><p class="mt-3 border-t border-divider pt-3 text-sm leading-6 text-muted">{{ row.reason }}</p></article></div>
           <div class="flex flex-col gap-3 border-t border-divider px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6"><div class="flex items-center gap-3"><p class="whitespace-nowrap text-muted">แสดง {{ resultStart }}–{{ resultEnd }} จาก {{ filteredRows.length }} รายการ</p><div class="w-20 shrink-0"><UiSelect v-model="pageSize" :options="pageSizeOptions" :placeholder="pageSize" label="จำนวนรายการต่อหน้า" :label-visible="false" /></div></div><nav class="flex items-center gap-2" aria-label="การแบ่งหน้าผลตรวจ"><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === 1" aria-label="หน้าก่อนหน้า" @click="currentPage--"><ChevronLeft :size="18" aria-hidden="true" /></button><span class="min-w-20 text-center font-semibold text-ink">หน้า {{ currentPage }} / {{ pageCount }}</span><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === pageCount" aria-label="หน้าถัดไป" @click="currentPage++"><ChevronRight :size="18" aria-hidden="true" /></button></nav></div>
         </template>
       </UiCard>
@@ -268,7 +269,7 @@ const handleImport = async () => {
     </UiCard>
 
     <UiDialog v-model:open="confirmOpen" title="ยืนยันการนำเข้าข้อมูล" :description="`ระบบจะดำเนินการ ${importableRows.length} รายการ และไม่นำเข้ารายการที่ไม่ถูกต้อง ${summary.invalid} รายการ`" :close-on-confirm="false">
-      <UiAlert v-if="summary.update" tone="info" title="มีข้อมูลเดิมที่ต้องอัปเดต">{{ summary.update }} รายการจะเปลี่ยนเฉพาะชื่อ–นามสกุล โดยคงบัญชีและรหัสผ่านเดิม</UiAlert>
+      <UiAlert v-if="summary.update" tone="info" title="มีข้อมูลเดิมที่ต้องอัปเดต">{{ summary.update }} รายการจะเปลี่ยนเฉพาะคำนำหน้าและชื่อ–นามสกุล โดยคงบัญชีและรหัสผ่านเดิม</UiAlert>
       <template #cancel><UiButton variant="ghost">กลับไปตรวจสอบ</UiButton></template>
       <template #confirm><UiButton :loading="isImporting" :disabled="!importableRows.length" @click="handleImport">ยืนยันนำเข้า</UiButton></template>
     </UiDialog>

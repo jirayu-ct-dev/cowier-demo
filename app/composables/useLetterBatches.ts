@@ -58,6 +58,17 @@ export interface SaveLetterBatchPayload {
   fileName: string;
 }
 
+const studentPrefixes: Record<string, 'นาย' | 'นางสาว'> = {
+  '65011212001': 'นางสาว',
+  '65011212024': 'นางสาว',
+  '65011212008': 'นาย',
+  '65011212014': 'นางสาว',
+  '65011212021': 'นาย',
+  '65011212023': 'นาย',
+  '65011212030': 'นางสาว',
+  '65011212031': 'นาย',
+}
+
 const createRequest = (
   request: Omit<PlacementReviewRequest, "companyStatus" | "batchId"> &
     Partial<Pick<PlacementReviewRequest, "companyStatus" | "batchId">>,
@@ -65,6 +76,7 @@ const createRequest = (
   companyStatus: "active",
   batchId: null,
   ...request,
+  studentName: `${studentPrefixes[request.studentId] ?? 'นาย'}${request.studentName}`,
 });
 
 const requestsSeed: PlacementReviewRequest[] = [
@@ -243,7 +255,7 @@ const batchesSeed: LetterBatch[] = [
         version: 1,
         fileName: "หนังสือตอบกลับ-LB-002.pdf",
         uploadedAt: "2026-08-28T14:20:00+07:00",
-        uploadedBy: "นภัสสร มีสุข",
+        uploadedBy: "นางสาวนภัสสร มีสุข",
         status: "active",
       },
     ],
@@ -264,7 +276,7 @@ const compatibilityKey = (request: PlacementReviewRequest) =>
 
 export const useLetterBatches = () => {
   const requests = useState<PlacementReviewRequest[]>(
-    "lecturer-placement-review-workflow",
+    "lecturer-placement-review-workflow-v2",
     () => structuredClone(requestsSeed),
   );
   const batches = useState<LetterBatch[]>("lecturer-letter-batches", () =>

@@ -84,7 +84,11 @@ const initialPlacementRequests: PlacementRequest[] = [
   { id: 'REQ-013', studentId: '65011212081', studentName: 'ณรงค์ชัย พันธ์ดี', company: 'บริษัท โลจิสติกส์บุรีรัมย์ จำกัด', position: 'System Support', submittedDate: '2026-08-12', status: 'draft' },
   { id: 'REQ-014', studentId: '65011212089', studentName: 'เบญญาภา แสงงาม', company: 'ศูนย์ดิจิทัลชุมชนบุรีรัมย์', position: 'UX Researcher', submittedDate: '2026-08-11', status: 'review' },
 ]
-const placementRequests = ref<PlacementRequest[]>(initialPlacementRequests.map(request => ({ ...request })))
+const femaleStudentIds = new Set(['65011212001', '65011212014', '65011212029', '65011212042', '65011212047', '65011212061', '65011212074', '65011212089'])
+const placementRequests = ref<PlacementRequest[]>(initialPlacementRequests.map(request => ({
+  ...request,
+  studentName: `${femaleStudentIds.has(request.studentId) ? 'นางสาว' : 'นาย'}${request.studentName}`,
+})))
 
 const searchQuery = ref('')
 const statusFilter = ref('all')

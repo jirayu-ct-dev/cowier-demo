@@ -1,4 +1,6 @@
 export type PersonType = 'student' | 'lecturer'
+export const personPrefixValues = ['นาย', 'นาง', 'นางสาว', 'อาจารย์', 'ดร.', 'ผศ.', 'ผศ.ดร.', 'รศ.', 'รศ.ดร.', 'ศ.', 'ศ.ดร.'] as const
+export type PersonPrefix = typeof personPrefixValues[number]
 export type PersonRecordStatus = 'active' | 'inactive'
 export type AccountStatus = 'first-login' | 'active' | 'suspended' | 'terminated'
 
@@ -13,6 +15,7 @@ export interface PersonActivity {
 export interface PersonRecord {
   id: string
   type: PersonType
+  prefix: PersonPrefix
   firstName: string
   lastName: string
   recordStatus: PersonRecordStatus
@@ -24,6 +27,7 @@ export interface PersonRecord {
 
 export interface PersonInput {
   id: string
+  prefix: PersonPrefix
   firstName: string
   lastName: string
   cycle?: string
@@ -43,6 +47,7 @@ const initialPeople: PersonRecord[] = [
   {
     id: '66123456701',
     type: 'student',
+    prefix: 'นาย',
     firstName: 'ธนกฤต',
     lastName: 'พูนทรัพย์',
     recordStatus: 'active',
@@ -51,12 +56,13 @@ const initialPeople: PersonRecord[] = [
     company: 'บริษัท สยามเทค โซลูชัน จำกัด',
     activities: [
       { id: 'ACT-001', action: 'แก้ไขชื่อ', detail: 'ธนกิต → ธนกฤต', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-28T10:20:00+07:00' },
-      { id: 'ACT-002', action: 'เข้าสู่ระบบสำเร็จ', detail: 'เข้าสู่ระบบด้วยบัญชีนักศึกษา', actor: 'ธนกฤต พูนทรัพย์', occurredAt: '2026-08-30T08:42:00+07:00' },
+      { id: 'ACT-002', action: 'เข้าสู่ระบบสำเร็จ', detail: 'เข้าสู่ระบบด้วยบัญชีนักศึกษา', actor: 'นายธนกฤต พูนทรัพย์', occurredAt: '2026-08-30T08:42:00+07:00' },
     ],
   },
   {
     id: '66123456702',
     type: 'student',
+    prefix: 'นางสาว',
     firstName: 'ณัฐชา',
     lastName: 'ศรีสุข',
     recordStatus: 'active',
@@ -68,6 +74,7 @@ const initialPeople: PersonRecord[] = [
   {
     id: '65123456719',
     type: 'student',
+    prefix: 'นาย',
     firstName: 'ปุณณภพ',
     lastName: 'วงศ์คำ',
     recordStatus: 'inactive',
@@ -79,6 +86,7 @@ const initialPeople: PersonRecord[] = [
   {
     id: '66123456704',
     type: 'student',
+    prefix: 'นางสาว',
     firstName: 'ภัทรวดี',
     lastName: 'คำแสน',
     recordStatus: 'active',
@@ -89,15 +97,17 @@ const initialPeople: PersonRecord[] = [
   {
     id: 'L0012',
     type: 'lecturer',
+    prefix: 'ผศ.ดร.',
     firstName: 'สมชาย',
     lastName: 'ใจมั่น',
     recordStatus: 'active',
     accountStatus: 'active',
-    activities: [{ id: 'ACT-005', action: 'เข้าสู่ระบบสำเร็จ', detail: 'เข้าสู่ระบบด้วยบัญชีอาจารย์', actor: 'สมชาย ใจมั่น', occurredAt: '2026-08-30T07:55:00+07:00' }],
+    activities: [{ id: 'ACT-005', action: 'เข้าสู่ระบบสำเร็จ', detail: 'เข้าสู่ระบบด้วยบัญชีอาจารย์', actor: 'ผศ.ดร.สมชาย ใจมั่น', occurredAt: '2026-08-30T07:55:00+07:00' }],
   },
   {
     id: 'L0018',
     type: 'lecturer',
+    prefix: 'อาจารย์',
     firstName: 'อรทัย',
     lastName: 'บุญช่วย',
     recordStatus: 'active',
@@ -107,6 +117,7 @@ const initialPeople: PersonRecord[] = [
   {
     id: 'L0021',
     type: 'lecturer',
+    prefix: 'ดร.',
     firstName: 'กมลชนก',
     lastName: 'ศรีสวัสดิ์',
     recordStatus: 'active',
@@ -116,6 +127,7 @@ const initialPeople: PersonRecord[] = [
   {
     id: 'L0030',
     type: 'lecturer',
+    prefix: 'อาจารย์',
     firstName: 'วรัญญา',
     lastName: 'ทองใบ',
     recordStatus: 'active',
@@ -145,6 +157,13 @@ const cloneInitialPeople = () => initialPeople.map(person => ({
   activities: person.activities.map(activity => ({ ...activity })),
 }))
 
+export const personPrefixOptions: Record<PersonType, Array<{ value: PersonPrefix, label: string }>> = {
+  student: ['นาย', 'นางสาว', 'นาง'].map(value => ({ value: value as PersonPrefix, label: value })),
+  lecturer: ['อาจารย์', 'ดร.', 'ผศ.', 'ผศ.ดร.', 'รศ.', 'รศ.ดร.', 'ศ.', 'ศ.ดร.'].map(value => ({ value: value as PersonPrefix, label: value })),
+}
+
+export const getPersonFullName = (person: Pick<PersonRecord, 'prefix' | 'firstName' | 'lastName'>) => `${person.prefix}${person.firstName} ${person.lastName}`
+
 export const accountStatusMeta: Record<AccountStatus, { label: string, tone: 'neutral' | 'success' | 'warning' | 'danger' }> = {
   'first-login': { label: 'รอเข้าสู่ระบบครั้งแรก', tone: 'warning' },
   active: { label: 'ใช้งาน', tone: 'success' },
@@ -166,7 +185,7 @@ export const studentApplicationStatusMeta: Record<StudentApplicationStatus, { la
 }
 
 export const usePeopleDirectory = () => {
-  const people = useState<PersonRecord[]>('people-directory', cloneInitialPeople)
+  const people = useState<PersonRecord[]>('people-directory-v2', cloneInitialPeople)
   const { scenario, recordEvent } = useScenario()
 
   const findPerson = (type: PersonType, id: string) => people.value.find(person => person.type === type && person.id === id)
@@ -200,6 +219,7 @@ export const usePeopleDirectory = () => {
   const updatePerson = (person: PersonRecord, input: PersonInput) => {
     const changed = [
       person.id !== input.id ? `รหัส ${person.id} → ${input.id}` : '',
+      person.prefix !== input.prefix ? `คำนำหน้า ${person.prefix} → ${input.prefix}` : '',
       person.firstName !== input.firstName ? `ชื่อ ${person.firstName} → ${input.firstName}` : '',
       person.lastName !== input.lastName ? `นามสกุล ${person.lastName} → ${input.lastName}` : '',
       person.cycle !== input.cycle ? `รอบ ${person.cycle || '-'} → ${input.cycle || '-'}` : '',

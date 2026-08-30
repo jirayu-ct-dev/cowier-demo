@@ -135,9 +135,9 @@ const submit = async () => {
                   </thead>
                   <tbody class="divide-y divide-divider">
                     <tr v-for="lecturer in lecturerCandidates" :key="lecturer.id" class="hover:bg-surface/70">
-                      <td class="px-4 py-4"><UiCheckbox :model-value="lecturerIds.includes(lecturer.id)" :label="`เลือก ${lecturer.firstName} ${lecturer.lastName}`" @update:model-value="toggleSelection('lecturer', lecturer.id, $event)" /></td>
+                      <td class="px-4 py-4"><UiCheckbox :model-value="lecturerIds.includes(lecturer.id)" :label="`เลือก ${getPersonFullName(lecturer)}`" @update:model-value="toggleSelection('lecturer', lecturer.id, $event)" /></td>
                       <td class="px-4 py-4 text-muted">{{ lecturer.id }}</td>
-                      <td class="px-4 py-4 font-semibold text-ink">{{ lecturer.firstName }} {{ lecturer.lastName }}</td>
+                      <td class="px-4 py-4 font-semibold text-ink">{{ getPersonFullName(lecturer) }}</td>
                       <td class="px-4 py-4 text-right"><UiBadge tone="success">ใช้งาน</UiBadge></td>
                     </tr>
                   </tbody>
@@ -145,8 +145,8 @@ const submit = async () => {
               </div>
               <div class="mt-3 divide-y divide-divider overflow-hidden rounded-control border border-divider md:hidden">
                 <div v-for="lecturer in lecturerCandidates" :key="lecturer.id" class="flex items-start gap-3 p-4">
-                  <UiCheckbox :model-value="lecturerIds.includes(lecturer.id)" :label="`เลือก ${lecturer.firstName} ${lecturer.lastName}`" @update:model-value="toggleSelection('lecturer', lecturer.id, $event)" />
-                  <div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-3"><p class="font-semibold text-ink">{{ lecturer.firstName }} {{ lecturer.lastName }}</p><UiBadge tone="success">ใช้งาน</UiBadge></div><p class="mt-1 text-xs text-muted">{{ lecturer.id }}</p></div>
+                  <UiCheckbox :model-value="lecturerIds.includes(lecturer.id)" :label="`เลือก ${getPersonFullName(lecturer)}`" @update:model-value="toggleSelection('lecturer', lecturer.id, $event)" />
+                  <div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-3"><p class="font-semibold text-ink">{{ getPersonFullName(lecturer) }}</p><UiBadge tone="success">ใช้งาน</UiBadge></div><p class="mt-1 text-xs text-muted">{{ lecturer.id }}</p></div>
                 </div>
               </div>
             </template>

@@ -7,6 +7,7 @@ definePageMeta({ title: 'เพิ่มข้อมูลบุคคล', midd
 
 const route = useRoute()
 const { createPerson } = usePeopleDirectory()
+const { cycles } = useCoopCycles()
 const { showToast } = useToast()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
@@ -16,19 +17,26 @@ const context = computed(() => personType.value === 'student'
   : { title: 'เพิ่มอาจารย์', idLabel: 'รหัสอาจารย์', singular: 'อาจารย์' })
 useHead({ title: () => context.value.title })
 
-const form = reactive<PersonInput>({ id: '', firstName: '', lastName: '', cycle: personType.value === 'student' ? 'ภาคเรียนที่ 2/2569' : undefined })
+const prefixOptions = computed(() => personPrefixOptions[personType.value])
+const cycleOptions = cycles.map(cycle => ({ value: cycle.label, label: cycle.label }))
+const form = reactive<PersonInput>({ id: '', prefix: personType.value === 'student' ? 'นาย' : 'อาจารย์', firstName: '', lastName: '', cycle: personType.value === 'student' ? 'ภาคเรียนที่ 2/2569' : undefined })
+const formCycle = computed({
+  get: () => form.cycle ?? '',
+  set: value => { form.cycle = value },
+})
 const errors = reactive<Partial<Record<keyof PersonInput, string>>>({})
 const isSubmitting = ref(false)
 
 const schema = z.object({
   id: z.string().trim().min(1, 'กรุณากรอกรหัส').max(20, 'รหัสต้องไม่เกิน 20 ตัวอักษร'),
+  prefix: z.enum(personPrefixValues, { error: 'กรุณาเลือกคำนำหน้า' }),
   firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ').max(100, 'ชื่อต้องไม่เกิน 100 ตัวอักษร'),
   lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล').max(100, 'นามสกุลต้องไม่เกิน 100 ตัวอักษร'),
   cycle: z.string().optional(),
 })
 
 const submit = async () => {
-  Object.assign(errors, { id: undefined, firstName: undefined, lastName: undefined, cycle: undefined })
+  Object.assign(errors, { id: undefined, prefix: undefined, firstName: undefined, lastName: undefined, cycle: undefined })
   const result = schema.safeParse(form)
   if (!result.success) {
     result.error.issues.forEach((issue) => { errors[issue.path[0] as keyof PersonInput] = issue.message })
@@ -60,9 +68,10 @@ const submit = async () => {
       <form novalidate @submit.prevent="submit">
         <div class="grid gap-5 sm:grid-cols-2">
           <div class="sm:col-span-2"><UiInput v-model="form.id" :label="context.idLabel" :placeholder="personType === 'student' ? 'เช่น 66123456701' : 'เช่น L0021'" :error="errors.id" required /></div>
+          <div><UiSelect v-model="form.prefix" :options="prefixOptions" label="คำนำหน้า" :error="errors.prefix" required /></div>
           <div><UiInput v-model="form.firstName" label="ชื่อ" placeholder="กรอกชื่อ" :error="errors.firstName" required /></div>
           <div><UiInput v-model="form.lastName" label="นามสกุล" placeholder="กรอกนามสกุล" :error="errors.lastName" required /></div>
-          <div v-if="personType === 'student'" class="sm:col-span-2"><UiInput v-model="form.cycle" label="รอบสหกิจศึกษา" help="กำหนดรอบของนักศึกษาได้ภายหลังโดยไม่ต้องสร้างบัญชีใหม่" :error="errors.cycle" /></div>
+          <div v-if="personType === 'student'"><UiSelect v-model="formCycle" :options="cycleOptions" label="รอบสหกิจศึกษา" help="กำหนดรอบของนักศึกษาได้ภายหลังโดยไม่ต้องสร้างบัญชีใหม่" :error="errors.cycle" /></div>
         </div>
         <div class="mt-6 flex flex-col-reverse gap-2 border-t border-divider pt-5 sm:flex-row sm:justify-end"><UiButton variant="ghost" @click="navigateTo(`/staff/master-data/${route.params.type}`)">ยกเลิก</UiButton><UiButton type="submit" :icon="Save" :loading="isSubmitting">บันทึกและสร้างบัญชี</UiButton></div>
       </form>

@@ -8,7 +8,7 @@ useHead({ title: 'จัดกลุ่มอาจารย์นิเทศ' 
 
 const { scenario } = useScenario()
 const { people } = usePeopleDirectory()
-const { groups, getGroupCompanies, getUnassignedCompanies } = useSupervisionGroups()
+const { placements, groups, getCompanies, getGroupCompanies, getUnassignedCompanies } = useSupervisionGroups()
 const { cycleId, round, selectedCycleLabel } = useSupervisionContext()
 const search = ref('')
 const province = ref('all')
@@ -38,9 +38,10 @@ const resultStart = computed(() => filteredCompanies.value.length ? (currentPage
 const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredCompanies.value.length))
 const pageSizeOptions = ['10', '20', '50'].map(value => ({ value, label: value }))
 const hasFilters = computed(() => Boolean(search.value) || province.value !== 'all')
-const assignedLecturerCount = computed(() => new Set(currentGroups.value.flatMap(group => group.lecturerIds)).size)
-const assignedCompanyCount = computed(() => currentGroups.value.reduce((total, group) => total + group.companyIds.length, 0))
-const assignedStudentCount = computed(() => currentGroups.value.flatMap(group => getGroupCompanies(group)).reduce((total, company) => total + company.studentCount, 0))
+const cycleGroups = computed(() => groups.value.filter(group => group.cycleId === cycleId.value))
+const cycleLecturerCount = computed(() => new Set(cycleGroups.value.flatMap(group => group.lecturerIds)).size)
+const cycleCompanyCount = computed(() => getCompanies(cycleId.value).length)
+const cycleStudentCount = computed(() => new Set(placements.value.filter(placement => placement.cycleId === cycleId.value).map(placement => placement.studentId)).size)
 const supervisionTabs = computed(() => [
   { value: 'groups', label: 'กลุ่มอาจารย์' },
   { value: 'companies', label: 'สถานประกอบการที่ยังไม่มอบหมาย', count: unassignedCompanies.value.length },
@@ -63,7 +64,7 @@ const retry = () => {
 const startCreateGroup = () => navigateTo({ path: '/staff/supervision/groups/new', query: { cycle: cycleId.value, round: String(round.value) } })
 const lecturerName = (id: string) => {
   const lecturer = people.value.find(person => person.type === 'lecturer' && person.id === id)
-  return lecturer ? `${lecturer.firstName} ${lecturer.lastName}` : id
+  return lecturer ? getPersonFullName(lecturer) : id
 }
 const selectedGroupCompanies = computed(() => selectedGroup.value ? getGroupCompanies(selectedGroup.value) : [])
 const selectedGroupStudentCount = computed(() => selectedGroupCompanies.value.reduce((total, company) => total + company.studentCount, 0))
@@ -84,11 +85,14 @@ const openCompanyDialog = (company: SupervisionCompany) => {
       <UiButton :icon="Plus" @click="startCreateGroup">สร้างกลุ่มอาจารย์</UiButton>
     </div>
 
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <div><h3 class="text-base font-bold text-ink">ภาพรวมรอบสหกิจศึกษา</h3><p class="mt-0.5 text-sm text-muted">{{ selectedCycleLabel }} · รวมทุกครั้งที่นิเทศ</p></div>
+    </div>
     <div class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <UiCard><p class="text-sm text-muted">กลุ่มอาจารย์</p><p class="mt-2 text-3xl font-bold text-ink">{{ currentGroups.length }}</p></UiCard>
-      <UiCard><p class="text-sm text-muted">อาจารย์ที่จัดกลุ่มแล้ว</p><p class="mt-2 text-3xl font-bold text-ink">{{ assignedLecturerCount }}</p></UiCard>
-      <UiCard><p class="text-sm text-muted">สถานประกอบการที่มอบหมายแล้ว</p><p class="mt-2 text-3xl font-bold text-ink">{{ assignedCompanyCount }}</p></UiCard>
-      <UiCard><p class="text-sm text-muted">นักศึกษาในสถานประกอบการเหล่านี้</p><p class="mt-2 text-3xl font-bold text-ink">{{ assignedStudentCount }}</p></UiCard>
+      <UiCard><p class="text-sm text-muted">อาจารย์ที่จัดกลุ่มแล้ว</p><p class="mt-2 text-3xl font-bold text-ink">{{ cycleLecturerCount }}</p><p class="mt-1 text-xs text-muted">คน</p></UiCard>
+      <UiCard><p class="text-sm text-muted">กลุ่มอาจารย์ทั้งหมด</p><p class="mt-2 text-3xl font-bold text-ink">{{ cycleGroups.length }}</p><p class="mt-1 text-xs text-muted">กลุ่ม</p></UiCard>
+      <UiCard><p class="text-sm text-muted">สถานประกอบการ</p><p class="mt-2 text-3xl font-bold text-ink">{{ cycleCompanyCount }}</p><p class="mt-1 text-xs text-muted">แห่ง</p></UiCard>
+      <UiCard><p class="text-sm text-muted">นักศึกษา</p><p class="mt-2 text-3xl font-bold text-ink">{{ cycleStudentCount }}</p><p class="mt-1 text-xs text-muted">คน</p></UiCard>
     </div>
 
     <UiTabs :tabs="supervisionTabs" default-value="groups" label="ข้อมูลการจัดกลุ่มนิเทศ" variant="plain">
