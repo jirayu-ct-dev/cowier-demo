@@ -13,10 +13,13 @@ const {
 const {
   studentCohort,
   studentCohortOptions,
+  studentSection,
+  studentSectionOptions,
   studentSemester,
   studentSemesterOptions,
-  ensureAvailableSemester,
+  ensureAvailableStudentFilters,
   selectedStudentCohortLabel,
+  selectedStudentSectionLabel,
   selectedStudentSemesterLabel,
 } = useStudentCohortContext()
 const showsSupervisionRound = computed(() => route.path.startsWith('/lecturer/supervision')
@@ -26,7 +29,9 @@ const showsStudentCohort = computed(() => route.path.startsWith('/lecturer/stude
   || route.path === '/staff/master-data/students')
 const toolbarGridClass = computed(() => showsLecturerScheduleFilters.value
   ? 'sm:grid-cols-[17rem_12rem_13rem]'
-  : showsSupervisionRound.value || showsStudentCohort.value
+  : showsStudentCohort.value
+    ? 'sm:grid-cols-[11rem_9rem_12rem]'
+  : showsSupervisionRound.value
     ? 'sm:grid-cols-[17rem_12rem]'
   : 'sm:w-[17rem]')
 const contextLabel = computed(() => {
@@ -40,7 +45,7 @@ const scheduleDateLabel = computed(() => scheduleDate.value
   ? new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(new Date(`${scheduleDate.value}T00:00:00+07:00`))
   : '')
 watchEffect(() => {
-  if (showsStudentCohort.value) ensureAvailableSemester()
+  if (showsStudentCohort.value) ensureAvailableStudentFilters()
 })
 </script>
 
@@ -54,7 +59,7 @@ watchEffect(() => {
         <div class="min-w-0">
           <p class="text-xs font-medium text-muted">{{ contextLabel }}</p>
           <p class="truncate text-sm font-semibold text-ink">
-            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }} · {{ selectedStudentSemesterLabel }}</template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template><template v-if="showsLecturerScheduleFilters && scheduleDateLabel"> · {{ scheduleDateLabel }}</template></template>
+            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }} · {{ selectedStudentSectionLabel }} · {{ selectedStudentSemesterLabel }}</template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template><template v-if="showsLecturerScheduleFilters && scheduleDateLabel"> · {{ scheduleDateLabel }}</template></template>
           </p>
         </div>
       </div>
@@ -66,6 +71,14 @@ watchEffect(() => {
           :options="studentCohortOptions"
           :placeholder="selectedStudentCohortLabel"
           label="รุ่นนักศึกษา"
+          :label-visible="false"
+        />
+        <UiSelect
+          v-if="showsStudentCohort"
+          v-model="studentSection"
+          :options="studentSectionOptions"
+          :placeholder="selectedStudentSectionLabel"
+          label="หมู่เรียน"
           :label-visible="false"
         />
         <UiSelect

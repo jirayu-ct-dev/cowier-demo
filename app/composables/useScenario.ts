@@ -45,7 +45,6 @@ export const useScenario = () => {
   const resetScenario = () => {
     scenario.value = { ...defaults }
     events.value = []
-    useState<boolean>('mock-notification-read').value = false
   }
 
   return { scenario, events, recordEvent, resetScenario }

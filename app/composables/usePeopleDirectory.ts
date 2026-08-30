@@ -3,6 +3,8 @@ export const personPrefixValues = ['นาย', 'นาง', 'นางสาว
 export type PersonPrefix = typeof personPrefixValues[number]
 export type PersonRecordStatus = 'active' | 'inactive'
 export type AccountStatus = 'first-login' | 'active' | 'suspended' | 'terminated'
+export const studentSectionValues = ['หมู่ 1', 'หมู่ 2'] as const
+export type StudentSection = typeof studentSectionValues[number]
 
 export interface PersonActivity {
   id: string
@@ -21,6 +23,7 @@ export interface PersonRecord {
   recordStatus: PersonRecordStatus
   accountStatus: AccountStatus
   cycle?: string
+  section?: StudentSection
   company?: string
   activities: PersonActivity[]
 }
@@ -31,6 +34,7 @@ export interface PersonInput {
   firstName: string
   lastName: string
   cycle?: string
+  section?: StudentSection
 }
 
 export type StudentApplicationStatus = 'submitted' | 'returned' | 'letter-issued' | 'confirmed' | 'cancelled'
@@ -53,6 +57,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'active',
     cycle: 'ภาคเรียนที่ 2/2569',
+    section: 'หมู่ 1',
     company: 'บริษัท สยามเทค โซลูชัน จำกัด',
     activities: [
       { id: 'ACT-001', action: 'แก้ไขชื่อ', detail: 'ธนกิต → ธนกฤต', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-28T10:20:00+07:00' },
@@ -68,6 +73,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'first-login',
     cycle: 'ภาคเรียนที่ 2/2569',
+    section: 'หมู่ 1',
     company: 'บริษัท อีสานดิจิทัล จำกัด',
     activities: [{ id: 'ACT-003', action: 'สร้างข้อมูลและบัญชี', detail: 'รอเข้าสู่ระบบครั้งแรก', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-25T09:15:00+07:00' }],
   },
@@ -80,6 +86,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'inactive',
     accountStatus: 'terminated',
     cycle: 'ภาคเรียนที่ 1/2568',
+    section: 'หมู่ 2',
     company: 'บริษัท โคราชซอฟต์ จำกัด',
     activities: [{ id: 'ACT-004', action: 'ยุติการใช้งานข้อมูล', detail: 'ยุติบัญชีและคงประวัติเดิมไว้', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-05-10T14:30:00+07:00' }],
   },
@@ -92,6 +99,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'active',
     cycle: 'ภาคเรียนที่ 2/2569',
+    section: 'หมู่ 2',
     activities: [{ id: 'ACT-007', action: 'สร้างข้อมูลและบัญชี', detail: 'สร้างจากการนำเข้าข้อมูล', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-20T11:25:00+07:00' }],
   },
   {
@@ -103,6 +111,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'active',
     cycle: 'ภาคเรียนที่ 2/2569',
+    section: 'หมู่ 1',
     activities: [{ id: 'ACT-010', action: 'สร้างข้อมูลและบัญชี', detail: 'ยังไม่ได้ส่งคำร้องสถานประกอบการ', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-22T09:10:00+07:00' }],
   },
   {
@@ -114,6 +123,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'first-login',
     cycle: 'ภาคฤดูร้อน/2569',
+    section: 'หมู่ 2',
     activities: [{ id: 'ACT-011', action: 'สร้างข้อมูลและบัญชี', detail: 'รอเข้าสู่ระบบครั้งแรก', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-29T11:00:00+07:00' }],
   },
   {
@@ -125,6 +135,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'active',
     cycle: 'ภาคฤดูร้อน/2569',
+    section: 'หมู่ 1',
     activities: [{ id: 'ACT-012', action: 'สร้างข้อมูลและบัญชี', detail: 'ยังไม่ได้ส่งคำร้องสถานประกอบการ', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-29T11:20:00+07:00' }],
   },
   {
@@ -136,6 +147,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'first-login',
     cycle: 'ภาคเรียนที่ 1/2570',
+    section: 'หมู่ 2',
     activities: [{ id: 'ACT-013', action: 'สร้างข้อมูลและบัญชี', detail: 'รอเข้าสู่ระบบครั้งแรก', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-30T10:15:00+07:00' }],
   },
   {
@@ -147,6 +159,7 @@ const initialPeople: PersonRecord[] = [
     recordStatus: 'active',
     accountStatus: 'active',
     cycle: 'ภาคเรียนที่ 1/2570',
+    section: 'หมู่ 1',
     activities: [{ id: 'ACT-014', action: 'สร้างข้อมูลและบัญชี', detail: 'ยังไม่ได้ส่งคำร้องสถานประกอบการ', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-30T10:30:00+07:00' }],
   },
   {
@@ -278,6 +291,7 @@ export const usePeopleDirectory = () => {
       person.firstName !== input.firstName ? `ชื่อ ${person.firstName} → ${input.firstName}` : '',
       person.lastName !== input.lastName ? `นามสกุล ${person.lastName} → ${input.lastName}` : '',
       person.cycle !== input.cycle ? `รอบ ${person.cycle || '-'} → ${input.cycle || '-'}` : '',
+      person.section !== input.section ? `หมู่เรียน ${person.section || '-'} → ${input.section || '-'}` : '',
     ].filter(Boolean)
     if (!changed.length) return person
     const duplicate = people.value.some(item => item !== person && item.type === person.type && item.id === input.id)

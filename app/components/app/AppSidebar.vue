@@ -14,6 +14,12 @@ import {
 const emit = defineEmits<{ navigate: [] }>();
 const route = useRoute();
 const { scenario } = useScenario();
+const { activeRequest } = useStudentPlacements();
+const studentPlacementActionTarget = computed(() =>
+  activeRequest.value
+    ? `/student/placements/${activeRequest.value.id}`
+    : "/student/placements/new",
+);
 const navigation = computed(() => [
   { label: "หน้าหลัก", to: "/", icon: LayoutDashboard, exact: true },
   ...(scenario.value.role === "staff" || route.path.startsWith("/staff")
@@ -47,10 +53,18 @@ const navigation = computed(() => [
           exact: false,
         },
         {
-          label: "แจ้งข้อมูลที่ฝึกงาน",
-          to: "/student/placements/new",
-          icon: PlusCircle,
+          label: activeRequest.value
+            ? "ข้อมูลที่ฝึกงานปัจจุบัน"
+            : "แจ้งข้อมูลที่ฝึกงาน",
+          to: studentPlacementActionTarget.value,
+          icon: activeRequest.value ? FileCheck2 : PlusCircle,
           exact: true,
+        },
+        {
+          label: "ตารางนิเทศของฉัน",
+          to: "/student/supervision",
+          icon: CalendarDays,
+          exact: false,
         },
       ]
     : []),
@@ -84,6 +98,8 @@ const navigation = computed(() => [
 const isActive = (to: string, exact: boolean) => {
   if (exact) return route.path === to;
   if (to === "/student/placements") {
+    if (activeRequest.value && route.path === studentPlacementActionTarget.value)
+      return false;
     return (
       route.path === to ||
       (route.path.startsWith(`${to}/`) && route.path !== `${to}/new`)
@@ -130,7 +146,7 @@ const isActive = (to: string, exact: boolean) => {
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 7</p>
+      <p>UI Prototype · Checkpoint 10</p>
     </div>
   </aside>
 </template>

@@ -11,7 +11,7 @@ const { scenario } = useScenario()
 const { showToast } = useToast()
 const { people } = usePeopleDirectory()
 const { exportPeople } = usePeopleImport()
-const { studentCohort, studentSemester } = useStudentCohortContext()
+const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
@@ -57,6 +57,7 @@ const filteredPeople = computed(() => {
     .filter(person => person.type === personType.value)
     .filter(person => personType.value !== 'student' || studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
     .filter(person => personType.value !== 'student' || studentSemester.value === 'all' || getStudentSemester(person.cycle) === studentSemester.value)
+    .filter(person => personType.value !== 'student' || studentSection.value === 'all' || person.section === studentSection.value)
     .filter(person => !keyword || [person.id, person.prefix, person.firstName, person.lastName, person.company]
       .some(value => value?.toLocaleLowerCase('th').includes(keyword)))
     .filter(person => recordStatus.value === 'all' || person.recordStatus === recordStatus.value)
@@ -73,7 +74,7 @@ const resultStart = computed(() => filteredPeople.value.length ? (currentPage.va
 const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredPeople.value.length))
 const hasFilters = computed(() => Boolean(search.value) || recordStatus.value !== 'all' || accountStatus.value !== 'all')
 
-watch([search, recordStatus, accountStatus, pageSize, personType, studentCohort, studentSemester], () => { currentPage.value = 1 })
+watch([search, recordStatus, accountStatus, pageSize, personType, studentCohort, studentSection, studentSemester], () => { currentPage.value = 1 })
 watch(pageCount, count => { if (currentPage.value > count) currentPage.value = count })
 
 const clearFilters = () => {
@@ -173,6 +174,7 @@ const handleExport = async () => {
                   <button type="button" class="inline-flex items-center gap-1 font-semibold hover:text-ink" :aria-label="`เรียงชื่อ${sortDirection === 'asc' ? 'จาก ฮ ถึง ก' : 'จาก ก ถึง ฮ'}`" @click="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'">ชื่อ–นามสกุล <ArrowUp v-if="sortDirection === 'asc'" :size="15" aria-hidden="true" /><ArrowDown v-else :size="15" aria-hidden="true" /></button>
                 </th>
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">รอบ / สถานประกอบการ</th>
+                <th v-if="personType === 'student'" scope="col" class="px-4 py-3">หมู่เรียน</th>
                 <th scope="col" class="px-4 py-3">สถานะข้อมูล</th>
                 <th scope="col" class="px-4 py-3">สถานะบัญชี</th>
                 <th scope="col" class="w-20 px-4 py-3"><span class="sr-only">ดูรายละเอียด</span></th>
@@ -183,6 +185,7 @@ const handleExport = async () => {
                 <td class="whitespace-nowrap px-6 py-4 font-semibold text-ink">{{ person.id }}</td>
                 <td class="px-4 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(person) }}</p><p class="mt-1 text-xs text-muted">ชื่อผู้ใช้: {{ person.id }}</p></td>
                 <td v-if="personType === 'student'" class="max-w-sm px-4 py-4"><p class="text-ink">{{ person.cycle || 'ยังไม่กำหนดรอบ' }}</p><p class="mt-1 truncate text-xs text-muted">{{ person.company || 'ยังไม่มีสถานประกอบการที่ยืนยัน' }}</p></td>
+                <td v-if="personType === 'student'" class="whitespace-nowrap px-4 py-4 text-ink">{{ person.section || 'ยังไม่กำหนด' }}</td>
                 <td class="px-4 py-4"><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></td>
                 <td class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
                 <td class="px-4 py-4 text-right"><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${getPersonFullName(person)}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></NuxtLink></td>
@@ -193,7 +196,7 @@ const handleExport = async () => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}</p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
+            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
             <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><UiButton size="sm" variant="secondary" :icon="Eye" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูรายละเอียด</UiButton></div>
           </article>
         </div>

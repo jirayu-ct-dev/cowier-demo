@@ -5,11 +5,12 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
-  Eye,
+  FileCheck2,
   RotateCcw,
   Search,
   X,
 } from "@lucide/vue";
+import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 import { getPageCount, paginateItems } from "~/utils/table";
 
 definePageMeta({ title: "ตรวจคำร้อง", middleware: "lecturer-prototype" });
@@ -128,6 +129,13 @@ const toggleSort = (key: SortKey) => {
   page.value = 1;
 };
 const openRequest = (id: string) => navigateTo(`/lecturer/placements/${id}`);
+const requestActionLabel = (request: PlacementReviewRequest) => {
+  if (request.status === "submitted") return "ตรวจคำร้อง";
+  if (request.status === "returned") return "ติดตามการแก้ไข";
+  if (request.status === "waiting_response") return "ติดตามหนังสือตอบกลับ";
+  if (request.status === "response_uploaded") return "ตรวจหนังสือตอบกลับ";
+  return "ดูผลคำร้อง";
+};
 
 watch([search, status, companyStatus, pageSize], () => {
   page.value = 1;
@@ -322,7 +330,7 @@ watch(pageCount, (count) => {
                   </button>
                 </th>
                 <th scope="col" class="px-4 py-3">สถานะ</th>
-                <th scope="col" class="w-24 px-4 py-3 text-right">การทำงาน</th>
+                <th scope="col" class="w-16 px-4 py-3 text-right"><span class="sr-only">การดำเนินการ</span></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
@@ -359,13 +367,11 @@ watch(pageCount, (count) => {
                 <td class="px-4 py-4 text-right">
                   <button
                     type="button"
-                    class="inline-grid size-8 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink"
-                    :aria-label="`เปิดคำร้อง ${request.id}`"
-                    title="เปิดรายละเอียด"
+                    class="inline-grid size-9 place-items-center rounded-control border border-divider text-muted transition-colors hover:bg-surface hover:text-ink"
+                    :aria-label="`${requestActionLabel(request)} ${request.id}`"
+                    :title="requestActionLabel(request)"
                     @click="openRequest(request.id)"
-                  >
-                    <Eye :size="15" />
-                  </button>
+                  ><FileCheck2 :size="16" aria-hidden="true" /></button>
                 </td>
               </tr>
             </tbody>
@@ -386,14 +392,13 @@ watch(pageCount, (count) => {
             </div>
             <p class="mt-4 font-medium text-ink">{{ request.company }}</p>
             <p class="mt-1 text-sm text-muted">{{ request.position }}</p>
-            <UiButton
-              size="sm"
-              variant="secondary"
-              class="mt-4"
-              :icon="Eye"
+            <button
+              type="button"
+              class="mt-4 inline-grid size-9 place-items-center rounded-control border border-divider text-muted transition-colors hover:bg-surface hover:text-ink"
+              :aria-label="`${requestActionLabel(request)} ${request.id}`"
+              :title="requestActionLabel(request)"
               @click="openRequest(request.id)"
-              >เปิดรายละเอียด</UiButton
-            >
+            ><FileCheck2 :size="16" aria-hidden="true" /></button>
           </article>
         </div>
         <div

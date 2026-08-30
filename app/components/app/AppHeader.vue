@@ -11,8 +11,8 @@ import {
 
 const emit = defineEmits<{ openNavigation: [] }>()
 const route = useRoute()
-const { scenario, recordEvent } = useScenario()
-const notificationRead = useState<boolean>('mock-notification-read', () => false)
+const { scenario } = useScenario()
+const { roleNotifications, unreadCount, markAllAsRead, openNotification } = useNotifications()
 
 const roleLabel = computed(() => ({
   staff: 'เจ้าหน้าที่',
@@ -33,12 +33,6 @@ const pageTitle = computed(() => {
   if (path.startsWith('/staff/master-data/lecturers')) return 'ข้อมูลอาจารย์'
   return String(route.meta.title ?? 'หน้าหลัก')
 })
-const unreadNotificationCount = computed(() => scenario.value.role === 'student' && !notificationRead.value ? 1 : 0)
-const markNotificationRead = () => {
-  if (!unreadNotificationCount.value) return
-  notificationRead.value = true
-  recordEvent('อ่านการแจ้งเตือน: มีการเผยแพร่ตารางนิเทศ')
-}
 </script>
 
 <template>
@@ -67,27 +61,33 @@ const markNotificationRead = () => {
       <DropdownMenuRoot>
         <DropdownMenuTrigger
           class="relative grid size-11 shrink-0 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink"
-          :aria-label="unreadNotificationCount ? `การแจ้งเตือน มี ${unreadNotificationCount} รายการใหม่` : 'การแจ้งเตือน ไม่มีรายการใหม่'"
+          :aria-label="unreadCount ? `การแจ้งเตือน มี ${unreadCount} รายการใหม่` : 'การแจ้งเตือน ไม่มีรายการใหม่'"
         >
           <Bell :size="19" aria-hidden="true" />
-          <span v-if="unreadNotificationCount" class="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-danger text-[10px] font-semibold leading-none text-white">
-            {{ unreadNotificationCount }}
+          <span v-if="unreadCount" class="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-danger text-[10px] font-semibold leading-none text-white">
+            {{ unreadCount }}
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
           <DropdownMenuContent :side-offset="8" align="end" class="z-50 w-[calc(100vw-2rem)] max-w-sm rounded-panel border border-divider bg-canvas p-2 shadow-xl">
-            <DropdownMenuLabel class="px-3 py-2 text-sm font-semibold text-ink">การแจ้งเตือน</DropdownMenuLabel>
+            <DropdownMenuLabel class="flex items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-ink">
+              <span>การแจ้งเตือน</span>
+              <button v-if="unreadCount" type="button" class="text-xs font-semibold text-info hover:underline" @click.stop="markAllAsRead">อ่านทั้งหมด</button>
+            </DropdownMenuLabel>
             <DropdownMenuItem
-              v-if="unreadNotificationCount"
-              class="cursor-pointer rounded-control bg-info-soft px-3 py-3 outline-none data-[highlighted]:bg-blue-100"
-              @select="markNotificationRead"
+              v-for="notification in roleNotifications.slice(0, 3)"
+              :key="notification.id"
+              class="cursor-pointer rounded-control px-3 py-3 outline-none data-[highlighted]:bg-surface"
+              :class="notification.readAt ? '' : 'bg-info-soft'"
+              @select="openNotification(notification)"
             >
               <div>
-                <p class="text-sm font-medium text-ink">มีการเผยแพร่ตารางนิเทศ</p>
-                <p class="mt-1 text-xs leading-5 text-muted">ตารางนิเทศครั้งถัดไปวันที่ 2 ก.ย. 2569</p>
+                <p class="text-sm font-medium text-ink">{{ notification.title }}</p>
+                <p class="mt-1 text-xs leading-5 text-muted">{{ notification.description }}</p>
               </div>
             </DropdownMenuItem>
-            <p v-else class="rounded-control bg-surface px-3 py-3 text-sm text-muted">ไม่มีการแจ้งเตือนใหม่</p>
+            <p v-if="!roleNotifications.length" class="rounded-control bg-surface px-3 py-3 text-sm text-muted">ยังไม่มีการแจ้งเตือน</p>
+            <DropdownMenuItem class="mt-1 cursor-pointer rounded-control px-3 py-2 text-center text-sm font-semibold text-info outline-none data-[highlighted]:bg-surface" @select="navigateTo('/notifications')">ดูการแจ้งเตือนทั้งหมด</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenuPortal>
       </DropdownMenuRoot>
