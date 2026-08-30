@@ -20,6 +20,7 @@ type SortKey = "studentName" | "submittedAt";
 
 const { scenario } = useScenario();
 const { requests } = useLetterBatches();
+const { cycleId } = useSupervisionContext();
 const search = ref("");
 const status = ref("all");
 const companyStatus = ref("all");
@@ -64,6 +65,7 @@ const filtered = computed(() => {
   if (viewState.value === "empty") return [];
   const keyword = search.value.trim().toLocaleLowerCase();
   return requests.value
+    .filter((request) => request.cycleId === cycleId.value)
     .filter(
       (request) =>
         (!keyword ||
@@ -148,14 +150,8 @@ watch(pageCount, (count) => {
 
     <UiCard :padded="false">
       <div class="border-b border-divider p-5 sm:p-6">
-        <div>
-          <h3 class="text-lg font-bold text-ink">รายการคำร้องสถานประกอบการ</h3>
-          <p class="mt-1 text-sm leading-6 text-muted">
-            แต่ละรายการจะเปิดเป็นหน้าดำเนินการตามสถานะปัจจุบัน
-          </p>
-        </div>
         <div
-          class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
+          class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
         >
           <label class="block w-full sm:max-w-sm lg:w-96 lg:flex-none"
             ><span class="sr-only">ค้นหาคำร้อง</span

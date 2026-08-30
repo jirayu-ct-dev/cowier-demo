@@ -11,6 +11,7 @@ const { scenario } = useScenario()
 const { showToast } = useToast()
 const { people } = usePeopleDirectory()
 const { exportPeople } = usePeopleImport()
+const { studentCohort, studentSemester } = useStudentCohortContext()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
@@ -54,6 +55,8 @@ const filteredPeople = computed(() => {
   const keyword = search.value.trim().toLocaleLowerCase('th')
   return people.value
     .filter(person => person.type === personType.value)
+    .filter(person => personType.value !== 'student' || studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
+    .filter(person => personType.value !== 'student' || studentSemester.value === 'all' || getStudentSemester(person.cycle) === studentSemester.value)
     .filter(person => !keyword || [person.id, person.prefix, person.firstName, person.lastName, person.company]
       .some(value => value?.toLocaleLowerCase('th').includes(keyword)))
     .filter(person => recordStatus.value === 'all' || person.recordStatus === recordStatus.value)
@@ -70,7 +73,7 @@ const resultStart = computed(() => filteredPeople.value.length ? (currentPage.va
 const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredPeople.value.length))
 const hasFilters = computed(() => Boolean(search.value) || recordStatus.value !== 'all' || accountStatus.value !== 'all')
 
-watch([search, recordStatus, accountStatus, pageSize, personType], () => { currentPage.value = 1 })
+watch([search, recordStatus, accountStatus, pageSize, personType, studentCohort, studentSemester], () => { currentPage.value = 1 })
 watch(pageCount, count => { if (currentPage.value > count) currentPage.value = count })
 
 const clearFilters = () => {
@@ -154,7 +157,7 @@ const handleExport = async () => {
       </div>
       <div v-else-if="effectiveViewState === 'error'" class="p-5 sm:p-6"><AppErrorState :title="`โหลด${context.title}ไม่สำเร็จ`" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองดึงข้อมูลอีกครั้ง" @retry="retry" /></div>
       <div v-else-if="!paginatedPeople.length" class="p-5 sm:p-6">
-        <AppEmptyState :title="hasFilters ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : `ยังไม่มี${context.title}`" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : `เพิ่ม${context.singular}คนแรกเพื่อสร้างข้อมูลและบัญชีผู้ใช้`">
+        <AppEmptyState :title="hasFilters ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : personType === 'student' ? 'ไม่พบนักศึกษาในรุ่นและภาคเรียนที่เลือก' : `ยังไม่มี${context.title}`" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : personType === 'student' ? 'ลองเปลี่ยนรุ่นนักศึกษาหรือภาคเรียนจากแถบบริบทด้านบน' : `เพิ่ม${context.singular}คนแรกเพื่อสร้างข้อมูลและบัญชีผู้ใช้`">
           <UiButton v-if="hasFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
           <UiButton v-else :icon="Plus" @click="navigateTo(`/staff/master-data/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
         </AppEmptyState>

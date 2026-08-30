@@ -7,6 +7,7 @@ useHead({ title: 'ข้อมูลนักศึกษา' })
 
 const { scenario } = useScenario()
 const { people, getStudentApplicationHistory } = usePeopleDirectory()
+const { studentCohort, studentSemester } = useStudentCohortContext()
 const search = ref('')
 const applicationStatus = ref('all')
 const pageSize = ref('10')
@@ -14,6 +15,7 @@ const currentPage = ref(1)
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 const statusOptions = [
   { value: 'all', label: 'ทุกสถานะคำร้อง' },
+  { value: 'not-submitted', label: 'ยังไม่ส่งคำร้อง' },
   { value: 'in-progress', label: 'กำลังดำเนินการ' },
   { value: 'returned', label: 'ส่งกลับแก้ไข' },
   { value: 'confirmed', label: 'ยืนยันสถานประกอบการแล้ว' },
@@ -26,12 +28,15 @@ const filteredStudents = computed(() => {
   const keyword = search.value.trim().toLocaleLowerCase('th')
   return people.value
     .filter(person => person.type === 'student')
+    .filter(person => studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
+    .filter(person => studentSemester.value === 'all' || getStudentSemester(person.cycle) === studentSemester.value)
     .filter((person) => {
       const history = getStudentApplicationHistory(person.id)
       const searchable = [person.id, person.prefix, person.firstName, person.lastName, ...history.map(item => item.company)]
       const matchesSearch = !keyword || searchable.some(value => value.toLocaleLowerCase('th').includes(keyword))
       const latestStatus = history[0]?.status
       const matchesStatus = applicationStatus.value === 'all'
+        || (applicationStatus.value === 'not-submitted' && !latestStatus)
         || latestStatus === applicationStatus.value
         || (applicationStatus.value === 'in-progress' && ['submitted', 'letter-issued'].includes(latestStatus || ''))
       return matchesSearch && matchesStatus
@@ -44,7 +49,7 @@ const paginatedStudents = computed(() => paginateItems(filteredStudents.value, c
 const resultStart = computed(() => filteredStudents.value.length ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
 const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredStudents.value.length))
 const hasFilters = computed(() => Boolean(search.value) || applicationStatus.value !== 'all')
-watch([search, applicationStatus, pageSize], () => { currentPage.value = 1 })
+watch([search, applicationStatus, pageSize, studentCohort, studentSemester], () => { currentPage.value = 1 })
 const clearFilters = () => { search.value = ''; applicationStatus.value = 'all' }
 const resetTable = () => { clearFilters(); pageSize.value = '10'; currentPage.value = 1 }
 const retry = () => { scenario.value.forceError = false; scenario.value.viewState = 'data' }
@@ -52,7 +57,7 @@ const retry = () => { scenario.value.forceError = false; scenario.value.viewStat
 
 <template>
   <div>
-    <div class="mb-6"><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">ข้อมูลนักศึกษา</h2><p class="mt-1 text-sm leading-6 text-muted">ค้นหานักศึกษาทุกคน ดูสถานะและประวัติคำร้อง หรือแก้ไขเฉพาะชื่อ–นามสกุล</p></div>
+    <div class="mb-6"><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">ข้อมูลนักศึกษา</h2><p class="mt-1 text-sm leading-6 text-muted">ติดตามนักศึกษาตามรุ่นและภาคเรียน รวมผู้ที่ยังไม่ส่งคำร้อง พร้อมดูสถานะและประวัติคำร้อง</p></div>
     <UiCard :padded="false">
       <div class="border-b border-divider p-5 sm:p-6">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -63,7 +68,7 @@ const retry = () => { scenario.value.forceError = false; scenario.value.viewStat
       </div>
       <div v-if="effectiveViewState === 'loading'" class="space-y-3 p-5 sm:p-6" aria-label="กำลังโหลดข้อมูลนักศึกษา"><div v-for="row in 4" :key="row" class="grid grid-cols-[1fr_1fr_10rem_3rem] gap-4 max-md:grid-cols-[1fr_8rem]"><UiSkeleton class="h-10" /><UiSkeleton class="h-10 max-md:hidden" /><UiSkeleton class="h-10" /><UiSkeleton class="h-10 max-md:hidden" /></div></div>
       <div v-else-if="effectiveViewState === 'error'" class="p-5 sm:p-6"><AppErrorState title="โหลดข้อมูลนักศึกษาไม่สำเร็จ" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองดึงข้อมูลอีกครั้ง" @retry="retry" /></div>
-      <div v-else-if="!paginatedStudents.length" class="p-5 sm:p-6"><AppEmptyState :title="hasFilters ? 'ไม่พบนักศึกษาที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูลนักศึกษา'" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'ข้อมูลนักศึกษาที่เจ้าหน้าที่เพิ่มจะปรากฏที่นี่'"><UiButton v-if="hasFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton></AppEmptyState></div>
+      <div v-else-if="!paginatedStudents.length" class="p-5 sm:p-6"><AppEmptyState :title="hasFilters ? 'ไม่พบนักศึกษาที่ตรงกับตัวกรอง' : 'ไม่พบนักศึกษาในรุ่นและภาคเรียนที่เลือก'" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'ลองเปลี่ยนรุ่นนักศึกษาหรือภาคเรียนจากแถบบริบทด้านบน'"><UiButton v-if="hasFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton></AppEmptyState></div>
       <template v-else>
         <div class="hidden overflow-x-auto md:block"><table class="w-full min-w-[850px] text-left text-sm"><caption class="sr-only">ข้อมูลนักศึกษาสำหรับอาจารย์</caption><thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th class="px-6 py-3">นักศึกษา</th><th class="px-4 py-3">คำร้องล่าสุด / สถานประกอบการ</th><th class="px-4 py-3">สถานะล่าสุด</th><th class="w-20 px-4 py-3"><span class="sr-only">ดูรายละเอียด</span></th></tr></thead><tbody class="divide-y divide-divider"><tr v-for="student in paginatedStudents" :key="student.id" class="hover:bg-surface/70"><td class="px-6 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(student) }}</p><p class="mt-1 text-xs text-muted">{{ student.id }}</p></td><td class="max-w-md px-4 py-4"><template v-if="getStudentApplicationHistory(student.id)[0]"><p class="font-medium text-ink">{{ getStudentApplicationHistory(student.id)[0]?.company }}</p><p class="mt-1 text-xs text-muted">{{ getStudentApplicationHistory(student.id)[0]?.id }} · {{ getStudentApplicationHistory(student.id)[0]?.position }}</p></template><p v-else class="text-muted">ยังไม่มีประวัติคำร้อง</p></td><td class="px-4 py-4"><UiBadge v-if="getStudentApplicationHistory(student.id)[0]" :tone="studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].tone">{{ studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].label }}</UiBadge><UiBadge v-else tone="neutral">ยังไม่มีคำร้อง</UiBadge></td><td class="px-4 py-4 text-right"><NuxtLink :to="`/lecturer/students/${student.id}`" class="inline-grid size-8 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${getPersonFullName(student)}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></NuxtLink></td></tr></tbody></table></div>
         <div class="divide-y divide-divider md:hidden"><article v-for="student in paginatedStudents" :key="student.id" class="p-5"><div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(student) }}</h3><p class="mt-1 text-xs text-muted">{{ student.id }}</p></div><UiBadge v-if="getStudentApplicationHistory(student.id)[0]" :tone="studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].tone">{{ studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].label }}</UiBadge></div><p class="mt-4 text-sm text-muted">{{ getStudentApplicationHistory(student.id)[0]?.company || 'ยังไม่มีประวัติคำร้อง' }}</p><div class="mt-4 flex justify-end border-t border-divider pt-3"><UiButton size="sm" variant="secondary" :icon="Eye" @click="navigateTo(`/lecturer/students/${student.id}`)">ดูรายละเอียด</UiButton></div></article></div>

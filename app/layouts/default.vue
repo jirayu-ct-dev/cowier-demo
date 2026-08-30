@@ -4,7 +4,11 @@ import { DialogContent, DialogOverlay, DialogPortal, DialogRoot } from 'reka-ui'
 const mobileNavigationOpen = ref(false)
 const route = useRoute()
 const isDevelopment = import.meta.dev
-const hasDashboardToolbar = computed(() => route.path.startsWith('/staff/supervision/groups'))
+const hasDashboardToolbar = computed(() => route.path.startsWith('/staff/supervision/groups')
+  || route.path === '/staff/master-data/students'
+  || route.path.startsWith('/lecturer/placements')
+  || route.path.startsWith('/lecturer/students')
+  || route.path.startsWith('/lecturer/supervision'))
 
 watch(() => route.fullPath, () => {
   mobileNavigationOpen.value = false

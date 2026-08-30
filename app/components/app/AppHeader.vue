@@ -21,6 +21,7 @@ const roleLabel = computed(() => ({
 }[scenario.value.role]))
 const pageTitle = computed(() => {
   const path = route.path
+  if (path.startsWith('/lecturer/supervision')) return 'ตารางนิเทศ'
   if (path.startsWith('/staff/supervision/groups/new')) return 'สร้างกลุ่มอาจารย์นิเทศ'
   if (path.startsWith('/staff/supervision/groups')) return 'จัดกลุ่มอาจารย์นิเทศ'
   if (path.startsWith('/staff/master-data/import')) return 'นำเข้าข้อมูลบุคคล'

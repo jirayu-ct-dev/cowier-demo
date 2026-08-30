@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   Blocks,
+  CalendarDays,
   ClipboardList,
   FileCheck2,
   GraduationCap,
@@ -67,6 +68,12 @@ const navigation = computed(() => [
           icon: GraduationCap,
           exact: false,
         },
+        {
+          label: "ตารางนิเทศ",
+          to: "/lecturer/supervision",
+          icon: CalendarDays,
+          exact: false,
+        },
       ]
     : []),
   ...(import.meta.dev
@@ -123,7 +130,7 @@ const isActive = (to: string, exact: boolean) => {
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 6A</p>
+      <p>UI Prototype · Checkpoint 6B</p>
     </div>
   </aside>
 </template>

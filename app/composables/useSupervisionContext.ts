@@ -10,6 +10,8 @@ export const useSupervisionContext = () => {
 
   const cycleId = useState<string>('supervision-context-cycle-id', () => initialCycleId)
   const round = useState<SupervisionRound>('supervision-context-round', () => route.query.round === '2' ? 2 : 1)
+  const scheduleDate = useState<string>('supervision-context-schedule-date', () => '')
+  const scheduleGroupId = useState<string>('supervision-context-schedule-group-id', () => 'all')
 
   if (queryCycle && cycles.some(cycle => cycle.id === queryCycle)) cycleId.value = queryCycle
   if (route.query.round === '1' || route.query.round === '2') round.value = Number(route.query.round) as SupervisionRound
@@ -32,5 +34,7 @@ export const useSupervisionContext = () => {
     roundOptions,
     selectedCycleLabel,
     roundModel,
+    scheduleDate,
+    scheduleGroupId,
   }
 }

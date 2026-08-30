@@ -15,6 +15,7 @@ export type IndividualResultStatus = "waiting" | "confirmed" | "not_accepted";
 
 export interface PlacementReviewRequest {
   id: string;
+  cycleId: string;
   studentId: string;
   studentName: string;
   company: string;
@@ -70,9 +71,10 @@ const studentPrefixes: Record<string, 'นาย' | 'นางสาว'> = {
 }
 
 const createRequest = (
-  request: Omit<PlacementReviewRequest, "companyStatus" | "batchId"> &
-    Partial<Pick<PlacementReviewRequest, "companyStatus" | "batchId">>,
+  request: Omit<PlacementReviewRequest, "cycleId" | "companyStatus" | "batchId"> &
+    Partial<Pick<PlacementReviewRequest, "cycleId" | "companyStatus" | "batchId">>,
 ): PlacementReviewRequest => ({
+  cycleId: "CYCLE-2569-2",
   companyStatus: "active",
   batchId: null,
   ...request,
