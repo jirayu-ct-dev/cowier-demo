@@ -8,12 +8,10 @@ useHead({ title: 'ตารางนิเทศ' })
 const { scenario } = useScenario()
 const { showToast } = useToast()
 const { people } = usePeopleDirectory()
-const { cycleId, round, scheduleDate, scheduleGroupId, selectedCycleLabel } = useSupervisionContext()
+const { cycleId, round, scheduleDate, scheduleGroupId } = useSupervisionContext()
 const { groups, getCompanies } = useSupervisionGroups()
 const { appointments, joinAppointment, leaveAppointment } = useSupervisionAppointments()
 const currentLecturerId = 'L0012'
-const detailDialogOpen = ref(false)
-const selectedAppointment = ref<SupervisionAppointment | null>(null)
 const workingAppointmentId = ref<string | null>(null)
 const searchQuery = ref('')
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
@@ -50,10 +48,6 @@ const currentAppointments = computed(() => appointments.value
   })
   .sort((a, b) => `${a.date}-${a.period}`.localeCompare(`${b.date}-${b.period}`)))
 const companies = computed(() => getCompanies(cycleId.value))
-const selectedCompany = computed(() => companies.value.find(company => company.id === selectedAppointment.value?.companyId) ?? null)
-const selectedGroup = computed(() => groups.value.find(group => group.id === selectedAppointment.value?.groupId) ?? null)
-const selectedStudents = computed(() => selectedCompany.value?.students.filter(student => selectedAppointment.value?.studentIds.includes(student.studentId)) ?? [])
-const selectedLecturers = computed(() => selectedAppointment.value?.lecturerIds.map(id => ({ id, name: lecturerName(id) })) ?? [])
 
 const company = (id: string) => companies.value.find(item => item.id === id)
 const companyName = (id: string) => company(id)?.name ?? id
@@ -66,7 +60,6 @@ const studentNames = (appointment: SupervisionAppointment) => company(appointmen
   .filter(student => appointment.studentIds.includes(student.studentId))
   .map(student => student.studentName) ?? appointment.studentIds
 const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(new Date(`${date}T00:00:00+07:00`))
-const formatDateTime = (date: string) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(date))
 const selectedDateLabel = computed(() => scheduleDate.value ? formatDate(scheduleDate.value) : '')
 const retry = () => {
   scenario.value.forceError = false
@@ -79,6 +72,7 @@ const resetTable = () => {
 const isParticipating = (appointment: SupervisionAppointment) => appointment.lecturerIds.includes(currentLecturerId)
 const isResponsibleGroup = (appointment: SupervisionAppointment) => groups.value
   .find(group => group.id === appointment.groupId)?.lecturerIds.includes(currentLecturerId) ?? false
+const isLocked = (appointment: SupervisionAppointment) => appointment.status === 'completed' || appointment.status === 'cancelled'
 const toggleParticipation = (appointment: SupervisionAppointment) => {
   workingAppointmentId.value = appointment.id
   try {
@@ -95,11 +89,6 @@ const toggleParticipation = (appointment: SupervisionAppointment) => {
     workingAppointmentId.value = null
   }
 }
-const openDetail = (appointment: SupervisionAppointment) => {
-  selectedAppointment.value = appointment
-  detailDialogOpen.value = true
-}
-
 watchEffect(() => {
   if (!groupOptions.value.some(option => option.value === scheduleGroupId.value)) scheduleGroupId.value = 'all'
 })
@@ -153,11 +142,11 @@ watchEffect(() => {
             <tbody class="divide-y divide-divider">
               <tr v-for="item in currentAppointments" :key="item.id" class="hover:bg-surface/70">
                 <td class="px-5 py-4 align-top"><p class="font-semibold text-ink">{{ companyName(item.companyId) }}</p><p class="mt-1 text-xs leading-5 text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></td>
-                <td class="px-4 py-4 align-top"><p class="font-medium text-ink">{{ formatDate(item.date) }}</p><p class="mt-1 text-xs text-muted">{{ supervisionPeriodMeta[item.period].label }} · {{ item.id }}</p></td>
+                <td class="px-4 py-4 align-top"><p class="font-medium text-ink">{{ formatDate(item.date) }}</p><p class="mt-1 text-xs text-muted">{{ supervisionPeriodMeta[item.period].label }} · {{ item.id }}</p><UiBadge class="mt-2" :tone="supervisionAppointmentStatusMeta[item.status].tone">{{ supervisionAppointmentStatusMeta[item.status].label }}</UiBadge></td>
                 <td class="px-4 py-4 align-top"><p class="font-medium text-ink">{{ groupName(item.groupId) }}</p><UiBadge v-if="isResponsibleGroup(item)" class="mt-2" tone="info">กลุ่มของคุณ</UiBadge></td>
                 <td class="px-4 py-4 align-top"><div v-if="item.lecturerIds.length" class="space-y-1"><p v-for="id in item.lecturerIds" :key="id" class="text-sm leading-5 text-ink">{{ lecturerName(id) }}</p></div><p v-else class="text-sm text-danger">ยังไม่มีอาจารย์เข้าร่วม</p></td>
                 <td class="px-4 py-4 align-top"><p class="font-semibold text-ink">{{ item.studentIds.length }} คน</p><p class="mt-1 text-xs text-muted">ดูรายชื่อในรายละเอียด</p></td>
-                <td class="px-4 py-4 align-top"><div class="flex items-center justify-end gap-2"><button type="button" class="inline-grid size-9 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียดนัด ${item.id}`" title="ดูรายละเอียด" @click="openDetail(item)"><Eye :size="16" aria-hidden="true" /></button><UiButton :variant="isParticipating(item) ? 'secondary' : 'primary'" size="sm" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton></div></td>
+                <td class="px-4 py-4 align-top"><div class="flex items-center justify-end gap-2"><button type="button" class="inline-grid size-9 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียดนัด ${item.id}`" title="ดูรายละเอียด" @click="navigateTo(`/lecturer/supervision/${item.id}`)"><Eye :size="16" aria-hidden="true" /></button><UiButton v-if="!isLocked(item)" :variant="isParticipating(item) ? 'secondary' : 'primary'" size="sm" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton></div></td>
               </tr>
             </tbody>
           </table>
@@ -165,52 +154,14 @@ watchEffect(() => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="item in currentAppointments" :key="item.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-semibold text-ink">{{ companyName(item.companyId) }}</h3><p class="mt-1 text-xs text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></div><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียดนัด ${item.id}`" title="ดูรายละเอียด" @click="openDetail(item)"><Eye :size="17" aria-hidden="true" /></button></div>
-            <div class="mt-3 flex flex-wrap items-center gap-2"><UiBadge v-if="isResponsibleGroup(item)" tone="info">กลุ่มของคุณ</UiBadge><span class="text-sm text-muted">{{ formatDate(item.date) }} · {{ supervisionPeriodMeta[item.period].label }}</span></div>
+            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-semibold text-ink">{{ companyName(item.companyId) }}</h3><p class="mt-1 text-xs text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></div><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียดนัด ${item.id}`" title="ดูรายละเอียด" @click="navigateTo(`/lecturer/supervision/${item.id}`)"><Eye :size="17" aria-hidden="true" /></button></div>
+            <div class="mt-3 flex flex-wrap items-center gap-2"><UiBadge v-if="isResponsibleGroup(item)" tone="info">กลุ่มของคุณ</UiBadge><UiBadge :tone="supervisionAppointmentStatusMeta[item.status].tone">{{ supervisionAppointmentStatusMeta[item.status].label }}</UiBadge><span class="text-sm text-muted">{{ formatDate(item.date) }} · {{ supervisionPeriodMeta[item.period].label }}</span></div>
             <dl class="mt-3 grid gap-2 border-t border-divider pt-3 text-sm"><div><dt class="text-xs font-medium text-muted">กลุ่มรับผิดชอบ</dt><dd class="mt-1 text-ink">{{ groupName(item.groupId) }}</dd></div><div><dt class="text-xs font-medium text-muted">อาจารย์ผู้เข้าร่วม</dt><dd class="mt-1 text-ink">{{ item.lecturerIds.length ? item.lecturerIds.map(lecturerName).join(', ') : 'ยังไม่มีอาจารย์เข้าร่วม' }}</dd></div><div><dt class="text-xs font-medium text-muted">นักศึกษา</dt><dd class="mt-1 text-ink">{{ studentNames(item).join(', ') }} ({{ item.studentIds.length }} คน)</dd></div></dl>
-            <UiButton class="mt-4 w-full" :variant="isParticipating(item) ? 'secondary' : 'primary'" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกการเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton>
+            <UiButton v-if="!isLocked(item)" class="mt-4 w-full" :variant="isParticipating(item) ? 'secondary' : 'primary'" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกการเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton>
           </article>
         </div>
       </template>
     </UiCard>
 
-    <UiDialog v-model:open="detailDialogOpen" size="xl" :close-on-confirm="false" :title="selectedAppointment ? `รายละเอียดนัด ${selectedAppointment.id}` : 'รายละเอียดนัดนิเทศ'" :description="selectedAppointment ? `${selectedCycleLabel} · นิเทศครั้งที่ ${selectedAppointment.round}` : undefined">
-      <template v-if="selectedAppointment">
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">วันที่นิเทศ</p><p class="mt-1 font-bold text-ink">{{ formatDate(selectedAppointment.date) }}</p></div>
-          <div class="rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">ช่วงเวลา</p><p class="mt-1 font-bold text-ink">{{ supervisionPeriodMeta[selectedAppointment.period].label }}</p></div>
-          <div class="rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">กลุ่มอาจารย์</p><p class="mt-1 font-bold text-ink">{{ selectedGroup?.name ?? selectedAppointment.groupId }}</p></div>
-          <div class="rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">การเข้าร่วมของคุณ</p><div class="mt-2"><UiBadge :tone="isParticipating(selectedAppointment) ? 'info' : 'neutral'">{{ isParticipating(selectedAppointment) ? 'เข้าร่วมแล้ว' : 'ยังไม่ได้เข้าร่วม' }}</UiBadge></div></div>
-        </div>
-
-        <section class="mt-5" aria-labelledby="appointment-company-heading">
-          <h3 id="appointment-company-heading" class="text-sm font-bold text-ink">ข้อมูลสถานประกอบการ</h3>
-          <dl v-if="selectedCompany" class="mt-3 grid gap-4 rounded-control border border-divider bg-surface p-4 sm:grid-cols-2">
-            <div><dt class="text-xs font-medium text-muted">ชื่อสถานประกอบการ</dt><dd class="mt-1 text-sm font-semibold text-ink">{{ selectedCompany.name }}</dd></div>
-            <div><dt class="text-xs font-medium text-muted">สาขา / พื้นที่</dt><dd class="mt-1 text-sm text-ink">{{ selectedCompany.branch }} · {{ selectedCompany.province }} · {{ selectedCompany.region }}</dd></div>
-            <div><dt class="text-xs font-medium text-muted">ผู้ประสานงาน</dt><dd class="mt-1 text-sm text-ink">{{ selectedCompany.contactName }} · {{ selectedCompany.contactPhone }}</dd></div>
-            <div><dt class="text-xs font-medium text-muted">บันทึกรายการเมื่อ</dt><dd class="mt-1 text-sm text-ink">{{ formatDateTime(selectedAppointment.createdAt) }}</dd></div>
-            <div class="sm:col-span-2"><dt class="text-xs font-medium text-muted">ที่อยู่</dt><dd class="mt-1 text-sm leading-6 text-ink">{{ selectedCompany.address }}</dd></div>
-          </dl>
-        </section>
-
-        <section class="mt-5" aria-labelledby="appointment-lecturers-heading">
-          <div class="flex items-center justify-between gap-3"><h3 id="appointment-lecturers-heading" class="text-sm font-bold text-ink">อาจารย์ผู้เข้าร่วม</h3><UiBadge tone="info">{{ selectedLecturers.length }} คน</UiBadge></div>
-          <div class="mt-3 divide-y divide-divider overflow-hidden rounded-control border border-divider"><p v-for="lecturer in selectedLecturers" :key="lecturer.id" class="px-4 py-3 text-sm text-ink"><span class="font-semibold">{{ lecturer.name }}</span><span class="text-muted"> · {{ lecturer.id }}</span></p></div>
-        </section>
-
-        <section class="mt-5" aria-labelledby="appointment-students-heading">
-          <div class="flex items-center justify-between gap-3"><h3 id="appointment-students-heading" class="text-sm font-bold text-ink">นักศึกษาในรายการนัด</h3><UiBadge tone="info">{{ selectedStudents.length }} คน</UiBadge></div>
-          <div class="mt-3 overflow-hidden rounded-control border border-divider">
-            <table class="hidden w-full table-fixed border-collapse text-left text-sm md:table"><caption class="sr-only">รายชื่อนักศึกษาในรายการนัด {{ selectedAppointment.id }}</caption><thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th scope="col" class="w-44 px-4 py-3">รหัสนักศึกษา</th><th scope="col" class="w-64 px-4 py-3">ชื่อ–นามสกุล</th><th scope="col" class="px-4 py-3">ตำแหน่งฝึกงาน</th></tr></thead><tbody class="divide-y divide-divider"><tr v-for="student in selectedStudents" :key="student.id"><td class="whitespace-nowrap px-4 py-4 text-muted">{{ student.studentId }}</td><td class="px-4 py-4 font-semibold text-ink">{{ student.studentName }}</td><td class="px-4 py-4 text-muted">{{ student.position }}</td></tr></tbody></table>
-            <div class="divide-y divide-divider md:hidden"><article v-for="student in selectedStudents" :key="student.id" class="p-4"><p class="font-semibold text-ink">{{ student.studentName }}</p><p class="mt-1 text-xs text-muted">{{ student.studentId }}</p><p class="mt-2 text-sm text-muted">ตำแหน่ง: {{ student.position }}</p></article></div>
-          </div>
-        </section>
-
-        <UiAlert v-if="selectedAppointment.splitReason" class="mt-5" tone="warning" title="เหตุผลการแยกรายการ">{{ selectedAppointment.splitReason }}</UiAlert>
-      </template>
-      <template #cancel><UiButton variant="ghost">ปิด</UiButton></template>
-      <template #confirm><UiButton v-if="selectedAppointment" :variant="isParticipating(selectedAppointment) ? 'secondary' : 'primary'" :icon="isParticipating(selectedAppointment) ? UserMinus : UserPlus" :loading="workingAppointmentId === selectedAppointment.id" @click="toggleParticipation(selectedAppointment)">{{ isParticipating(selectedAppointment) ? 'ยกเลิกการเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton></template>
-    </UiDialog>
   </div>
 </template>

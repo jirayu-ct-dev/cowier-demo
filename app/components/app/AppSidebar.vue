@@ -130,7 +130,7 @@ const isActive = (to: string, exact: boolean) => {
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 6B</p>
+      <p>UI Prototype · Checkpoint 7</p>
     </div>
   </aside>
 </template>
