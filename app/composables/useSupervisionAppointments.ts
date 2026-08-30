@@ -164,7 +164,7 @@ export const useSupervisionAppointments = () => {
   const saveResult = (appointmentId: string, input: Omit<SupervisionResultInput, 'actualLecturerIds'>) => {
     const appointment = appointments.value.find(item => item.id === appointmentId)
     if (!appointment) throw new Error('appointment-not-found')
-    if (appointment.status === 'completed' || appointment.status === 'cancelled') throw new Error('appointment-locked')
+    if (appointment.status === 'cancelled') throw new Error('appointment-locked')
     Object.assign(appointment.result, input)
     recordEvent(`บันทึกผลนิเทศ ${appointment.id}`)
     return appointment
@@ -174,7 +174,6 @@ export const useSupervisionAppointments = () => {
     const appointment = appointments.value.find(item => item.id === appointmentId)
     if (!appointment) throw new Error('appointment-not-found')
     if (appointment.status === 'completed' || appointment.status === 'cancelled') throw new Error('appointment-locked')
-    if (!input.summary.trim()) throw new Error('summary-required')
     if (!input.actualLecturerIds.length) throw new Error('actual-lecturer-required')
     if (input.actualLecturerIds.some(id => !appointment.lecturerIds.includes(id))) throw new Error('actual-lecturer-invalid')
     appointment.result = {

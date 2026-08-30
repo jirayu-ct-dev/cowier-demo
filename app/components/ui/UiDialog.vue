@@ -29,6 +29,10 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 const internalOpen = ref(props.open ?? false)
+const setOpen = (value: boolean) => {
+  internalOpen.value = value
+  emit('update:open', value)
+}
 const sizeClass = computed(() => ({
   md: 'max-w-lg',
   lg: 'max-w-2xl',
@@ -36,15 +40,13 @@ const sizeClass = computed(() => ({
 })[props.size])
 
 watch(() => props.open, (value) => {
-  if (value !== undefined) internalOpen.value = value
+  if (value !== undefined && value !== internalOpen.value) internalOpen.value = value
 })
-watch(internalOpen, (value) => {
-  if (value !== props.open) emit('update:open', value)
-})
+
 </script>
 
 <template>
-  <DialogRoot v-model:open="internalOpen">
+  <DialogRoot :open="internalOpen" @update:open="setOpen">
     <DialogTrigger v-if="$slots.trigger" as-child><slot name="trigger" /></DialogTrigger>
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/45" />

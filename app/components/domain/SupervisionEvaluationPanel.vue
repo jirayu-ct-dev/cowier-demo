@@ -1,0 +1,488 @@
+<script setup lang="ts">
+import { Building2, Check, Eye, Pencil, Save } from '@lucide/vue'
+import { z } from 'zod'
+import type { SupervisionAppointment, SupervisionPeriod } from '~/composables/useSupervisionAppointments'
+import type { CompanyEvaluationInput, CompanyRecommendation, EvaluationRating, StudentEvaluationInput } from '~/composables/useSupervisionEvaluations'
+
+interface StudentSummary {
+  id: string
+  studentId: string
+  studentName: string
+  position: string
+}
+
+interface SupervisionResultDraft {
+  summary: string
+  issues: string
+  suggestions: string
+  companyRequirements: string
+}
+
+interface SupervisionScheduleDraft {
+  date: string
+  period: SupervisionPeriod
+  lecturerIds: string[]
+}
+
+interface ScheduleErrors {
+  date?: string
+  period?: string
+  lecturerIds?: string
+}
+
+interface Props {
+  appointment: SupervisionAppointment
+  students: StudentSummary[]
+  currentLecturerId: string
+  lecturerName: (id: string) => string
+  resultInput: SupervisionResultDraft
+  scheduleInput: SupervisionScheduleDraft
+  canManage: boolean
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  scheduleErrors: [errors: ScheduleErrors]
+}>()
+const { showToast } = useToast()
+const { updateAppointment, saveResult, completeAppointment } = useSupervisionAppointments()
+const {
+  studentEvaluations,
+  companyEvaluations,
+  getStudentEvaluation,
+  submitStudentEvaluation,
+  getCompanyEvaluation,
+  submitCompanyEvaluation,
+} = useSupervisionEvaluations()
+
+const ratingSchema = z.enum(['1', '2', '3', '4', '5', 'na'])
+const scheduleSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'เลือกวันที่นิเทศ'),
+  period: z.enum(['morning', 'afternoon'], { message: 'เลือกช่วงเวลา' }),
+  lecturerIds: z.array(z.string()).min(1, 'เลือกอาจารย์ผู้เข้าร่วมอย่างน้อย 1 คน'),
+})
+const studentSubmitSchema = z.object({
+  ratings: z.record(z.string(), ratingSchema).refine(
+    ratings => studentEvaluationCriteria.every(criterion => Boolean(ratings[criterion.id])),
+    'กรุณาประเมินนักศึกษาให้ครบทุกหัวข้อ',
+  ),
+  strengths: z.string(),
+  issues: z.string(),
+  suggestions: z.string(),
+  followUp: z.string(),
+})
+const companySubmitSchema = z.object({
+  ratings: z.record(z.string(), ratingSchema).refine(
+    ratings => companyEvaluationCriteria.every(criterion => Boolean(ratings[criterion.id])),
+    'กรุณาประเมินสถานประกอบการให้ครบทุกหัวข้อ',
+  ),
+  recommendation: z.enum(['recommended', 'conditional', 'follow_up', 'not_recommended', 'safety_risk'], { message: 'เลือกผลสรุปความเหมาะสม' }),
+  observations: z.string(),
+  companyRequirements: z.string(),
+  issues: z.string(),
+  suggestions: z.string(),
+})
+
+const studentDialogOpen = ref(false)
+const companyDialogOpen = ref(false)
+const selectedStudentId = ref('')
+const studentReviewing = ref(false)
+const companyReviewing = ref(false)
+const isSaving = ref(false)
+const saveAllError = ref('')
+const stagedStudentEvaluations = ref<Record<string, StudentEvaluationInput>>({})
+const stagedCompanyEvaluation = ref<CompanyEvaluationInput | null>(null)
+const studentForm = reactive({
+  ratings: {} as Record<string, string>,
+  strengths: '',
+  issues: '',
+  suggestions: '',
+  followUp: '',
+})
+const companyForm = reactive({
+  ratings: {} as Record<string, string>,
+  recommendation: '',
+  observations: '',
+  companyRequirements: '',
+  issues: '',
+  suggestions: '',
+})
+
+const evaluatorLecturerIds = computed(() => props.appointment.result.actualLecturerIds.length
+  ? props.appointment.result.actualLecturerIds
+  : props.scheduleInput.lecturerIds)
+const isParticipant = computed(() => evaluatorLecturerIds.value.includes(props.currentLecturerId))
+const companyEvaluatorId = computed(() => evaluatorLecturerIds.value[0] ?? '')
+const isCompanyEvaluator = computed(() => companyEvaluatorId.value === props.currentLecturerId)
+const selectedStudent = computed(() => props.students.find(student => student.studentId === selectedStudentId.value) ?? null)
+const selectedStudentEvaluation = computed(() => selectedStudentId.value
+  ? getStudentEvaluation(props.appointment.id, selectedStudentId.value, props.currentLecturerId)
+  : null)
+const companyEvaluation = computed(() => getCompanyEvaluation(props.appointment.id))
+const currentStudentSubmitted = computed(() => props.students.filter(student => getStudentEvaluation(
+  props.appointment.id,
+  student.studentId,
+  props.currentLecturerId,
+)?.status === 'submitted').length)
+const currentRequiredCount = computed(() => props.students.length + (isCompanyEvaluator.value ? 1 : 0))
+const currentSubmittedCount = computed(() => currentStudentSubmitted.value + (isCompanyEvaluator.value && companyEvaluation.value?.status === 'submitted' ? 1 : 0))
+const totalRequiredCount = computed(() => evaluatorLecturerIds.value.length * props.students.length + 1)
+const totalSubmittedCount = computed(() => studentEvaluations.value.filter(evaluation => evaluation.appointmentId === props.appointment.id
+  && evaluatorLecturerIds.value.includes(evaluation.lecturerId)
+  && props.students.some(student => student.studentId === evaluation.studentId)
+  && evaluation.status === 'submitted').length + (companyEvaluations.value.some(evaluation => evaluation.appointmentId === props.appointment.id && evaluation.status === 'submitted') ? 1 : 0))
+const evaluationComplete = computed(() => totalSubmittedCount.value === totalRequiredCount.value)
+const selectedStudentLocked = computed(() => selectedStudentEvaluation.value?.status === 'submitted')
+const companyLocked = computed(() => companyEvaluation.value?.status === 'submitted')
+const isStudentStaged = (studentId: string) => Boolean(stagedStudentEvaluations.value[studentId])
+const hasStudentDraftContent = () => Object.keys(studentForm.ratings).length > 0
+  || [studentForm.strengths, studentForm.issues, studentForm.suggestions, studentForm.followUp].some(value => value.trim())
+const hasCompanyDraftContent = () => Object.keys(companyForm.ratings).length > 0
+  || Boolean(companyForm.recommendation)
+  || [companyForm.observations, companyForm.companyRequirements, companyForm.issues, companyForm.suggestions].some(value => value.trim())
+const ratingLabel = (value: string) => evaluationRatingOptions.find(option => option.value === value)?.label ?? 'ยังไม่ได้ประเมิน'
+const recommendationLabel = (value: string) => companyRecommendationOptions.find(option => option.value === value)?.label ?? 'ยังไม่ได้เลือก'
+const evaluationAverage = (ratings: Record<string, EvaluationRating>) => {
+  const average = calculateEvaluationAverage(ratings)
+  return average === null ? 'ไม่มีคะแนนที่นำมาคำนวณ' : `${average.toFixed(2)} / 5`
+}
+const validRatings = (ratings: Record<string, string>) => Object.fromEntries(Object.entries(ratings)
+  .filter((entry): entry is [string, EvaluationRating] => ratingSchema.safeParse(entry[1]).success))
+
+const resetStudentForm = () => {
+  Object.assign(studentForm, { ratings: {}, strengths: '', issues: '', suggestions: '', followUp: '' })
+}
+const resetCompanyForm = () => {
+  Object.assign(companyForm, { ratings: {}, recommendation: '', observations: '', companyRequirements: '', issues: '', suggestions: '' })
+}
+const studentEvaluationInput = (studentId: string) => {
+  const staged = stagedStudentEvaluations.value[studentId]
+  if (staged) {
+    return {
+      ratings: { ...staged.ratings },
+      strengths: staged.strengths,
+      issues: staged.issues,
+      suggestions: staged.suggestions,
+      followUp: staged.followUp,
+    }
+  }
+  const saved = getStudentEvaluation(props.appointment.id, studentId, props.currentLecturerId)
+  if (!saved) return null
+  return {
+    ratings: { ...saved.ratings },
+    strengths: saved.strengths,
+    issues: saved.issues,
+    suggestions: saved.suggestions,
+    followUp: saved.followUp,
+  }
+}
+const openStudentEvaluation = (studentId: string) => {
+  selectedStudentId.value = studentId
+  studentReviewing.value = false
+  resetStudentForm()
+  const evaluation = getStudentEvaluation(props.appointment.id, studentId, props.currentLecturerId)
+  const input = studentEvaluationInput(studentId)
+  if (input) Object.assign(studentForm, input)
+  if (evaluation?.status === 'submitted') studentReviewing.value = true
+  studentDialogOpen.value = true
+}
+const openCompanyEvaluation = () => {
+  companyReviewing.value = false
+  resetCompanyForm()
+  const input = stagedCompanyEvaluation.value ?? companyEvaluation.value
+  if (input) {
+    Object.assign(companyForm, {
+      ratings: { ...input.ratings },
+      recommendation: input.recommendation,
+      observations: input.observations,
+      companyRequirements: input.companyRequirements,
+      issues: input.issues,
+      suggestions: input.suggestions,
+    })
+  }
+  if (companyEvaluation.value?.status === 'submitted') companyReviewing.value = true
+  companyDialogOpen.value = true
+}
+const studentDraftInput = (): StudentEvaluationInput => ({
+  ratings: validRatings(studentForm.ratings),
+  strengths: studentForm.strengths,
+  issues: studentForm.issues,
+  suggestions: studentForm.suggestions,
+  followUp: studentForm.followUp,
+})
+const companyDraftInput = (): CompanyEvaluationInput => ({
+  ratings: validRatings(companyForm.ratings),
+  recommendation: companyForm.recommendation as CompanyRecommendation | '',
+  observations: companyForm.observations,
+  companyRequirements: companyForm.companyRequirements,
+  issues: companyForm.issues,
+  suggestions: companyForm.suggestions,
+})
+const setStudentDialogOpen = (open: boolean) => {
+  studentDialogOpen.value = open
+  if (!open && selectedStudent.value && !selectedStudentLocked.value && hasStudentDraftContent()) {
+    stagedStudentEvaluations.value = {
+      ...stagedStudentEvaluations.value,
+      [selectedStudent.value.studentId]: studentDraftInput(),
+    }
+  }
+}
+const setCompanyDialogOpen = (open: boolean) => {
+  companyDialogOpen.value = open
+  if (!open && isCompanyEvaluator.value && !companyLocked.value && hasCompanyDraftContent()) stagedCompanyEvaluation.value = companyDraftInput()
+}
+const submitAllEvaluations = async () => {
+  if (isSaving.value || !props.canManage) return
+  saveAllError.value = ''
+  const parsedSchedule = scheduleSchema.safeParse(props.scheduleInput)
+  if (!parsedSchedule.success) {
+    const errors = Object.fromEntries(parsedSchedule.error.issues.map(issue => [String(issue.path[0]), issue.message])) as ScheduleErrors
+    emit('scheduleErrors', errors)
+    saveAllError.value = parsedSchedule.error.issues[0]?.message ?? 'กรุณาตรวจสอบวันและอาจารย์ผู้เข้าร่วม'
+    return
+  }
+  emit('scheduleErrors', {})
+  if (!props.resultInput.summary.trim()) {
+    saveAllError.value = 'กรุณากรอกสรุปผลการนิเทศก่อนบันทึกทั้งหมด'
+    return
+  }
+  const pendingStudents = props.students.filter(student => getStudentEvaluation(
+    props.appointment.id,
+    student.studentId,
+    props.currentLecturerId,
+  )?.status !== 'submitted')
+  const parsedStudents = pendingStudents.map((student) => {
+    const input = studentEvaluationInput(student.studentId)
+    const parsed = studentSubmitSchema.safeParse(input)
+    return { student, parsed }
+  })
+  const invalidStudent = parsedStudents.find(item => !item.parsed.success)
+  if (invalidStudent) {
+    saveAllError.value = `กรุณากรอกแบบประเมินของ ${invalidStudent.student.studentName} ให้ครบทุกหัวข้อ`
+    return
+  }
+
+  const shouldSubmitCompany = isCompanyEvaluator.value && companyEvaluation.value?.status !== 'submitted'
+  const parsedCompany = shouldSubmitCompany ? companySubmitSchema.safeParse(stagedCompanyEvaluation.value ?? companyEvaluation.value) : null
+  if (parsedCompany && !parsedCompany.success) {
+    saveAllError.value = parsedCompany.error.issues[0]?.message ?? 'กรุณากรอกแบบประเมินสถานประกอบการให้ครบ'
+    return
+  }
+
+  isSaving.value = true
+  try {
+    const resultInput = {
+      summary: props.resultInput.summary,
+      issues: props.resultInput.issues,
+      suggestions: props.resultInput.suggestions,
+      companyRequirements: props.resultInput.companyRequirements,
+    }
+    if (props.appointment.status === 'completed') saveResult(props.appointment.id, resultInput)
+    else {
+      updateAppointment(props.appointment.id, parsedSchedule.data)
+      completeAppointment(props.appointment.id, { ...resultInput, actualLecturerIds: [...parsedSchedule.data.lecturerIds] })
+    }
+
+    parsedStudents.forEach(({ student, parsed }) => {
+      if (parsed.success) submitStudentEvaluation(props.appointment.id, student.studentId, props.currentLecturerId, parsed.data)
+    })
+    if (parsedCompany?.success) submitCompanyEvaluation(props.appointment.id, props.currentLecturerId, parsedCompany.data)
+    stagedStudentEvaluations.value = {}
+    stagedCompanyEvaluation.value = null
+    showToast({ title: 'บันทึกข้อมูลทั้งหมดแล้ว', description: 'ผลการนิเทศและแบบประเมินถูกบันทึกเรียบร้อยแล้ว' })
+  } catch {
+    showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง' })
+  } finally {
+    isSaving.value = false
+  }
+}
+</script>
+
+<template>
+  <div>
+    <UiCard :padded="false">
+    <div class="border-b border-divider p-5 sm:p-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-ink">แบบประเมิน</h3>
+        </div>
+        <UiBadge :tone="evaluationComplete ? 'success' : totalSubmittedCount ? 'warning' : 'neutral'">
+          {{ evaluationComplete ? 'ประเมินครบถ้วน' : totalSubmittedCount ? 'กำลังประเมิน' : 'ยังไม่เริ่มประเมิน' }}
+        </UiBadge>
+      </div>
+
+      <div class="mt-5 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-control border border-divider bg-surface p-4">
+          <p class="text-xs font-medium text-muted">งานประเมินของคุณ</p>
+          <p class="mt-1 text-xl font-bold text-ink">{{ currentSubmittedCount }} / {{ currentRequiredCount }}</p>
+        </div>
+        <div class="rounded-control border border-divider bg-surface p-4">
+          <p class="text-xs font-medium text-muted">ความคืบหน้ารวมของรายการ</p>
+          <p class="mt-1 text-xl font-bold text-ink">{{ totalSubmittedCount }} / {{ totalRequiredCount }}</p>
+        </div>
+      </div>
+    </div>
+
+    <UiAlert v-if="!isParticipant" class="m-5 sm:m-6" tone="warning" title="ไม่มีสิทธิ์ทำแบบประเมินรายการนี้">เฉพาะอาจารย์ที่มีชื่ออยู่ในรายการนิเทศเท่านั้นที่ทำแบบประเมินได้</UiAlert>
+
+    <template v-else>
+      <section id="company-evaluation-panel" class="p-5 sm:p-6" aria-labelledby="company-evaluation-heading">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2"><Building2 :size="19" class="text-primary" aria-hidden="true" /><h4 id="company-evaluation-heading" class="font-bold text-ink">ประเมินสถานประกอบการร่วม</h4></div>
+            <p class="mt-1 text-sm text-muted">ผู้ประเมิน: {{ lecturerName(companyEvaluatorId) }}</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <UiBadge :tone="companyEvaluation?.status === 'submitted' ? 'success' : stagedCompanyEvaluation || companyEvaluation ? 'warning' : 'neutral'">
+              {{ companyEvaluation?.status === 'submitted' ? 'ส่งแล้ว' : stagedCompanyEvaluation ? 'กรอกแล้ว · รอบันทึก' : companyEvaluation ? 'ฉบับร่าง' : 'ยังไม่ประเมิน' }}
+            </UiBadge>
+            <UiButton v-if="isCompanyEvaluator || companyEvaluation?.status === 'submitted'" size="sm" :variant="companyEvaluation?.status === 'submitted' ? 'secondary' : 'primary'" :icon="companyEvaluation?.status === 'submitted' ? Eye : Building2" @click="openCompanyEvaluation">
+              {{ companyEvaluation?.status === 'submitted' ? 'ดูผล' : 'ประเมิน' }}
+            </UiButton>
+          </div>
+        </div>
+        <UiAlert v-if="!isCompanyEvaluator && companyEvaluation?.status !== 'submitted'" class="mt-4" tone="info" title="ไม่ต้องกรอกแบบประเมินซ้ำ">รออาจารย์ผู้รับผิดชอบจัดทำแบบประเมินสถานประกอบการร่วม</UiAlert>
+      </section>
+
+      <section id="student-evaluation-panel" class="border-t border-divider p-5 sm:p-6" aria-labelledby="student-evaluation-heading">
+        <div class="flex items-start justify-between gap-3">
+          <h4 id="student-evaluation-heading" class="font-bold text-ink">ประเมินนักศึกษารายบุคคล</h4>
+          <UiBadge tone="info">{{ currentStudentSubmitted }} / {{ students.length }} คน</UiBadge>
+        </div>
+        <div class="mt-4 divide-y divide-divider overflow-hidden rounded-control border border-divider">
+          <article v-for="student in students" :key="student.studentId" class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+              <p class="font-semibold text-ink">{{ student.studentName }}</p>
+              <p class="mt-1 text-xs text-muted">{{ student.studentId }} · {{ student.position }}</p>
+            </div>
+            <div class="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+              <UiBadge :tone="getStudentEvaluation(appointment.id, student.studentId, currentLecturerId)?.status === 'submitted' ? 'success' : isStudentStaged(student.studentId) || getStudentEvaluation(appointment.id, student.studentId, currentLecturerId) ? 'warning' : 'neutral'">
+                {{ getStudentEvaluation(appointment.id, student.studentId, currentLecturerId)?.status === 'submitted' ? 'ส่งแล้ว' : isStudentStaged(student.studentId) ? 'กรอกแล้ว · รอบันทึก' : getStudentEvaluation(appointment.id, student.studentId, currentLecturerId) ? 'ฉบับร่าง' : 'ยังไม่ประเมิน' }}
+              </UiBadge>
+              <UiButton size="sm" :variant="getStudentEvaluation(appointment.id, student.studentId, currentLecturerId)?.status === 'submitted' ? 'secondary' : 'primary'" :icon="getStudentEvaluation(appointment.id, student.studentId, currentLecturerId)?.status === 'submitted' ? Eye : Pencil" @click="openStudentEvaluation(student.studentId)">
+                {{ getStudentEvaluation(appointment.id, student.studentId, currentLecturerId)?.status === 'submitted' ? 'ดูผล' : 'ประเมิน' }}
+              </UiButton>
+            </div>
+          </article>
+        </div>
+      </section>
+    </template>
+    </UiCard>
+
+    <div v-if="canManage" class="mt-6 border-t border-divider pt-6">
+      <form class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end" @submit.prevent="submitAllEvaluations">
+        <p v-if="saveAllError" class="text-sm font-medium text-danger sm:mr-auto">{{ saveAllError }}</p>
+        <UiButton type="submit" :icon="Save" :loading="isSaving">บันทึกทั้งหมด</UiButton>
+      </form>
+    </div>
+
+    <UiDialog :open="studentDialogOpen" size="xl" :title="`${selectedStudentLocked ? 'ผลประเมิน' : 'ประเมิน'} ${selectedStudent?.studentName ?? 'นักศึกษา'}`" @update:open="setStudentDialogOpen">
+    <template v-if="!studentReviewing">
+      <fieldset>
+        <legend class="text-sm font-semibold text-ink">คะแนนประเมินรายหัวข้อ <span class="text-danger" aria-hidden="true">*</span></legend>
+        <div class="mt-3 overflow-x-auto rounded-control border border-divider">
+          <table class="w-full min-w-[760px] border-collapse text-sm">
+            <caption class="sr-only">ตารางเลือกคะแนนประเมินนักศึกษา</caption>
+            <thead class="bg-surface text-muted">
+              <tr>
+                <th scope="col" class="min-w-64 px-4 py-3 text-left font-semibold">หัวข้อประเมิน</th>
+                <th v-for="option in evaluationRatingOptions" :key="option.value" scope="col" class="w-20 px-2 py-3 text-center font-semibold" :title="option.label">
+                  <span class="block text-ink">{{ option.value === 'na' ? 'N/A' : option.value }}</span>
+                  <span class="mt-0.5 block text-[10px] font-normal normal-case">{{ option.value === '1' ? 'ปรับปรุงมาก' : option.value === '2' ? 'ปรับปรุง' : option.value === '3' ? 'ผ่านเกณฑ์' : option.value === '4' ? 'ดี' : option.value === '5' ? 'ดีมาก' : 'ประเมินไม่ได้' }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-divider">
+              <tr v-for="criterion in studentEvaluationCriteria" :key="criterion.id" class="hover:bg-surface/70">
+                <th scope="row" class="px-4 py-3 text-left font-medium text-ink">{{ criterion.label }}</th>
+                <td v-for="option in evaluationRatingOptions" :key="option.value" class="p-1.5 text-center">
+                  <label class="mx-auto grid size-11 cursor-pointer place-items-center rounded-control border transition-colors" :class="studentForm.ratings[criterion.id] === option.value ? 'border-primary bg-warning-soft' : 'border-transparent hover:border-divider hover:bg-surface'">
+                    <input
+                      v-model="studentForm.ratings[criterion.id]"
+                      type="radio"
+                      :name="`student-rating-${criterion.id}`"
+                      :value="option.value"
+                      class="size-4 cursor-pointer accent-amber-500"
+                    >
+                    <span class="sr-only">{{ criterion.label }} {{ option.label }}</span>
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </fieldset>
+      <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="studentForm.strengths" label="จุดเด่น" placeholder="พฤติกรรมหรือผลงานที่ทำได้ดี" /></div>
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="studentForm.issues" label="สิ่งที่ควรพัฒนา" placeholder="ปัญหาหรือประเด็นที่ควรปรับปรุง" /></div>
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="studentForm.suggestions" label="ข้อเสนอแนะให้นักศึกษา" placeholder="แนวทางที่ช่วยให้นักศึกษาพัฒนาต่อ" /></div>
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="studentForm.followUp" label="เรื่องที่ต้องติดตามครั้งถัดไป" placeholder="เว้นว่างได้ หากไม่มีเรื่องที่ต้องติดตาม" /></div>
+      </div>
+      <div class="mt-6 flex justify-end"><UiButton :icon="Check" @click="setStudentDialogOpen(false)">เสร็จสิ้น</UiButton></div>
+    </template>
+    <template v-else>
+      <UiAlert tone="success" title="ส่งแบบประเมินแล้ว">ไม่สามารถแก้ไขแบบประเมินที่ส่งแล้วได้</UiAlert>
+      <div class="mt-5 overflow-hidden rounded-control border border-divider">
+        <dl class="divide-y divide-divider text-sm">
+          <div v-for="criterion in studentEvaluationCriteria" :key="criterion.id" class="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_14rem]"><dt class="text-muted">{{ criterion.label }}</dt><dd class="font-semibold text-ink sm:text-right">{{ ratingLabel(studentForm.ratings[criterion.id] ?? '') }}</dd></div>
+        </dl>
+      </div>
+      <p class="mt-3 text-sm font-semibold text-ink">คะแนนเฉลี่ย {{ evaluationAverage(validRatings(studentForm.ratings)) }}</p>
+      <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+        <div><dt class="font-semibold text-muted">จุดเด่น</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ studentForm.strengths || '—' }}</dd></div>
+        <div><dt class="font-semibold text-muted">สิ่งที่ควรพัฒนา</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ studentForm.issues || '—' }}</dd></div>
+        <div><dt class="font-semibold text-muted">ข้อเสนอแนะ</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ studentForm.suggestions || '—' }}</dd></div>
+        <div><dt class="font-semibold text-muted">ติดตามครั้งถัดไป</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ studentForm.followUp || '—' }}</dd></div>
+      </dl>
+    </template>
+    </UiDialog>
+
+    <UiDialog :open="companyDialogOpen" size="xl" :title="companyLocked ? 'ผลประเมินสถานประกอบการ' : 'ประเมินสถานประกอบการร่วม'" @update:open="setCompanyDialogOpen">
+    <template v-if="!companyReviewing">
+      <fieldset>
+        <legend class="text-sm font-semibold text-ink">คะแนนประเมินรายหัวข้อ <span class="text-danger" aria-hidden="true">*</span></legend>
+        <div class="mt-3 overflow-x-auto rounded-control border border-divider">
+          <table class="w-full min-w-[760px] border-collapse text-sm">
+            <caption class="sr-only">ตารางเลือกคะแนนประเมินสถานประกอบการ</caption>
+            <thead class="bg-surface text-muted">
+              <tr>
+                <th scope="col" class="min-w-64 px-4 py-3 text-left font-semibold">หัวข้อประเมิน</th>
+                <th v-for="option in evaluationRatingOptions" :key="option.value" scope="col" class="w-20 px-2 py-3 text-center font-semibold" :title="option.label">
+                  <span class="block text-ink">{{ option.value === 'na' ? 'N/A' : option.value }}</span>
+                  <span class="mt-0.5 block text-[10px] font-normal normal-case">{{ option.value === '1' ? 'ปรับปรุงมาก' : option.value === '2' ? 'ปรับปรุง' : option.value === '3' ? 'ผ่านเกณฑ์' : option.value === '4' ? 'ดี' : option.value === '5' ? 'ดีมาก' : 'ประเมินไม่ได้' }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-divider">
+              <tr v-for="criterion in companyEvaluationCriteria" :key="criterion.id" class="hover:bg-surface/70">
+                <th scope="row" class="px-4 py-3 text-left font-medium text-ink">{{ criterion.label }}</th>
+                <td v-for="option in evaluationRatingOptions" :key="option.value" class="p-1.5 text-center">
+                  <label class="mx-auto grid size-11 cursor-pointer place-items-center rounded-control border transition-colors" :class="companyForm.ratings[criterion.id] === option.value ? 'border-primary bg-warning-soft' : 'border-transparent hover:border-divider hover:bg-surface'">
+                    <input v-model="companyForm.ratings[criterion.id]" type="radio" :name="`company-rating-${criterion.id}`" :value="option.value" class="size-4 cursor-pointer accent-amber-500">
+                    <span class="sr-only">{{ criterion.label }} {{ option.label }}</span>
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </fieldset>
+      <div class="mt-5"><UiSelect v-model="companyForm.recommendation" :options="companyRecommendationOptions" label="ผลสรุปความเหมาะสมสำหรับนักศึกษารุ่นถัดไป" required /></div>
+      <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="companyForm.observations" label="ข้อสังเกต" placeholder="ภาพรวมจากการพูดคุยและเยี่ยมชม" /></div>
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="companyForm.companyRequirements" label="ความต้องการของสถานประกอบการ" placeholder="ทักษะ จำนวนรับ หรือความร่วมมือในอนาคต" /></div>
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="companyForm.issues" label="ปัญหาที่พบ" placeholder="ปัญหาด้านงาน การดูแล หรือความปลอดภัย" /></div>
+        <div class="[&>textarea]:min-h-32"><UiTextarea v-model="companyForm.suggestions" label="ข้อเสนอแนะเพิ่มเติม" placeholder="แนวทางปรับปรุงหรือเรื่องที่ควรติดตาม" /></div>
+      </div>
+      <div class="mt-6 flex justify-end"><UiButton :icon="Check" @click="setCompanyDialogOpen(false)">เสร็จสิ้น</UiButton></div>
+    </template>
+    <template v-else>
+      <UiAlert tone="success" title="ส่งแบบประเมินแล้ว">ไม่สามารถแก้ไขแบบประเมินที่ส่งแล้วได้</UiAlert>
+      <div class="mt-5 overflow-hidden rounded-control border border-divider"><dl class="divide-y divide-divider text-sm"><div v-for="criterion in companyEvaluationCriteria" :key="criterion.id" class="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_14rem]"><dt class="text-muted">{{ criterion.label }}</dt><dd class="font-semibold text-ink sm:text-right">{{ ratingLabel(companyForm.ratings[criterion.id] ?? '') }}</dd></div></dl></div>
+      <p class="mt-3 text-sm font-semibold text-ink">คะแนนเฉลี่ย {{ evaluationAverage(validRatings(companyForm.ratings)) }}</p>
+      <div class="mt-5 rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">ผลสรุปสำหรับนักศึกษารุ่นถัดไป</p><p class="mt-1 font-semibold text-ink">{{ recommendationLabel(companyForm.recommendation) }}</p></div>
+      <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt class="font-semibold text-muted">ข้อสังเกต</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ companyForm.observations || '—' }}</dd></div><div><dt class="font-semibold text-muted">ความต้องการของสถานประกอบการ</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ companyForm.companyRequirements || '—' }}</dd></div><div><dt class="font-semibold text-muted">ปัญหาที่พบ</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ companyForm.issues || '—' }}</dd></div><div><dt class="font-semibold text-muted">ข้อเสนอแนะ</dt><dd class="mt-1 whitespace-pre-line text-ink">{{ companyForm.suggestions || '—' }}</dd></div></dl>
+    </template>
+    </UiDialog>
+  </div>
+</template>
