@@ -85,7 +85,6 @@ Mock data อยู่ใน memory และ reset เมื่อ reload ไ�
 | `/staff`                    | หน้าหลักและงานจัดการผู้ใช้                       |
 | `/staff/supervision/groups` | จัดกลุ่มอาจารย์สำหรับการนิเทศ                    |
 | `/staff/master-data/*`      | ข้อมูลนักศึกษาและอาจารย์                         |
-| `/staff/accounts`           | สถานะบัญชี ระงับ ยุติการใช้งาน และรีเซ็ตรหัสผ่าน |
 | `/notifications`            | การแจ้งเตือนของผู้ใช้ปัจจุบัน                    |
 
 ### อาจารย์
@@ -350,6 +349,8 @@ Navigation จะแสดงเฉพาะหน้าที่พัฒนา
 และอาจารย์ค้นหา ดูประวัติคำร้อง และแก้ไขได้เฉพาะชื่อ–นามสกุล
 
 - เจ้าหน้าที่จัดการข้อมูลนักศึกษาและอาจารย์: table/card, search, filter, detail, add, edit
+- เจ้าหน้าที่ดูภาพรวมการสมัครสหกิจของนักศึกษา พร้อมค้นหา กรอง และเปิดดูบริษัททั้งหมด
+  ที่นักศึกษาแต่ละคนบันทึกไว้ได้ โดยใช้ข้อมูลชุดเดียวกับหน้าของอาจารย์
 - ยุติ/เปิดใช้งานโดยไม่ลบจริง พร้อมผลกระทบที่อธิบายชัดเจน
 - Lecturer search/filter/view student and placement history และแก้ไขได้เฉพาะชื่อ/นามสกุล
 - อาจารย์และเจ้าหน้าที่มีเมนูข้อมูลสถานประกอบการร่วมกันสำหรับค้นหา เพิ่ม แก้ไข
@@ -505,7 +506,7 @@ Navigation จะแสดงเฉพาะหน้าที่พัฒนา
 
 ### Checkpoint 10 — Notification, Dashboard และ Authentication UI
 
-**สถานะ:** กำลังพัฒนา — Dashboard ตามรอบมีแล้ว และเพิ่ม Notification Center แยกตามบทบาทพร้อม deep link แล้ว
+**สถานะ:** พร้อมตรวจรับ — Dashboard ตามรอบ, Notification Center และ Mock Authentication Flow ครบแล้ว
 
 แบ่งส่งตรวจ 2 ครั้งย่อย:
 
@@ -513,10 +514,14 @@ Navigation จะแสดงเฉพาะหน้าที่พัฒนา
 
 - Notification center, unread count, mark as read และ deep link
 - Event จาก Placement/Supervision ที่ทำไว้ก่อนหน้าปรากฏในรายการ
+- ปฏิทินงานรายเดือนของทั้ง 3 บทบาท แสดงกิจกรรมจากระบบอัตโนมัติ
+  พร้อมดูรายการรายวัน กรองประเภท และเพิ่มกิจกรรมของบทบาทปัจจุบัน
 - Dashboard ของแต่ละบทบาทแสดงงานที่ต้องทำ สถานะสำคัญ และนัดถัดไป
 - Dashboard ไม่สร้างรายงานใหม่ที่อยู่นอก Requirement
 
 #### 10B Login และ Account flow
+
+**สถานะย่อย:** พัฒนาแล้ว — มี Login, บังคับเปลี่ยนรหัสผ่านครั้งแรก, เปลี่ยนรหัสผ่านปัจจุบัน และออกจากระบบ
 
 - Login, generic error, temporary lock message และ account state messages
 - First login/temporary password → forced password change
@@ -534,6 +539,11 @@ Navigation จะแสดงเฉพาะหน้าที่พัฒนา
 ---
 
 ### Checkpoint 11 — Final UI Acceptance
+
+**สถานะ:** พร้อมตรวจรับ — ตรวจ route, permission boundary, deep link, 4-state UI และ responsive ของทั้ง 3 บทบาทแล้ว
+
+Screen inventory, Requirement-to-screen matrix และ Acceptance walkthrough อยู่ที่
+[`ui-acceptance.md`](./ui-acceptance.md)
 
 **พัฒนาและตรวจรวม**
 

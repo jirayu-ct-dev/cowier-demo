@@ -4,6 +4,7 @@ import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigge
 
 const { scenario, events, resetScenario } = useScenario()
 const { resetPlacementData } = useStudentPlacements()
+const { switchPrototypeRole } = useAuthPrototype()
 const roleOptions = [
   { value: 'staff', label: 'เจ้าหน้าที่' },
   { value: 'lecturer', label: 'อาจารย์' },
@@ -33,9 +34,7 @@ const viewStateOptions = [
 const selectedRole = computed({
   get: () => scenario.value.role,
   set: (value: string) => {
-    if (value === 'staff' || value === 'lecturer' || value === 'student') {
-      scenario.value.role = value
-    }
+    if (value === 'staff' || value === 'lecturer' || value === 'student') switchPrototypeRole(value)
   },
 })
 const selectedDataSet = computed({
@@ -60,6 +59,7 @@ const selectedViewState = computed({
 const resetAllMockData = () => {
   resetScenario()
   resetPlacementData()
+  switchPrototypeRole('staff')
 }
 </script>
 

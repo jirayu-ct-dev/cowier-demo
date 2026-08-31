@@ -1,7 +1,6 @@
-export default defineNuxtRouteMiddleware(() => {
-  const { scenario } = useScenario()
-  if (scenario.value.role !== 'lecturer') {
-    scenario.value.role = 'lecturer'
-    scenario.value.userName = 'อาจารย์ผู้ตรวจคำร้อง'
-  }
+export default defineNuxtRouteMiddleware((to) => {
+  const { currentAccount } = useAuthPrototype()
+  if (currentAccount.value?.role !== 'lecturer') return navigateTo({ path: '/forbidden', query: { from: to.fullPath } })
+  const { canAccess } = useLecturerPermissions()
+  if (to.path.startsWith('/lecturer/placements') && !canAccess()) return navigateTo({ path: '/forbidden', query: { from: to.fullPath } })
 })

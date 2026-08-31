@@ -14,6 +14,10 @@ const { scenario } = useScenario()
 const { people } = usePeopleDirectory()
 const { applications, getStudentApplications } = useStudentApplications()
 const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
+const isStaffView = computed(() => scenario.value.role === 'staff')
+const pageDescription = computed(() => isStaffView.value
+  ? 'ติดตามบริษัทที่นักศึกษาแต่ละคนยื่นสมัคร ตำแหน่ง และสถานะการตอบกลับล่าสุดของนักศึกษาทั้งหมด'
+  : 'ดูบริษัทที่นักศึกษาแต่ละคนยื่นสมัคร ตำแหน่ง และสถานะการตอบกลับล่าสุด')
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -130,7 +134,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
   <div>
     <div class="mb-6">
       <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">การสมัครสหกิจของนักศึกษา</h2>
-      <p class="mt-1 text-sm leading-6 text-muted">ดูบริษัทที่นักศึกษาแต่ละคนยื่นสมัคร ตำแหน่ง และสถานะการตอบกลับล่าสุด</p>
+      <p class="mt-1 text-sm leading-6 text-muted">{{ pageDescription }}</p>
     </div>
 
     <div v-if="effectiveViewState === 'loading'" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="กำลังโหลดสรุปการสมัคร">

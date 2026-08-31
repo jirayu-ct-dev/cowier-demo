@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarRange, X } from '@lucide/vue'
+import { ArrowLeft, CalendarRange } from '@lucide/vue'
 
 const route = useRoute()
 const {
@@ -7,7 +7,6 @@ const {
   roundModel,
   cycleOptions,
   roundOptions,
-  scheduleDate,
   selectedCycleLabel,
 } = useSupervisionContext()
 const {
@@ -25,15 +24,13 @@ const {
 const showsSupervisionRound = computed(() => route.path.startsWith('/lecturer/supervision')
   || route.path.startsWith('/lecturer/evaluations')
   || route.path.startsWith('/staff/supervision'))
-const showsLecturerScheduleFilters = computed(() => route.path.startsWith('/lecturer/supervision'))
+const showsLecturerSupervisionBack = computed(() => /^\/lecturer\/supervision\/[^/]+$/.test(route.path))
 const showsStudentCohort = computed(() => route.path.startsWith('/lecturer/students')
   || route.path.startsWith('/lecturer/applications')
   || route.path.startsWith('/staff/applications')
   || route.path === '/staff/master-data/students'
   || route.path === '/staff/companies')
-const toolbarGridClass = computed(() => showsLecturerScheduleFilters.value
-  ? 'sm:grid-cols-[17rem_12rem_13rem]'
-  : showsStudentCohort.value
+const toolbarGridClass = computed(() => showsStudentCohort.value
     ? 'sm:grid-cols-[11rem_9rem_12rem]'
   : showsSupervisionRound.value
     ? 'sm:grid-cols-[17rem_12rem]'
@@ -50,9 +47,6 @@ const contextLabel = computed(() => {
   if (route.path === '/staff/supervision') return 'บริบทตารางนิเทศ'
   return 'บริบทการจัดกลุ่มนิเทศ'
 })
-const scheduleDateLabel = computed(() => scheduleDate.value
-  ? new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(new Date(`${scheduleDate.value}T00:00:00+07:00`))
-  : '')
 watchEffect(() => {
   if (showsStudentCohort.value) ensureAvailableStudentFilters()
 })
@@ -68,10 +62,19 @@ watchEffect(() => {
         <div class="min-w-0">
           <p class="text-xs font-medium text-muted">{{ contextLabel }}</p>
           <p class="truncate text-sm font-semibold text-ink">
-            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }} · {{ selectedStudentSectionLabel }} · {{ selectedStudentSemesterLabel }}</template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template><template v-if="showsLecturerScheduleFilters && scheduleDateLabel"> · {{ scheduleDateLabel }}</template></template>
+            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }} · {{ selectedStudentSectionLabel }} · {{ selectedStudentSemesterLabel }}</template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template></template>
           </p>
         </div>
       </div>
+
+      <NuxtLink
+        v-if="showsLecturerSupervisionBack"
+        to="/lecturer/supervision"
+        class="inline-flex min-h-11 w-fit shrink-0 items-center gap-2 rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-muted transition-colors hover:bg-surface hover:text-ink"
+      >
+        <ArrowLeft :size="17" aria-hidden="true" />
+        กลับไปตารางนิเทศ
+      </NuxtLink>
 
       <div class="grid w-full grid-cols-1 gap-2 sm:w-auto" :class="toolbarGridClass">
         <UiSelect
@@ -114,26 +117,6 @@ watchEffect(() => {
           label="ครั้งที่นิเทศ"
           :label-visible="false"
         />
-        <div v-if="showsLecturerScheduleFilters" class="flex items-center gap-1">
-          <label for="supervision-schedule-date" class="sr-only">วันที่นิเทศ</label>
-          <input
-            id="supervision-schedule-date"
-            v-model="scheduleDate"
-            type="date"
-            class="min-h-11 min-w-0 flex-1 rounded-control border border-divider bg-canvas px-3 text-sm font-normal text-ink transition-colors hover:border-gray-300"
-            aria-label="เลือกวันที่นิเทศ"
-          >
-          <button
-            v-if="scheduleDate"
-            type="button"
-            class="grid size-11 shrink-0 place-items-center rounded-control border border-divider bg-canvas text-muted hover:bg-surface hover:text-ink"
-            aria-label="ล้างวันที่นิเทศ"
-            title="ล้างวันที่"
-            @click="scheduleDate = ''"
-          >
-            <X :size="16" aria-hidden="true" />
-          </button>
-        </div>
       </div>
     </div>
   </aside>

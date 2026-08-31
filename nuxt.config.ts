@@ -10,6 +10,9 @@ export default defineNuxtConfig({
       htmlAttrs: { lang: 'th' },
       title: 'CWIE BRU',
       titleTemplate: '%s | CWIE BRU',
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/images/brand/computer-science-full.png' },
+      ],
     },
   },
   css: [

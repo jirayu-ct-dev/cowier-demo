@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
                 @click="tablePreviewState = option.value"
               >{{ option.label }}</button>
             </div>
-            <UiButton :icon="Plus" @click="notifyAction('เริ่มสร้างคำร้องตัวอย่าง', 'Flow จริงจะพัฒนาใน Checkpoint 2')">สร้างคำร้อง</UiButton>
+            <UiButton :icon="Plus" @click="notifyAction('ตัวอย่างปุ่มหลัก', 'ระบบแสดงผลตอบกลับด้วย Toast ตามมาตรฐานกลาง')">สร้างคำร้อง</UiButton>
           </div>
         </div>
 
@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
       <div v-else-if="tablePreviewState === 'forbidden'" class="p-5 sm:p-6"><AppForbiddenState /></div>
       <div v-else-if="tablePreviewState === 'empty' || !paginatedRequests.length" class="p-5 sm:p-6">
         <AppEmptyState :title="searchQuery || statusFilter !== 'all' ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีคำร้องสถานประกอบการ'" :description="searchQuery || statusFilter !== 'all' ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'เมื่อมีคำร้อง รายการจะแสดงในตารางนี้'">
-          <UiButton v-if="searchQuery || statusFilter !== 'all'" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton><UiButton v-else :icon="Plus" @click="notifyAction('เริ่มสร้างคำร้องตัวอย่าง', 'Flow จริงจะพัฒนาใน Checkpoint 2')">สร้างคำร้อง</UiButton>
+          <UiButton v-if="searchQuery || statusFilter !== 'all'" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton><UiButton v-else :icon="Plus" @click="notifyAction('ตัวอย่างปุ่มหลัก', 'ระบบแสดงผลตอบกลับด้วย Toast ตามมาตรฐานกลาง')">สร้างคำร้อง</UiButton>
         </AppEmptyState>
       </div>
       <template v-else>

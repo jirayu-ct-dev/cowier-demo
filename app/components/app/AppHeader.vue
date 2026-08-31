@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Bell, ChevronDown, Menu } from '@lucide/vue'
+import { Bell, ChevronDown, KeyRound, LogOut, Menu } from '@lucide/vue'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRoot,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
 
@@ -13,6 +14,12 @@ const emit = defineEmits<{ openNavigation: [] }>()
 const route = useRoute()
 const { scenario } = useScenario()
 const { roleNotifications, unreadCount, markAllAsRead, openNotification } = useNotifications()
+const { logout } = useAuthPrototype()
+
+const handleLogout = async () => {
+  await logout()
+  await navigateTo('/login')
+}
 
 const roleLabel = computed(() => ({
   staff: 'เจ้าหน้าที่',
@@ -112,7 +119,15 @@ const pageTitle = computed(() => {
               <span class="block text-sm font-semibold text-ink">{{ scenario.userName }}</span>
               <span class="mt-0.5 block text-xs font-normal text-muted">{{ roleLabel }} · ข้อมูลจำลอง</span>
             </DropdownMenuLabel>
-            <p class="rounded-control bg-surface px-3 py-2 text-xs leading-5 text-muted">เมนูบัญชีจะเปิดใช้งานใน Checkpoint Authentication</p>
+            <DropdownMenuSeparator class="my-1 h-px bg-divider" />
+            <DropdownMenuItem class="flex cursor-pointer items-center gap-2 rounded-control px-3 py-2.5 text-sm text-ink outline-none data-[highlighted]:bg-surface" @select="navigateTo('/account/password')">
+              <KeyRound :size="17" aria-hidden="true" />
+              เปลี่ยนรหัสผ่าน
+            </DropdownMenuItem>
+            <DropdownMenuItem class="flex cursor-pointer items-center gap-2 rounded-control px-3 py-2.5 text-sm text-danger outline-none data-[highlighted]:bg-danger-soft" @select="handleLogout">
+              <LogOut :size="17" aria-hidden="true" />
+              ออกจากระบบ
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenuPortal>
       </DropdownMenuRoot>

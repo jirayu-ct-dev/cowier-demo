@@ -8,7 +8,7 @@ useHead({ title: 'ตารางนิเทศ' })
 const { scenario } = useScenario()
 const { showToast } = useToast()
 const { people } = usePeopleDirectory()
-const { cycleId, round, scheduleDate, scheduleGroupId } = useSupervisionContext()
+const { cycleId, round, scheduleGroupId } = useSupervisionContext()
 const { groups, getCompanies } = useSupervisionGroups()
 const { appointments, joinAppointment, leaveAppointment } = useSupervisionAppointments()
 const currentLecturerId = 'L0012'
@@ -30,7 +30,6 @@ const hasTableFilters = computed(() => Boolean(searchQuery.value.trim() || sched
 const currentAppointments = computed(() => appointments.value
   .filter(item => item.cycleId === cycleId.value
     && item.round === round.value
-    && (!scheduleDate.value || item.date === scheduleDate.value)
     && (scheduleGroupId.value === 'all' || item.groupId === scheduleGroupId.value))
   .filter((item) => {
     const query = searchQuery.value.trim().toLocaleLowerCase('th')
@@ -60,7 +59,6 @@ const studentNames = (appointment: SupervisionAppointment) => company(appointmen
   .filter(student => appointment.studentIds.includes(student.studentId))
   .map(student => student.studentName) ?? appointment.studentIds
 const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(new Date(`${date}T00:00:00+07:00`))
-const selectedDateLabel = computed(() => scheduleDate.value ? formatDate(scheduleDate.value) : '')
 const retry = () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
@@ -131,7 +129,7 @@ watchEffect(() => {
 
       <div v-if="effectiveViewState === 'loading'" class="space-y-3 p-5 sm:p-6" aria-label="กำลังโหลดรายการนัด"><UiSkeleton v-for="row in 4" :key="row" class="h-14" /></div>
       <div v-else-if="effectiveViewState === 'error'" class="p-5 sm:p-6"><AppErrorState title="โหลดรายการนัดไม่สำเร็จ" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง" @retry="retry" /></div>
-      <div v-else-if="!currentAppointments.length" class="p-5 sm:p-6"><AppEmptyState :title="scheduleDate || hasTableFilters ? 'ไม่พบรายการนิเทศที่ตรงกับตัวกรอง' : 'ยังไม่มีตารางสำหรับการนิเทศครั้งนี้'" :description="scheduleDate || hasTableFilters ? `${selectedDateLabel ? `วันที่ ${selectedDateLabel}` : 'ทุกวัน'} · ${scheduleGroupId === 'all' ? 'ทุกกลุ่ม' : groupName(scheduleGroupId)} กรุณาเปลี่ยนคำค้นหาหรือตัวกรองที่ใช้อยู่` : 'เจ้าหน้าที่ยังไม่ได้กำหนดตารางของกลุ่มอาจารย์และสถานประกอบการ'" /></div>
+      <div v-else-if="!currentAppointments.length" class="p-5 sm:p-6"><AppEmptyState :title="hasTableFilters ? 'ไม่พบรายการนิเทศที่ตรงกับตัวกรอง' : 'ยังไม่มีตารางสำหรับการนิเทศครั้งนี้'" :description="hasTableFilters ? `${scheduleGroupId === 'all' ? 'ทุกกลุ่ม' : groupName(scheduleGroupId)} กรุณาเปลี่ยนคำค้นหาหรือตัวกรองที่ใช้อยู่` : 'เจ้าหน้าที่ยังไม่ได้กำหนดตารางของกลุ่มอาจารย์และสถานประกอบการ'" /></div>
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
           <table class="w-full min-w-[1180px] table-fixed border-collapse text-left text-sm">
@@ -152,8 +150,8 @@ watchEffect(() => {
           </table>
         </div>
 
-        <div class="divide-y divide-divider md:hidden">
-          <article v-for="item in currentAppointments" :key="item.id" class="p-5">
+        <div class="mobile-card-list md:hidden">
+          <article v-for="item in currentAppointments" :key="item.id" class="bg-canvas p-5">
             <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-semibold text-ink">{{ companyName(item.companyId) }}</h3><p class="mt-1 text-xs text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></div><UiButton class="shrink-0" size="sm" variant="secondary" @click="navigateTo(`/lecturer/supervision/${item.id}`)">ดูข้อมูล</UiButton></div>
             <div class="mt-3 flex flex-wrap items-center gap-2"><UiBadge v-if="isResponsibleGroup(item)" tone="info">กลุ่มของคุณ</UiBadge><UiBadge :tone="supervisionAppointmentStatusMeta[item.status].tone">{{ supervisionAppointmentStatusMeta[item.status].label }}</UiBadge><span class="text-sm text-muted">{{ formatDate(item.date) }} · {{ supervisionPeriodMeta[item.period].label }}</span></div>
             <dl class="mt-3 grid gap-2 border-t border-divider pt-3 text-sm"><div><dt class="text-xs font-medium text-muted">กลุ่มรับผิดชอบ</dt><dd class="mt-1 text-ink">{{ groupName(item.groupId) }}</dd></div><div><dt class="text-xs font-medium text-muted">อาจารย์ผู้เข้าร่วม</dt><dd class="mt-1 text-ink">{{ item.lecturerIds.length ? item.lecturerIds.map(lecturerName).join(', ') : 'ยังไม่มีอาจารย์เข้าร่วม' }}</dd></div><div><dt class="text-xs font-medium text-muted">นักศึกษา</dt><dd class="mt-1 text-ink">{{ studentNames(item).join(', ') }} ({{ item.studentIds.length }} คน)</dd></div></dl>

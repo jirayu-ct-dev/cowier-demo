@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Upload, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Settings2, Upload, X } from '@lucide/vue'
 import type { PeopleFileFormat } from '~/composables/usePeopleImport'
-import type { PersonType } from '~/composables/usePeopleDirectory'
+import type { PersonRecord, PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff-prototype' })
@@ -12,6 +12,7 @@ const { showToast } = useToast()
 const { people } = usePeopleDirectory()
 const { exportPeople } = usePeopleImport()
 const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
+const { getPermissions, setPermission } = useLecturerPermissions()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
@@ -30,6 +31,9 @@ const pageSize = ref('10')
 const currentPage = ref(1)
 const exportFormat = ref<PeopleFileFormat>('xlsx')
 const isExporting = ref(false)
+const permissionsDialogOpen = ref(false)
+const editingLecturer = ref<PersonRecord | null>(null)
+const permissionDraft = ref(false)
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 
 const recordStatusOptions = [
@@ -106,6 +110,17 @@ const handleExport = async () => {
   finally {
     isExporting.value = false
   }
+}
+const openPermissions = (person: PersonRecord) => {
+  editingLecturer.value = person
+  permissionDraft.value = getPermissions(person.id).placements
+  permissionsDialogOpen.value = true
+}
+const savePermissions = () => {
+  if (!editingLecturer.value) return
+  setPermission(editingLecturer.value.id, permissionDraft.value)
+  showToast({ title: 'บันทึกสิทธิ์แล้ว', description: `กำหนดสิทธิ์การใช้งานให้ ${getPersonFullName(editingLecturer.value)}` })
+  permissionsDialogOpen.value = false
 }
 </script>
 
@@ -188,7 +203,7 @@ const handleExport = async () => {
                 <td v-if="personType === 'student'" class="whitespace-nowrap px-4 py-4 text-ink">{{ person.section || 'ยังไม่กำหนด' }}</td>
                 <td class="px-4 py-4"><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></td>
                 <td class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4 text-right"><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></td>
+                <td class="px-4 py-4 text-right"><div class="flex justify-end gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :icon="Settings2" class="whitespace-nowrap" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
               </tr>
             </tbody>
           </table>
@@ -197,7 +212,7 @@ const handleExport = async () => {
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
             <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
-            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><UiButton size="sm" variant="secondary" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div>
+            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" class="whitespace-nowrap" :icon="Settings2" aria-label="กำหนดสิทธิ์" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><UiButton size="sm" variant="secondary" class="whitespace-nowrap" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div></div>
           </article>
         </div>
 
@@ -207,5 +222,10 @@ const handleExport = async () => {
         </div>
       </template>
     </UiCard>
+    <UiDialog v-model:open="permissionsDialogOpen" :title="`กำหนดสิทธิ์การใช้งาน · ${editingLecturer ? getPersonFullName(editingLecturer) : ''}`" description="เลือกว่าบัญชีนี้สามารถเห็นและใช้งานฟีเจอร์ตรวจคำร้องและหนังสือขออนุญาตได้หรือไม่">
+      <label class="flex cursor-pointer items-start gap-3 rounded-control border border-divider bg-surface/35 p-4 hover:bg-surface"><UiCheckbox v-model="permissionDraft" label="สิทธิ์การตรวจคำร้องและหนังสือขออนุญาต" /><span><span class="block font-medium text-ink">ตรวจคำร้องและหนังสือขออนุญาต</span><span class="mt-1 block text-xs text-muted">เข้าถึงเมนูและใช้งานฟีเจอร์ที่เกี่ยวข้อง</span></span></label>
+      <template #cancel><UiButton variant="ghost">ยกเลิก</UiButton></template>
+      <template #confirm><UiButton @click="savePermissions">บันทึกสิทธิ์</UiButton></template>
+    </UiDialog>
   </div>
 </template>

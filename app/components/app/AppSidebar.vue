@@ -17,6 +17,7 @@ import {
 const emit = defineEmits<{ navigate: [] }>();
 const route = useRoute();
 const { scenario } = useScenario();
+const { canAccess } = useLecturerPermissions();
 const { activeRequest } = useStudentPlacements();
 const studentPlacementActionTarget = computed(() =>
   activeRequest.value
@@ -25,6 +26,7 @@ const studentPlacementActionTarget = computed(() =>
 );
 const navigation = computed(() => [
   { label: "หน้าหลัก", to: "/", icon: LayoutDashboard, exact: true },
+  { label: "ปฏิทินงาน", to: "/calendar", icon: CalendarDays, exact: true },
   ...(scenario.value.role === "staff" || route.path.startsWith("/staff")
     ? [
         {
@@ -121,12 +123,12 @@ const navigation = computed(() => [
           icon: Building2,
           exact: false,
         },
-        {
+        ...(canAccess() ? [{
           label: "ตรวจคำร้องและหนังสือ",
           to: "/lecturer/placements",
           icon: FileCheck2,
           exact: false,
-        },
+        }] : []),
         {
           label: "ประเมินนิเทศสหกิจ",
           to: "/lecturer/evaluations",
@@ -156,16 +158,8 @@ const isActive = (to: string, exact: boolean) => {
 
 <template>
   <aside class="flex h-full w-64 flex-col bg-sidebar text-white">
-    <div class="flex h-20 items-center border-b border-white/10 px-5">
-      <div
-        class="grid size-10 place-items-center rounded-xl bg-primary text-sm font-black tracking-tight text-ink"
-      >
-        CB
-      </div>
-      <div class="ml-3 min-w-0">
-        <p class="font-bold tracking-wide">CWIE BRU</p>
-        <p class="truncate text-xs text-white/55">ระบบบริหารสหกิจศึกษา</p>
-      </div>
+    <div class="flex min-h-20 items-center px-3 py-3 sm:px-4">
+      <AppBrandLogo class="h-auto w-full max-w-56 object-left" />
     </div>
 
     <nav class="flex-1 space-y-1 overflow-y-auto p-3" aria-label="เมนูหลัก">
@@ -191,7 +185,7 @@ const isActive = (to: string, exact: boolean) => {
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 10</p>
+      <p>UI Prototype · Checkpoint 11</p>
     </div>
   </aside>
 </template>

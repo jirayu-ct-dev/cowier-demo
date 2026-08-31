@@ -1,7 +1,4 @@
-export default defineNuxtRouteMiddleware(() => {
-  const { scenario } = useScenario()
-  if (scenario.value.role !== 'student') {
-    scenario.value.role = 'student'
-    scenario.value.userName = 'นายธนกฤต พูนทรัพย์'
-  }
+export default defineNuxtRouteMiddleware((to) => {
+  const { currentAccount } = useAuthPrototype()
+  if (currentAccount.value?.role !== 'student') return navigateTo({ path: '/forbidden', query: { from: to.fullPath } })
 })

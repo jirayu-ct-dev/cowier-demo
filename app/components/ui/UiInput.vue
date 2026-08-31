@@ -3,7 +3,8 @@ interface Props {
   modelValue?: string
   label: string
   name?: string
-  type?: 'text' | 'search' | 'email' | 'tel' | 'date'
+  type?: 'text' | 'search' | 'email' | 'tel' | 'date' | 'password'
+  autocomplete?: string
   placeholder?: string
   help?: string
   error?: string
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   name: undefined,
   type: 'text',
+  autocomplete: undefined,
   placeholder: undefined,
   help: undefined,
   error: undefined,
@@ -40,6 +42,7 @@ const describedBy = computed(() => [helpId.value, errorId.value].filter(Boolean)
     :value="modelValue"
     :name="name"
     :type="type"
+    :autocomplete="autocomplete"
     :placeholder="placeholder"
     :required="required"
     :disabled="disabled"

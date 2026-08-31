@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, CalendarClock } from '@lucide/vue'
+import { CalendarClock } from '@lucide/vue'
 import type { SupervisionPeriod } from '~/composables/useSupervisionAppointments'
 
 definePageMeta({ title: 'รายละเอียดการนิเทศ', middleware: 'lecturer-prototype' })
@@ -110,10 +110,6 @@ watch(appointment, (value) => {
 
 <template>
   <div>
-    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-surface hover:text-ink" @click="navigateTo('/lecturer/supervision')">
-      <ArrowLeft :size="18" aria-hidden="true" />กลับไปตารางนิเทศ
-    </button>
-
     <div v-if="effectiveViewState === 'loading'" class="space-y-5" aria-label="กำลังโหลดรายละเอียดการนิเทศ">
       <UiSkeleton class="h-24" /><UiSkeleton class="h-72" /><UiSkeleton class="h-80" />
     </div>
