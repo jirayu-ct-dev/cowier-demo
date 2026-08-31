@@ -45,9 +45,10 @@ export const useStudentCohortContext = () => {
       .filter(person => person.type === 'student')
       .filter(person => studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
       .filter(person => studentSection.value === 'all' || person.section === studentSection.value)
-      .map(person => getStudentSemester(person.cycle)))]
+      .map(person => getStudentSemester(person.cycle))
+      .filter(semester => semester !== 'ภาคฤดูร้อน'))]
 
-    const semesterOrder = ['ภาคเรียนที่ 1', 'ภาคเรียนที่ 2', 'ภาคฤดูร้อน', 'ไม่ระบุภาคเรียน']
+    const semesterOrder = ['ภาคเรียนที่ 1', 'ภาคเรียนที่ 2', 'ไม่ระบุภาคเรียน']
     semesters.sort((a, b) => semesterOrder.indexOf(a) - semesterOrder.indexOf(b))
 
     return [

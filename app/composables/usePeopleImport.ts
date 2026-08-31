@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { personPrefixOptions, personPrefixValues } from './usePeopleDirectory'
+import { getStudentCohortYear } from './useStudentCohortContext'
+import { getStudentPlacementPosition, personPrefixOptions, personPrefixValues } from './usePeopleDirectory'
 import type { PersonPrefix, PersonRecord, PersonType } from './usePeopleDirectory'
 
 export type PeopleFileFormat = 'csv' | 'xlsx'
@@ -75,17 +76,31 @@ const readCell = (row: Record<string, unknown>, aliases: string[]) => {
   return entry ? String(entry[1] ?? '').trim() : ''
 }
 
-const toWorksheetRows = (people: PersonRecord[], type: PersonType) => {
-  const headers = getHeaders(type)
+export const toPeopleWorksheetRows = (people: PersonRecord[], type: PersonType) => {
   return people
     .filter(person => person.type === type)
-    .map(person => ({
-      [headers.id]: person.id,
-      [headers.prefix]: person.prefix,
-      [headers.firstName]: person.firstName,
-      [headers.lastName]: person.lastName,
-      สถานะข้อมูล: person.recordStatus === 'active' ? 'ใช้งาน' : 'ยุติการใช้งาน',
-    }))
+    .map<Record<string, string | number>>((person) => {
+      if (type === 'student') {
+        const studentRow: Record<string, string | number> = {
+          รหัส: person.id,
+          คำนำหน้าชื่อ: person.prefix,
+          ชื่อ: person.firstName,
+          นามสกุล: person.lastName,
+          รุ่น: getStudentCohortYear(person.id),
+          หมู่เรียน: person.section ?? '',
+          สถานประกอบการ: person.company ?? '',
+          ตำแหน่งที่ฝึก: getStudentPlacementPosition(person.id, person.company),
+        }
+        return studentRow
+      }
+      const lecturerRow: Record<string, string | number> = {
+        รหัส: person.id,
+        คำนำหน้าชื่อ: person.prefix,
+        ชื่อ: person.firstName,
+        นามสกุล: person.lastName,
+      }
+      return lecturerRow
+    })
 }
 
 export const usePeopleImport = () => {
@@ -167,7 +182,7 @@ export const usePeopleImport = () => {
   }
 
   const exportPeople = async (people: PersonRecord[], type: PersonType, format: PeopleFileFormat) => {
-    await downloadWorkbook(toWorksheetRows(people, type), `${type === 'student' ? 'students' : 'lecturers'}-export`, format)
+    await downloadWorkbook(toPeopleWorksheetRows(people, type), `${type === 'student' ? 'students' : 'lecturers'}-export`, format)
   }
 
   const downloadInvalidRows = async (rows: PeopleImportRow[], type: PersonType) => {

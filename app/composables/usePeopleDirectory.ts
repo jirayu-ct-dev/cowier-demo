@@ -220,6 +220,11 @@ const applicationHistory: Record<string, StudentApplicationHistory[]> = {
   ],
 }
 
+export const getStudentPlacementPosition = (studentId: string, company?: string) => {
+  if (!company) return ''
+  return applicationHistory[studentId]?.find(application => application.company === company)?.position ?? ''
+}
+
 const cloneInitialPeople = () => initialPeople.map(person => ({
   ...person,
   activities: person.activities.map(activity => ({ ...activity })),

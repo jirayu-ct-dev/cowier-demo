@@ -53,6 +53,9 @@ const exportFormatOptions = [
   { value: 'xlsx', label: 'Excel (.xlsx)' },
   { value: 'csv', label: 'CSV (.csv)' },
 ]
+const exportDescription = computed(() => personType.value === 'student'
+  ? 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ นามสกุล รุ่น หมู่เรียน สถานประกอบการ และตำแหน่งที่ฝึก'
+  : 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ และนามสกุล')
 
 const filteredPeople = computed(() => {
   if (scenario.value.viewState === 'empty') return []
@@ -133,7 +136,7 @@ const savePermissions = () => {
       </div>
       <div class="flex flex-wrap gap-2 sm:justify-end">
         <UiButton variant="secondary" :icon="Upload" @click="navigateTo({ path: '/staff/master-data/import', query: { type: personType } })">นำเข้าข้อมูล</UiButton>
-        <UiDialog :title="`ส่งออก${context.title}`" description="ไฟล์จะมีรหัส ชื่อ นามสกุล และสถานะข้อมูล โดยไม่รวมรหัสผ่านหรือข้อมูลยืนยันตัวตน">
+        <UiDialog :title="`ส่งออก${context.title}`" :description="exportDescription">
           <template #trigger><UiButton variant="secondary" :icon="Download">ส่งออกข้อมูล</UiButton></template>
           <UiSelect v-model="exportFormat" :options="exportFormatOptions" :placeholder="exportFormatOptions.find(item => item.value === exportFormat)?.label" label="รูปแบบไฟล์" />
           <template #cancel><UiButton variant="ghost">ยกเลิก</UiButton></template>
