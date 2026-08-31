@@ -1,0 +1,46 @@
+<script setup lang="ts">
+import { ArrowLeft } from '@lucide/vue'
+
+definePageMeta({ title: 'แบบประเมินการนิเทศ', middleware: 'lecturer-prototype' })
+
+const route = useRoute()
+const { scenario } = useScenario()
+const { people } = usePeopleDirectory()
+const { groups, getCompanies } = useSupervisionGroups()
+const { appointments } = useSupervisionAppointments()
+const currentLecturerId = 'L0012'
+const appointmentId = computed(() => String(route.params.id))
+const appointment = computed(() => appointments.value.find(item => item.id === appointmentId.value) ?? null)
+const company = computed(() => appointment.value ? getCompanies(appointment.value.cycleId).find(item => item.id === appointment.value?.companyId) ?? null : null)
+const group = computed(() => groups.value.find(item => item.id === appointment.value?.groupId) ?? null)
+const students = computed(() => company.value?.students.filter(student => appointment.value?.studentIds.includes(student.studentId)) ?? [])
+const evaluatorIds = computed(() => appointment.value?.result.actualLecturerIds.length ? appointment.value.result.actualLecturerIds : appointment.value?.lecturerIds ?? [])
+const canManage = computed(() => Boolean(appointment.value?.status === 'completed' && evaluatorIds.value.includes(currentLecturerId)))
+const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
+
+const lecturerName = (id: string) => {
+  const lecturer = people.value.find(person => person.type === 'lecturer' && person.id === id)
+  return lecturer ? getPersonFullName(lecturer) : id
+}
+const retry = () => { scenario.value.forceError = false; scenario.value.viewState = 'data' }
+
+watch(appointment, (value) => {
+  if (value) useHead({ title: `${value.id} · แบบประเมินการนิเทศ` })
+}, { immediate: true })
+</script>
+
+<template>
+  <div>
+    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-surface hover:text-ink" @click="navigateTo('/lecturer/evaluations')"><ArrowLeft :size="18" aria-hidden="true" />กลับไปหน้าการประเมิน</button>
+    <div v-if="effectiveViewState === 'loading'" class="space-y-5" aria-label="กำลังโหลดแบบประเมิน"><UiSkeleton class="h-24" /><UiSkeleton class="h-96" /></div>
+    <AppErrorState v-else-if="effectiveViewState === 'error'" title="โหลดแบบประเมินไม่สำเร็จ" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง" @retry="retry" />
+    <AppEmptyState v-else-if="!appointment" title="ไม่พบรายการประเมิน" description="รายการนี้อาจถูกย้ายหรือไม่มีอยู่ในข้อมูลตัวอย่าง"><UiButton variant="secondary" @click="navigateTo('/lecturer/evaluations')">กลับไปหน้าการประเมิน</UiButton></AppEmptyState>
+    <template v-else>
+      <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-sm font-semibold text-primary">{{ appointment.id }} · นิเทศครั้งที่ {{ appointment.round }}</p><h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">แบบประเมินการนิเทศ</h2><p class="mt-1 text-sm leading-6 text-muted">{{ company?.name ?? appointment.companyId }} · {{ group?.name }}</p></div><UiBadge :tone="canManage ? 'success' : 'warning'">{{ canManage ? 'พร้อมประเมิน' : 'ยังประเมินไม่ได้' }}</UiBadge></header>
+      <UiAlert v-if="appointment.status !== 'completed'" class="mb-6" tone="warning" title="ประเมินได้หลังนิเทศเสร็จ">กลับไปที่ตารางนิเทศและยืนยันผลการนิเทศก่อนเริ่มทำแบบประเมิน</UiAlert>
+      <UiAlert v-else-if="!canManage" class="mb-6" tone="warning" title="ไม่มีสิทธิ์ทำแบบประเมินรายการนี้">เฉพาะอาจารย์ที่เข้าร่วมนิเทศจริงเท่านั้นที่ทำแบบประเมินได้</UiAlert>
+      <div class="mb-6 grid gap-4 sm:grid-cols-3"><UiCard><p class="text-xs text-muted">สถานประกอบการ</p><p class="mt-1 font-semibold text-ink">{{ company?.name ?? appointment.companyId }}</p></UiCard><UiCard><p class="text-xs text-muted">นักศึกษา</p><p class="mt-1 font-semibold text-ink">{{ students.length }} คน</p></UiCard><UiCard><p class="text-xs text-muted">อาจารย์ที่เข้าร่วมจริง</p><p class="mt-1 font-semibold text-ink">{{ evaluatorIds.length }} คน</p></UiCard></div>
+      <SupervisionEvaluationPanel v-if="appointment.status === 'completed'" :appointment="appointment" :students="students" :current-lecturer-id="currentLecturerId" :lecturer-name="lecturerName" :can-manage="canManage" />
+    </template>
+  </div>
+</template>

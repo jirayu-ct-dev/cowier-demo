@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDays, ChevronLeft, ChevronRight, Eye, RotateCcw, Search, UsersRound, X } from '@lucide/vue'
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search, UsersRound, X } from '@lucide/vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 import type { SupervisionAppointment, SupervisionAppointmentStatus } from '~/composables/useSupervisionAppointments'
 
@@ -189,7 +189,7 @@ const openDetails = (appointmentId: string) => {
                 <th scope="col" class="px-4 py-3">ช่วงเวลา</th>
                 <th scope="col" class="px-4 py-3">อาจารย์ผู้นิเทศ</th>
                 <th scope="col" class="px-4 py-3">สถานะ</th>
-                <th scope="col" class="w-16 px-4 py-3"><span class="sr-only">ดูรายละเอียด</span></th>
+                <th scope="col" class="w-28 px-4 py-3"><span class="sr-only">ดูข้อมูล</span></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
@@ -199,7 +199,7 @@ const openDetails = (appointmentId: string) => {
                 <td class="whitespace-nowrap px-4 py-4 text-ink">{{ supervisionPeriodMeta[appointment.period].label }}</td>
                 <td class="max-w-xs px-4 py-4"><p v-for="lecturerId in appointmentLecturerIds(appointment)" :key="lecturerId" class="leading-6 text-ink">{{ lecturerName(lecturerId) }}</p></td>
                 <td class="whitespace-nowrap px-4 py-4"><UiBadge :tone="supervisionAppointmentStatusMeta[appointment.status].tone">{{ supervisionAppointmentStatusMeta[appointment.status].label }}</UiBadge></td>
-                <td class="px-4 py-4 text-right"><button type="button" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${appointment.id}`" title="ดูรายละเอียด" @click="openDetails(appointment.id)"><Eye :size="16" aria-hidden="true" /></button></td>
+                <td class="px-4 py-4 text-right"><button type="button" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${appointment.id}`" @click="openDetails(appointment.id)">ดูข้อมูล</button></td>
               </tr>
             </tbody>
           </table>
@@ -213,7 +213,7 @@ const openDetails = (appointmentId: string) => {
             </div>
             <p class="mt-3 text-sm font-medium text-ink">{{ formatDate(appointment.date) }}</p>
             <p class="mt-1 text-xs leading-5 text-muted">{{ appointmentLecturerIds(appointment).map(lecturerName).join(', ') }}</p>
-            <div class="mt-4 flex justify-end border-t border-divider pt-3"><UiButton size="sm" variant="secondary" :icon="Eye" @click="openDetails(appointment.id)">ดูรายละเอียด</UiButton></div>
+            <div class="mt-4 flex justify-end border-t border-divider pt-3"><UiButton size="sm" variant="secondary" @click="openDetails(appointment.id)">ดูข้อมูล</UiButton></div>
           </article>
         </div>
 

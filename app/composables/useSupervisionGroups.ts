@@ -1,4 +1,42 @@
+import type { PersonPrefix, StudentSection } from './usePeopleDirectory'
+
 export type SupervisionRound = 1 | 2
+export type CompanyRecordStatus = 'active' | 'inactive'
+
+export interface CompanyRecord {
+  id: string
+  name: string
+  branch: string
+  province: string
+  region: string
+  address: string
+  contactName: string
+  contactPhone: string
+  status: CompanyRecordStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export type CompanyInput = Pick<CompanyRecord, 'name' | 'branch' | 'province' | 'region' | 'address' | 'contactName' | 'contactPhone'>
+
+export interface SupervisionCompanyStudent {
+  id: string
+  studentId: string
+  studentName: string
+  prefix: string
+  firstName: string
+  lastName: string
+  section: string
+  position: string
+}
+
+export interface CompanyStudentInput {
+  prefix: string
+  firstName: string
+  lastName: string
+  section: string
+  position: string
+}
 
 export interface SupervisionPlacement {
   id: string
@@ -23,8 +61,9 @@ export interface SupervisionCompany {
   address: string
   contactName: string
   contactPhone: string
+  status: CompanyRecordStatus
   studentCount: number
-  students: Array<Pick<SupervisionPlacement, 'id' | 'studentId' | 'studentName' | 'position'>>
+  students: SupervisionCompanyStudent[]
 }
 
 export interface SupervisionGroup {
@@ -63,16 +102,17 @@ const placementsSeed: SupervisionPlacement[] = [
   { id: 'SP-015', cycleId: 'CYCLE-2569-SUMMER', studentId: '66123456746', studentName: 'วรพล อินทร์แก้ว', companyId: 'SC-007', company: 'บริษัท ภูเก็ตสมาร์ท จำกัด', branch: 'สำนักงานใหญ่', province: 'ภูเก็ต', region: 'ภาคใต้', position: 'QA Engineer' },
 ]
 
-const companyDetails: Record<string, Pick<SupervisionCompany, 'address' | 'contactName' | 'contactPhone'>> = {
-  'SC-001': { address: '88/8 ถนนธานี ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000', contactName: 'คุณกาญจนา วัฒนชัย', contactPhone: '044-611-208' },
-  'SC-002': { address: '125 ถนนจิระ ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000', contactName: 'คุณสุเมธ คงมั่น', contactPhone: '044-620-115' },
-  'SC-003': { address: '299 ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา 30000', contactName: 'คุณปรีชา ศรีสุข', contactPhone: '044-255-901' },
-  'SC-004': { address: '55/21 ถนนศรีจันทร์ ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000', contactName: 'คุณอรอนงค์ แก้วใส', contactPhone: '043-225-478' },
-  'SC-005': { address: '18 ถนนนิมมานเหมินท์ ตำบลสุเทพ อำเภอเมืองเชียงใหม่ จังหวัดเชียงใหม่ 50200', contactName: 'คุณธนกร พิทักษ์วงศ์', contactPhone: '053-218-644' },
-  'SC-006': { address: '99 อาคารคลาวด์ทาวเวอร์ ถนนรัชดาภิเษก เขตดินแดง กรุงเทพมหานคร 10400', contactName: 'คุณณัฐพล พงษ์สวัสดิ์', contactPhone: '02-245-8890' },
-  'SC-007': { address: '42 ถนนเทพกระษัตรี ตำบลตลาดใหญ่ อำเภอเมืองภูเก็ต จังหวัดภูเก็ต 83000', contactName: 'คุณสุนิสา รัตนกุล', contactPhone: '076-221-490' },
-  'SC-008': { address: '700/12 นิคมอุตสาหกรรมอมตะซิตี้ ตำบลคลองตำหรุ อำเภอเมืองชลบุรี จังหวัดชลบุรี 20000', contactName: 'คุณภาคภูมิ วงศ์อนันต์', contactPhone: '038-458-721' },
-}
+const companyRecordsSeed: CompanyRecord[] = [
+  { id: 'SC-001', name: 'บริษัท สยามเทค โซลูชัน จำกัด', branch: 'สำนักงานใหญ่', province: 'บุรีรัมย์', region: 'ภาคตะวันออกเฉียงเหนือ', address: '88/8 ถนนธานี ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000', contactName: 'คุณกาญจนา วัฒนชัย', contactPhone: '044-611-208', status: 'active', createdAt: '2026-07-10T09:00:00+07:00', updatedAt: '2026-08-20T10:30:00+07:00' },
+  { id: 'SC-002', name: 'บริษัท บุรีรัมย์เว็บ จำกัด', branch: 'สำนักงานใหญ่', province: 'บุรีรัมย์', region: 'ภาคตะวันออกเฉียงเหนือ', address: '125 ถนนจิระ ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000', contactName: 'คุณสุเมธ คงมั่น', contactPhone: '044-620-115', status: 'active', createdAt: '2026-07-12T09:00:00+07:00', updatedAt: '2026-08-21T14:10:00+07:00' },
+  { id: 'SC-003', name: 'บริษัท โคราชซอฟต์ จำกัด', branch: 'สำนักงานใหญ่', province: 'นครราชสีมา', region: 'ภาคตะวันออกเฉียงเหนือ', address: '299 ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา 30000', contactName: 'คุณปรีชา ศรีสุข', contactPhone: '044-255-901', status: 'active', createdAt: '2026-07-14T09:00:00+07:00', updatedAt: '2026-08-22T09:45:00+07:00' },
+  { id: 'SC-004', name: 'บริษัท อีสานเทค จำกัด', branch: 'สาขาขอนแก่น', province: 'ขอนแก่น', region: 'ภาคตะวันออกเฉียงเหนือ', address: '55/21 ถนนศรีจันทร์ ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000', contactName: 'คุณอรอนงค์ แก้วใส', contactPhone: '043-225-478', status: 'active', createdAt: '2026-07-18T09:00:00+07:00', updatedAt: '2026-08-23T11:20:00+07:00' },
+  { id: 'SC-005', name: 'บริษัท นอร์ทเทิร์นดิจิทัล จำกัด', branch: 'สาขาเชียงใหม่', province: 'เชียงใหม่', region: 'ภาคเหนือ', address: '18 ถนนนิมมานเหมินท์ ตำบลสุเทพ อำเภอเมืองเชียงใหม่ จังหวัดเชียงใหม่ 50200', contactName: 'คุณธนกร พิทักษ์วงศ์', contactPhone: '053-218-644', status: 'active', createdAt: '2026-07-20T09:00:00+07:00', updatedAt: '2026-08-24T13:30:00+07:00' },
+  { id: 'SC-006', name: 'บริษัท บางกอกคลาวด์ จำกัด', branch: 'สำนักงานใหญ่', province: 'กรุงเทพมหานคร', region: 'ภาคกลาง', address: '99 อาคารคลาวด์ทาวเวอร์ ถนนรัชดาภิเษก เขตดินแดง กรุงเทพมหานคร 10400', contactName: 'คุณณัฐพล พงษ์สวัสดิ์', contactPhone: '02-245-8890', status: 'active', createdAt: '2026-07-22T09:00:00+07:00', updatedAt: '2026-08-25T08:50:00+07:00' },
+  { id: 'SC-007', name: 'บริษัท ภูเก็ตสมาร์ท จำกัด', branch: 'สำนักงานใหญ่', province: 'ภูเก็ต', region: 'ภาคใต้', address: '42 ถนนเทพกระษัตรี ตำบลตลาดใหญ่ อำเภอเมืองภูเก็ต จังหวัดภูเก็ต 83000', contactName: 'คุณสุนิสา รัตนกุล', contactPhone: '076-221-490', status: 'active', createdAt: '2026-07-24T09:00:00+07:00', updatedAt: '2026-08-26T10:15:00+07:00' },
+  { id: 'SC-008', name: 'บริษัท ศูนย์นวัตกรรมดิจิทัลภาคตะวันออก จำกัด', branch: 'สาขาชลบุรี', province: 'ชลบุรี', region: 'ภาคตะวันออก', address: '700/12 นิคมอุตสาหกรรมอมตะซิตี้ ตำบลคลองตำหรุ อำเภอเมืองชลบุรี จังหวัดชลบุรี 20000', contactName: 'คุณภาคภูมิ วงศ์อนันต์', contactPhone: '038-458-721', status: 'active', createdAt: '2026-07-26T09:00:00+07:00', updatedAt: '2026-08-27T16:40:00+07:00' },
+  { id: 'SC-009', name: 'ห้างหุ้นส่วนจำกัด บุรีรัมย์อินโนเวชัน', branch: 'สำนักงานใหญ่', province: 'บุรีรัมย์', region: 'ภาคตะวันออกเฉียงเหนือ', address: '19 ถนนปลัดเมือง ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000', contactName: 'คุณศิริพร บุญมาก', contactPhone: '044-612-990', status: 'inactive', createdAt: '2025-06-10T09:00:00+07:00', updatedAt: '2026-05-15T13:00:00+07:00' },
+]
 
 const studentPrefixes: Record<string, 'นาย' | 'นางสาว'> = {
   '66123456701': 'นาย', '66123456702': 'นางสาว', '66123456704': 'นางสาว', '66123456708': 'นาย', '66123456711': 'นางสาว',
@@ -80,7 +120,11 @@ const studentPrefixes: Record<string, 'นาย' | 'นางสาว'> = {
   '66123456731': 'นาย', '66123456734': 'นางสาว', '66123456738': 'นาย', '66123456742': 'นางสาว', '66123456746': 'นาย',
 }
 
-const getStudentFullName = (placement: SupervisionPlacement) => `${studentPrefixes[placement.studentId] ?? 'นาย'}${placement.studentName}`
+const studentSections: Record<string, string> = {
+  '66123456701': 'หมู่ 1', '66123456702': 'หมู่ 1', '66123456704': 'หมู่ 2', '66123456708': 'หมู่ 1', '66123456711': 'หมู่ 2',
+  '66123456715': 'หมู่ 1', '66123456720': 'หมู่ 2', '66123456725': 'หมู่ 2', '66123456723': 'หมู่ 1', '66123456727': 'หมู่ 2',
+  '66123456731': 'หมู่ 1', '66123456734': 'หมู่ 2', '66123456738': 'หมู่ 1', '66123456742': 'หมู่ 2', '66123456746': 'หมู่ 1',
+}
 
 const groupsSeed: SupervisionGroup[] = [
   { id: 'SG-001', cycleId: 'CYCLE-2569-2', round: 1, name: 'กลุ่มอาจารย์ 1', lecturerIds: ['L0012'], companyIds: ['SC-001', 'SC-002'], createdAt: '2026-08-29T10:00:00+07:00' },
@@ -91,18 +135,25 @@ const groupsSeed: SupervisionGroup[] = [
 export const useSupervisionGroups = () => {
   const placements = useState<SupervisionPlacement[]>('supervision-placements-v4', () => structuredClone(placementsSeed))
   const groups = useState<SupervisionGroup[]>('supervision-groups-v3', () => structuredClone(groupsSeed))
+  const companyRecords = useState<CompanyRecord[]>('company-records-v1', () => structuredClone(companyRecordsSeed))
+  const studentProfiles = useState<Record<string, { prefix: string, section: string }>>('supervision-student-profiles-v1', () => Object.fromEntries(
+    Object.keys(studentPrefixes).map(id => [id, { prefix: studentPrefixes[id] ?? 'นาย', section: studentSections[id] ?? 'ยังไม่กำหนด' }]),
+  ))
   const { recordEvent } = useScenario()
 
   const getCompanies = (cycleId: string): SupervisionCompany[] => {
     const byCompany = new Map<string, SupervisionCompany>()
     placements.value.filter(item => item.cycleId === cycleId).forEach((placement) => {
       const company = byCompany.get(placement.companyId)
-      const student = { id: placement.id, studentId: placement.studentId, studentName: getStudentFullName(placement), position: placement.position }
+      const [firstName = placement.studentName, lastName = ''] = placement.studentName.split(' ')
+      const profile = studentProfiles.value[placement.studentId] ?? { prefix: 'นาย', section: 'ยังไม่กำหนด' }
+      const student = { id: placement.id, studentId: placement.studentId, studentName: `${profile.prefix}${placement.studentName}`, prefix: profile.prefix, firstName, lastName, section: profile.section, position: placement.position }
       if (company) {
         company.students.push(student)
         company.studentCount = company.students.length
         return
       }
+      const record = companyRecords.value.find(item => item.id === placement.companyId)
       byCompany.set(placement.companyId, {
         id: placement.companyId,
         cycleId: placement.cycleId,
@@ -110,9 +161,10 @@ export const useSupervisionGroups = () => {
         branch: placement.branch,
         province: placement.province,
         region: placement.region,
-        address: companyDetails[placement.companyId]?.address ?? 'ยังไม่มีข้อมูลที่อยู่',
-        contactName: companyDetails[placement.companyId]?.contactName ?? 'ยังไม่มีข้อมูลผู้ประสานงาน',
-        contactPhone: companyDetails[placement.companyId]?.contactPhone ?? 'ยังไม่มีข้อมูลเบอร์โทรศัพท์',
+        address: record?.address ?? 'ยังไม่มีข้อมูลที่อยู่',
+        contactName: record?.contactName ?? 'ยังไม่มีข้อมูลผู้ประสานงาน',
+        contactPhone: record?.contactPhone ?? 'ยังไม่มีข้อมูลเบอร์โทรศัพท์',
+        status: record?.status ?? 'active',
         studentCount: 1,
         students: [student],
       })
@@ -121,6 +173,9 @@ export const useSupervisionGroups = () => {
   }
 
   const getGroup = (id: string) => groups.value.find(group => group.id === id) ?? null
+  const getCompanyRecord = (id: string) => companyRecords.value.find(company => company.id === id) ?? null
+  const getCompanyPlacements = (id: string) => placements.value.filter(placement => placement.companyId === id)
+  const getStudentProfile = (id: string) => studentProfiles.value[id] ?? { prefix: 'นาย', section: 'ยังไม่กำหนด' }
   const getGroupCompanies = (group: SupervisionGroup) => getCompanies(group.cycleId).filter(company => group.companyIds.includes(company.id))
   const getAssignedCompanyIds = (cycleId: string, round: SupervisionRound) => new Set(groups.value
     .filter(group => group.cycleId === cycleId && group.round === round)
@@ -153,14 +208,73 @@ export const useSupervisionGroups = () => {
     return group
   }
 
+  const createCompany = (input: CompanyInput) => {
+    const nextNumber = Math.max(0, ...companyRecords.value.map(company => Number(company.id.replace('SC-', '')) || 0)) + 1
+    const now = new Date().toISOString()
+    const company: CompanyRecord = { ...input, id: `SC-${String(nextNumber).padStart(3, '0')}`, status: 'active', createdAt: now, updatedAt: now }
+    companyRecords.value.unshift(company)
+    recordEvent(`เพิ่มสถานประกอบการ ${company.name}`)
+    return company
+  }
+
+  const updateCompany = (company: CompanyRecord, input: CompanyInput) => {
+    Object.assign(company, input, { updatedAt: new Date().toISOString() })
+    getCompanyPlacements(company.id).forEach((placement) => {
+      Object.assign(placement, { company: company.name, branch: company.branch, province: company.province, region: company.region })
+    })
+    recordEvent(`แก้ไขสถานประกอบการ ${company.name}`)
+    return company
+  }
+
+  const deactivateCompany = (company: CompanyRecord) => {
+    company.status = 'inactive'
+    company.updatedAt = new Date().toISOString()
+    recordEvent(`ยุติการใช้งานสถานประกอบการ ${company.name}`)
+  }
+
+  const restoreCompany = (company: CompanyRecord) => {
+    company.status = 'active'
+    company.updatedAt = new Date().toISOString()
+    recordEvent(`เปิดใช้งานสถานประกอบการ ${company.name}`)
+  }
+
+  const deleteCompany = (company: CompanyRecord) => {
+    if (getCompanyPlacements(company.id).length) throw new Error('company-in-use')
+    companyRecords.value = companyRecords.value.filter(item => item.id !== company.id)
+    recordEvent(`ลบสถานประกอบการ ${company.name}`)
+  }
+
+  const updateCompanyStudent = (placementId: string, input: CompanyStudentInput) => {
+    const placement = placements.value.find(item => item.id === placementId)
+    if (!placement) throw new Error('student-placement-not-found')
+    placement.studentName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim()
+    placement.position = input.position.trim()
+    studentProfiles.value[placement.studentId] = { prefix: input.prefix, section: input.section }
+    const { findPerson, updatePerson } = usePeopleDirectory()
+    const person = findPerson('student', placement.studentId)
+    if (person) updatePerson(person, { id: person.id, prefix: input.prefix as PersonPrefix, firstName: input.firstName.trim(), lastName: input.lastName.trim(), cycle: person.cycle, section: input.section as StudentSection })
+    recordEvent(`แก้ไขนักศึกษา ${placement.studentId} ใน ${placement.company}`)
+    return placement
+  }
+
   return {
     placements,
     groups,
+    companyRecords,
     getGroup,
+    getCompanyRecord,
+    getCompanyPlacements,
+    getStudentProfile,
     getCompanies,
     getGroupCompanies,
     getUnassignedCompanies,
     getAssignedLecturerIds,
     createGroup,
+    createCompany,
+    updateCompany,
+    deactivateCompany,
+    restoreCompany,
+    deleteCompany,
+    updateCompanyStudent,
   }
 }

@@ -5,8 +5,13 @@ const mobileNavigationOpen = ref(false)
 const route = useRoute()
 const isDevelopment = import.meta.dev
 const hasDashboardToolbar = computed(() => route.path.startsWith('/staff/supervision/groups')
+  || route.path === '/staff/supervision'
+  || route.path.startsWith('/staff/applications')
   || route.path === '/staff/master-data/students'
+  || route.path === '/staff/companies'
   || route.path.startsWith('/lecturer/placements')
+  || route.path.startsWith('/lecturer/evaluations')
+  || route.path.startsWith('/lecturer/applications')
   || route.path.startsWith('/lecturer/students')
   || route.path.startsWith('/lecturer/supervision'))
 

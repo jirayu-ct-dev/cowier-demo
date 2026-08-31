@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Eye, Plus, RotateCcw, Search, Upload, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Upload, X } from '@lucide/vue'
 import type { PeopleFileFormat } from '~/composables/usePeopleImport'
 import type { PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
@@ -177,7 +177,7 @@ const handleExport = async () => {
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">หมู่เรียน</th>
                 <th scope="col" class="px-4 py-3">สถานะข้อมูล</th>
                 <th scope="col" class="px-4 py-3">สถานะบัญชี</th>
-                <th scope="col" class="w-20 px-4 py-3"><span class="sr-only">ดูรายละเอียด</span></th>
+                <th scope="col" class="w-28 px-4 py-3"><span class="sr-only">ดูข้อมูล</span></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
@@ -188,7 +188,7 @@ const handleExport = async () => {
                 <td v-if="personType === 'student'" class="whitespace-nowrap px-4 py-4 text-ink">{{ person.section || 'ยังไม่กำหนด' }}</td>
                 <td class="px-4 py-4"><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></td>
                 <td class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4 text-right"><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${getPersonFullName(person)}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></NuxtLink></td>
+                <td class="px-4 py-4 text-right"><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></td>
               </tr>
             </tbody>
           </table>
@@ -197,7 +197,7 @@ const handleExport = async () => {
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
             <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
-            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><UiButton size="sm" variant="secondary" :icon="Eye" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูรายละเอียด</UiButton></div>
+            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><UiButton size="sm" variant="secondary" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div>
           </article>
         </div>
 

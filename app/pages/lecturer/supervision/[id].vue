@@ -6,9 +6,10 @@ definePageMeta({ title: 'รายละเอียดการนิเทศ'
 
 const route = useRoute()
 const { scenario } = useScenario()
+const { showToast } = useToast()
 const { people } = usePeopleDirectory()
 const { groups, getCompanies } = useSupervisionGroups()
-const { appointments } = useSupervisionAppointments()
+const { appointments, updateAppointment, saveResult, completeAppointment } = useSupervisionAppointments()
 const currentLecturerId = 'L0012'
 const appointmentId = computed(() => String(route.params.id))
 const appointment = computed(() => appointments.value.find(item => item.id === appointmentId.value) ?? null)
@@ -28,6 +29,8 @@ const canManage = computed(() => Boolean(appointment.value && (
 const scheduleErrors = ref<{ date?: string, period?: string, lecturerIds?: string }>({})
 const scheduleForm = reactive({ date: '', period: 'morning' as SupervisionPeriod, lecturerIds: [] as string[] })
 const resultForm = reactive({ summary: '', issues: '', suggestions: '', companyRequirements: '' })
+const resultError = ref('')
+const isSavingResult = ref(false)
 const periodOptions = [
   { value: 'morning', label: 'ช่วงเช้า' },
   { value: 'afternoon', label: 'ช่วงบ่าย' },
@@ -48,6 +51,49 @@ const toggleLecturer = (id: string, checked: boolean | 'indeterminate') => {
   const next = checked === true ? [...new Set([...selected, id])] : selected.filter(item => item !== id)
   scheduleForm.lecturerIds = next
   scheduleErrors.value.lecturerIds = undefined
+}
+const saveSupervisionResult = () => {
+  if (!appointment.value || !canManage.value || isCancelled.value || isSavingResult.value) return
+  scheduleErrors.value = {}
+  resultError.value = ''
+  if (!scheduleForm.date) scheduleErrors.value.date = 'เลือกวันที่นิเทศ'
+  if (!scheduleForm.lecturerIds.length) scheduleErrors.value.lecturerIds = 'เลือกอาจารย์ผู้เข้าร่วมอย่างน้อย 1 คน'
+  if (Object.values(scheduleErrors.value).some(Boolean)) {
+    resultError.value = 'กรุณาตรวจสอบวันและอาจารย์ผู้เข้าร่วม'
+    return
+  }
+
+  const resultInput = {
+    summary: resultForm.summary,
+    issues: resultForm.issues,
+    suggestions: resultForm.suggestions,
+    companyRequirements: resultForm.companyRequirements,
+  }
+  isSavingResult.value = true
+  try {
+    if (appointment.value.status === 'completed') {
+      saveResult(appointment.value.id, resultInput)
+      showToast({ title: 'บันทึกการแก้ไขผลการนิเทศแล้ว', description: appointment.value.id })
+    }
+    else {
+      updateAppointment(appointment.value.id, {
+        date: scheduleForm.date,
+        period: scheduleForm.period,
+        lecturerIds: [...scheduleForm.lecturerIds],
+      })
+      completeAppointment(appointment.value.id, {
+        ...resultInput,
+        actualLecturerIds: [...scheduleForm.lecturerIds],
+      })
+      showToast({ title: 'ยืนยันนิเทศเสร็จแล้ว', description: 'บันทึกผลการนิเทศเรียบร้อย สามารถทำแบบประเมินในเมนูการประเมิน' })
+    }
+  }
+  catch {
+    showToast({ title: 'บันทึกผลการนิเทศไม่สำเร็จ', description: 'กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง' })
+  }
+  finally {
+    isSavingResult.value = false
+  }
 }
 watch(appointment, (value) => {
   if (!value) return
@@ -121,7 +167,7 @@ watch(appointment, (value) => {
             </div>
             <div class="mt-5 space-y-5">
               <div class="[&>textarea]:min-h-32">
-                <UiTextarea v-model="resultForm.summary" label="สรุปผลการนิเทศ" required :disabled="!canManage || isCancelled" placeholder="สรุปการปฏิบัติงานและสิ่งที่พบจากการนิเทศ" />
+                <UiTextarea v-model="resultForm.summary" label="สรุปผลการนิเทศ" help="ไม่บังคับกรอก สามารถบันทึกผลการนิเทศโดยเว้นช่องนี้ไว้ได้" :disabled="!canManage || isCancelled" placeholder="สรุปการปฏิบัติงานและสิ่งที่พบจากการนิเทศ" />
               </div>
               <div class="grid gap-5 lg:grid-cols-2">
                 <div class="min-w-0 [&>textarea]:min-h-32">
@@ -140,6 +186,10 @@ watch(appointment, (value) => {
               <p class="text-xs font-medium text-muted">อาจารย์ที่เข้าร่วมนิเทศจริง</p>
               <p class="mt-1 text-sm font-semibold text-ink">{{ appointment.result.actualLecturerIds.map(lecturerName).join(', ') }}</p>
               <p v-if="appointment.result.completedAt" class="mt-2 text-xs text-muted">บันทึกเมื่อ {{ formatDateTime(appointment.result.completedAt) }}</p>
+            </div>
+            <div v-if="canManage && !isCancelled" class="mt-5 flex flex-col gap-3 border-t border-divider pt-5 sm:flex-row sm:items-center sm:justify-end">
+              <p v-if="resultError" class="text-sm font-medium text-danger sm:mr-auto">{{ resultError }}</p>
+              <UiButton :loading="isSavingResult" @click="saveSupervisionResult">{{ appointment.status === 'completed' ? 'บันทึกการแก้ไขผล' : 'ยืนยันนิเทศเสร็จแล้ว' }}</UiButton>
             </div>
           </UiCard>
         </div>
@@ -166,19 +216,6 @@ watch(appointment, (value) => {
           </UiCard>
         </aside>
       </div>
-
-      <SupervisionEvaluationPanel
-        v-if="appointment.status !== 'cancelled'"
-        class="mt-6"
-        :appointment="appointment"
-        :students="students"
-        :current-lecturer-id="currentLecturerId"
-        :lecturer-name="lecturerName"
-        :result-input="resultForm"
-        :schedule-input="scheduleForm"
-        :can-manage="canManage"
-        @schedule-errors="scheduleErrors = $event"
-      />
     </template>
   </div>
 </template>

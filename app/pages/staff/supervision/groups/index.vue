@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, ChevronLeft, ChevronRight, Eye, Plus, RotateCcw, Search, UsersRound, X } from '@lucide/vue'
+import { Building2, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, UsersRound, X } from '@lucide/vue'
 import type { SupervisionCompany, SupervisionGroup } from '~/composables/useSupervisionGroups'
 import { getPageCount, paginateItems } from '~/utils/table'
 
@@ -106,7 +106,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
             <div class="hidden overflow-x-auto md:block">
               <table class="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
                 <caption class="sr-only">กลุ่มอาจารย์และสถานประกอบการที่รับผิดชอบ</caption>
-                <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th scope="col" class="w-44 px-5 py-3">กลุ่มอาจารย์</th><th scope="col" class="w-52 px-4 py-3">อาจารย์ในกลุ่ม</th><th scope="col" class="px-4 py-3">สถานประกอบการที่รับผิดชอบ</th><th scope="col" class="w-16 px-4 py-3"><span class="sr-only">ดูภาพรวมกลุ่ม</span></th></tr></thead>
+                <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th scope="col" class="w-44 px-5 py-3">กลุ่มอาจารย์</th><th scope="col" class="w-52 px-4 py-3">อาจารย์ในกลุ่ม</th><th scope="col" class="px-4 py-3">สถานประกอบการที่รับผิดชอบ</th><th scope="col" class="w-28 px-4 py-3"><span class="sr-only">ดูข้อมูล</span></th></tr></thead>
                 <tbody class="divide-y divide-divider">
                   <tr v-for="group in currentGroups" :key="group.id" class="hover:bg-surface/70">
                     <td class="px-5 py-4 align-top"><p class="font-semibold text-ink">{{ group.name }}</p><p class="mt-0.5 text-xs text-muted">{{ group.id }}</p></td>
@@ -119,14 +119,14 @@ const openCompanyDialog = (company: SupervisionCompany) => {
                         </li>
                       </ul>
                     </td>
-                    <td class="px-4 py-4 align-top"><button type="button" class="inline-grid size-8 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูภาพรวม ${group.name}`" title="ดูภาพรวมกลุ่ม" @click="openGroupDialog(group)"><Eye :size="16" aria-hidden="true" /></button></td>
+                    <td class="px-4 py-4 align-top"><button type="button" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${group.name}`" @click="openGroupDialog(group)">ดูข้อมูล</button></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div class="divide-y divide-divider md:hidden">
               <article v-for="group in currentGroups" :key="group.id" class="p-5">
-                <div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ group.name }}</h4><p class="mt-1 text-xs text-muted">{{ group.id }}</p></div><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูภาพรวม ${group.name}`" title="ดูภาพรวมกลุ่ม" @click="openGroupDialog(group)"><Eye :size="17" aria-hidden="true" /></button></div>
+                <div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ group.name }}</h4><p class="mt-1 text-xs text-muted">{{ group.id }}</p></div><UiButton class="shrink-0" size="sm" variant="secondary" @click="openGroupDialog(group)">ดูข้อมูล</UiButton></div>
                 <div class="mt-3 space-y-1.5"><p v-for="id in group.lecturerIds" :key="id" class="text-sm text-ink">{{ lecturerName(id) }}</p></div>
                 <div class="mt-3 border-t border-divider pt-3"><p class="text-xs font-semibold text-muted">สถานประกอบการที่รับผิดชอบ</p><ul class="mt-2 space-y-2"><li v-for="company in getGroupCompanies(group)" :key="company.id" class="flex min-w-0 items-start gap-2"><p class="min-w-0 flex-1 text-sm leading-5 text-ink">{{ company.name }} <span class="whitespace-nowrap text-muted">· {{ company.province }}</span></p><UiBadge tone="info" class="shrink-0">{{ company.studentCount }} คน</UiBadge></li></ul></div>
               </article>
@@ -150,25 +150,22 @@ const openCompanyDialog = (company: SupervisionCompany) => {
               <table class="w-full min-w-[760px] border-collapse text-left text-sm">
                 <caption class="sr-only">สถานประกอบการที่ยังไม่มอบหมายให้กลุ่มอาจารย์</caption>
                 <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
-                  <tr><th scope="col" class="px-6 py-3">สถานประกอบการ</th><th scope="col" class="w-64 px-4 py-3">พื้นที่</th><th scope="col" class="w-32 px-4 py-3 text-right">นักศึกษา</th><th scope="col" class="w-20 px-6 py-3 text-right"><span class="sr-only">ดูรายละเอียด</span></th></tr>
+                  <tr><th scope="col" class="px-6 py-3">สถานประกอบการ</th><th scope="col" class="w-64 px-4 py-3">พื้นที่</th><th scope="col" class="w-32 px-4 py-3 text-right">นักศึกษา</th><th scope="col" class="w-28 px-6 py-3 text-right"><span class="sr-only">ดูข้อมูล</span></th></tr>
                 </thead>
                 <tbody class="divide-y divide-divider">
                   <tr v-for="company in paginatedCompanies" :key="company.id" class="hover:bg-surface/70">
                     <td class="px-6 py-4"><p class="font-semibold text-ink">{{ company.name }}</p><p class="mt-1 text-xs text-muted">{{ company.branch }} · {{ company.id }}</p></td>
                     <td class="px-4 py-4"><p class="text-ink">{{ company.province }}</p><p class="mt-1 text-xs text-muted">{{ company.region }}</p></td>
                     <td class="px-4 py-4 text-right font-semibold text-ink">{{ company.studentCount }} คน</td>
-                    <td class="px-6 py-4 text-right"><button type="button" class="inline-grid size-8 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูข้อมูล ${company.name} และรายชื่อนักศึกษา`" title="ดูข้อมูลบริษัทและรายชื่อนักศึกษา" @click="openCompanyDialog(company)"><Eye :size="16" aria-hidden="true" /></button></td>
+                    <td class="px-6 py-4 text-right"><button type="button" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${company.name} และรายชื่อนักศึกษา`" @click="openCompanyDialog(company)">ดูข้อมูล</button></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div class="divide-y divide-divider md:hidden">
               <article v-for="company in paginatedCompanies" :key="company.id" class="p-5">
-                <div class="flex items-start gap-3">
-                  <div class="min-w-0 flex-1"><h4 class="font-semibold text-ink">{{ company.name }}</h4><p class="mt-1 text-xs text-muted">{{ company.branch }} · {{ company.province }}</p></div>
-                  <UiBadge tone="info" class="shrink-0">{{ company.studentCount }} คน</UiBadge>
-                  <button type="button" class="inline-grid size-8 shrink-0 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink" :aria-label="`ดูข้อมูล ${company.name} และรายชื่อนักศึกษา`" title="ดูข้อมูลบริษัทและรายชื่อนักศึกษา" @click="openCompanyDialog(company)"><Eye :size="16" aria-hidden="true" /></button>
-                </div>
+                <div class="flex items-start gap-3"><div class="min-w-0 flex-1"><h4 class="font-semibold text-ink">{{ company.name }}</h4><p class="mt-1 text-xs text-muted">{{ company.branch }} · {{ company.province }}</p></div><UiBadge tone="info" class="shrink-0">{{ company.studentCount }} คน</UiBadge></div>
+                <div class="mt-4 flex justify-end border-t border-divider pt-3"><UiButton size="sm" variant="secondary" @click="openCompanyDialog(company)">ดูข้อมูล</UiButton></div>
               </article>
             </div>
             <div class="flex flex-col gap-3 border-t border-divider px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">

@@ -8,6 +8,7 @@ useHead({ title: 'หน้าหลัก' })
 
 const { scenario } = useScenario()
 const { cycles, selectedCycle } = useCoopCycles()
+const { activeRequest, findCompany } = useStudentPlacements()
 const roleLabel = computed(() => ({ staff: 'เจ้าหน้าที่', lecturer: 'อาจารย์', student: 'นักศึกษา' }[scenario.value.role]))
 
 type DashboardTone = 'neutral' | 'warning' | 'info' | 'success' | 'danger'
@@ -212,7 +213,15 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <CycleContextPanel class="mb-6" :cycle="dashboardCycle" />
+    <StudentPlacementProgress
+      v-if="scenario.role === 'student'"
+      class="mb-6"
+      :cycle="dashboardCycle"
+      :status="activeRequest?.status"
+      :request-id="activeRequest?.id"
+      :company-name="activeRequest ? findCompany(activeRequest.companyId)?.name : undefined"
+    />
+    <CycleContextPanel v-else class="mb-6" :cycle="dashboardCycle" />
 
     <template v-if="effectiveViewState === 'loading'">
       <div class="grid gap-4 sm:grid-cols-2" :class="summaryGridClass" aria-label="กำลังโหลดหน้าหลัก">
@@ -241,7 +250,7 @@ onBeforeUnmount(() => {
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-muted">{{ item.label }}</p>
-              <p class="mt-2 text-3xl font-bold tracking-tight text-ink">{{ item.value }}</p>
+              <p class="mt-2 font-bold tracking-tight text-ink" :class="scenario.role === 'student' ? 'text-xl sm:text-2xl' : 'text-3xl'">{{ item.value }}</p>
             </div>
             <div class="grid size-10 place-items-center rounded-control bg-warning-soft text-warning">
               <component :is="item.icon" :size="20" aria-hidden="true" />

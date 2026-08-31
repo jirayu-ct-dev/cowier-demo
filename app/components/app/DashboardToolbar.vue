@@ -23,10 +23,14 @@ const {
   selectedStudentSemesterLabel,
 } = useStudentCohortContext()
 const showsSupervisionRound = computed(() => route.path.startsWith('/lecturer/supervision')
-  || route.path.startsWith('/staff/supervision/groups'))
+  || route.path.startsWith('/lecturer/evaluations')
+  || route.path.startsWith('/staff/supervision'))
 const showsLecturerScheduleFilters = computed(() => route.path.startsWith('/lecturer/supervision'))
 const showsStudentCohort = computed(() => route.path.startsWith('/lecturer/students')
-  || route.path === '/staff/master-data/students')
+  || route.path.startsWith('/lecturer/applications')
+  || route.path.startsWith('/staff/applications')
+  || route.path === '/staff/master-data/students'
+  || route.path === '/staff/companies')
 const toolbarGridClass = computed(() => showsLecturerScheduleFilters.value
   ? 'sm:grid-cols-[17rem_12rem_13rem]'
   : showsStudentCohort.value
@@ -37,8 +41,13 @@ const toolbarGridClass = computed(() => showsLecturerScheduleFilters.value
 const contextLabel = computed(() => {
   if (route.path.startsWith('/lecturer/placements')) return 'บริบทการตรวจคำร้อง'
   if (route.path.startsWith('/lecturer/students')) return 'บริบทข้อมูลนักศึกษา'
+  if (route.path.startsWith('/lecturer/applications')) return 'บริบทการสมัครสหกิจ'
+  if (route.path.startsWith('/staff/applications')) return 'บริบทการสมัครสหกิจ'
+  if (route.path.startsWith('/lecturer/evaluations')) return 'บริบทการประเมิน'
   if (route.path.startsWith('/lecturer/supervision')) return 'บริบทตารางนิเทศ'
   if (route.path.startsWith('/staff/master-data/students')) return 'บริบทข้อมูลนักศึกษา'
+  if (route.path === '/staff/companies') return 'บริบทสถานประกอบการ'
+  if (route.path === '/staff/supervision') return 'บริบทตารางนิเทศ'
   return 'บริบทการจัดกลุ่มนิเทศ'
 })
 const scheduleDateLabel = computed(() => scheduleDate.value

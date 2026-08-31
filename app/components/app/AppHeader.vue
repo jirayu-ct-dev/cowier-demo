@@ -21,7 +21,12 @@ const roleLabel = computed(() => ({
 }[scenario.value.role]))
 const pageTitle = computed(() => {
   const path = route.path
+  if (/^\/(staff|lecturer)\/companies\/new$/.test(path)) return 'เพิ่มสถานประกอบการ'
+  if (/^\/(staff|lecturer)\/companies\/[^/]+$/.test(path)) return 'รายละเอียดสถานประกอบการ'
+  if (/^\/(staff|lecturer)\/companies/.test(path)) return 'ข้อมูลสถานประกอบการ'
   if (path.startsWith('/lecturer/supervision')) return 'ตารางนิเทศ'
+  if (path.startsWith('/staff/applications')) return 'การสมัครสหกิจของนักศึกษา'
+  if (path === '/staff/supervision') return 'ตารางนิเทศ'
   if (path.startsWith('/staff/supervision/groups/new')) return 'สร้างกลุ่มอาจารย์นิเทศ'
   if (path.startsWith('/staff/supervision/groups')) return 'จัดกลุ่มอาจารย์นิเทศ'
   if (path.startsWith('/staff/master-data/import')) return 'นำเข้าข้อมูลบุคคล'

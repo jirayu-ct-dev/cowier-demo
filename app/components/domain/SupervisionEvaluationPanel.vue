@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Building2, Check, Eye, Pencil, Save } from '@lucide/vue'
 import { z } from 'zod'
-import type { SupervisionAppointment, SupervisionPeriod } from '~/composables/useSupervisionAppointments'
+import type { SupervisionAppointment } from '~/composables/useSupervisionAppointments'
 import type { CompanyEvaluationInput, CompanyRecommendation, EvaluationRating, StudentEvaluationInput } from '~/composables/useSupervisionEvaluations'
 
 interface StudentSummary {
@@ -11,41 +11,16 @@ interface StudentSummary {
   position: string
 }
 
-interface SupervisionResultDraft {
-  summary: string
-  issues: string
-  suggestions: string
-  companyRequirements: string
-}
-
-interface SupervisionScheduleDraft {
-  date: string
-  period: SupervisionPeriod
-  lecturerIds: string[]
-}
-
-interface ScheduleErrors {
-  date?: string
-  period?: string
-  lecturerIds?: string
-}
-
 interface Props {
   appointment: SupervisionAppointment
   students: StudentSummary[]
   currentLecturerId: string
   lecturerName: (id: string) => string
-  resultInput: SupervisionResultDraft
-  scheduleInput: SupervisionScheduleDraft
   canManage: boolean
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<{
-  scheduleErrors: [errors: ScheduleErrors]
-}>()
 const { showToast } = useToast()
-const { updateAppointment, saveResult, completeAppointment } = useSupervisionAppointments()
 const {
   studentEvaluations,
   companyEvaluations,
@@ -56,11 +31,6 @@ const {
 } = useSupervisionEvaluations()
 
 const ratingSchema = z.enum(['1', '2', '3', '4', '5', 'na'])
-const scheduleSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'เลือกวันที่นิเทศ'),
-  period: z.enum(['morning', 'afternoon'], { message: 'เลือกช่วงเวลา' }),
-  lecturerIds: z.array(z.string()).min(1, 'เลือกอาจารย์ผู้เข้าร่วมอย่างน้อย 1 คน'),
-})
 const studentSubmitSchema = z.object({
   ratings: z.record(z.string(), ratingSchema).refine(
     ratings => studentEvaluationCriteria.every(criterion => Boolean(ratings[criterion.id])),
@@ -110,7 +80,7 @@ const companyForm = reactive({
 
 const evaluatorLecturerIds = computed(() => props.appointment.result.actualLecturerIds.length
   ? props.appointment.result.actualLecturerIds
-  : props.scheduleInput.lecturerIds)
+  : props.appointment.lecturerIds)
 const isParticipant = computed(() => evaluatorLecturerIds.value.includes(props.currentLecturerId))
 const companyEvaluatorId = computed(() => evaluatorLecturerIds.value[0] ?? '')
 const isCompanyEvaluator = computed(() => companyEvaluatorId.value === props.currentLecturerId)
@@ -234,18 +204,6 @@ const setCompanyDialogOpen = (open: boolean) => {
 const submitAllEvaluations = async () => {
   if (isSaving.value || !props.canManage) return
   saveAllError.value = ''
-  const parsedSchedule = scheduleSchema.safeParse(props.scheduleInput)
-  if (!parsedSchedule.success) {
-    const errors = Object.fromEntries(parsedSchedule.error.issues.map(issue => [String(issue.path[0]), issue.message])) as ScheduleErrors
-    emit('scheduleErrors', errors)
-    saveAllError.value = parsedSchedule.error.issues[0]?.message ?? 'กรุณาตรวจสอบวันและอาจารย์ผู้เข้าร่วม'
-    return
-  }
-  emit('scheduleErrors', {})
-  if (!props.resultInput.summary.trim()) {
-    saveAllError.value = 'กรุณากรอกสรุปผลการนิเทศก่อนบันทึกทั้งหมด'
-    return
-  }
   const pendingStudents = props.students.filter(student => getStudentEvaluation(
     props.appointment.id,
     student.studentId,
@@ -271,25 +229,13 @@ const submitAllEvaluations = async () => {
 
   isSaving.value = true
   try {
-    const resultInput = {
-      summary: props.resultInput.summary,
-      issues: props.resultInput.issues,
-      suggestions: props.resultInput.suggestions,
-      companyRequirements: props.resultInput.companyRequirements,
-    }
-    if (props.appointment.status === 'completed') saveResult(props.appointment.id, resultInput)
-    else {
-      updateAppointment(props.appointment.id, parsedSchedule.data)
-      completeAppointment(props.appointment.id, { ...resultInput, actualLecturerIds: [...parsedSchedule.data.lecturerIds] })
-    }
-
     parsedStudents.forEach(({ student, parsed }) => {
       if (parsed.success) submitStudentEvaluation(props.appointment.id, student.studentId, props.currentLecturerId, parsed.data)
     })
     if (parsedCompany?.success) submitCompanyEvaluation(props.appointment.id, props.currentLecturerId, parsedCompany.data)
     stagedStudentEvaluations.value = {}
     stagedCompanyEvaluation.value = null
-    showToast({ title: 'บันทึกข้อมูลทั้งหมดแล้ว', description: 'ผลการนิเทศและแบบประเมินถูกบันทึกเรียบร้อยแล้ว' })
+    showToast({ title: 'บันทึกแบบประเมินทั้งหมดแล้ว', description: 'แบบประเมินนักศึกษาและสถานประกอบการถูกบันทึกเรียบร้อยแล้ว' })
   } catch {
     showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง' })
   } finally {
@@ -372,7 +318,7 @@ const submitAllEvaluations = async () => {
     <div v-if="canManage" class="mt-6 border-t border-divider pt-6">
       <form class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end" @submit.prevent="submitAllEvaluations">
         <p v-if="saveAllError" class="text-sm font-medium text-danger sm:mr-auto">{{ saveAllError }}</p>
-        <UiButton type="submit" :icon="Save" :loading="isSaving">บันทึกทั้งหมด</UiButton>
+        <UiButton type="submit" :icon="Save" :loading="isSaving">บันทึกแบบประเมินทั้งหมด</UiButton>
       </form>
     </div>
 

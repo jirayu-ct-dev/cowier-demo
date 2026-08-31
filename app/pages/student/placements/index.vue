@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Building2, ChevronLeft, ChevronRight, Eye, FilePlus2, RotateCcw, Search, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Building2, ChevronLeft, ChevronRight, FilePlus2, RotateCcw, Search, X } from '@lucide/vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'คำร้องของฉัน', middleware: 'student-prototype' })
@@ -104,8 +104,8 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
             <Building2 :size="20" aria-hidden="true" />
           </span>
           <div>
-            <h3 class="font-semibold text-ink">สถานะการปฏิบัติงานของฉัน</h3>
-            <p class="mt-1 text-sm text-muted">
+            <h3 class="text-sm font-medium text-muted">สถานะการปฏิบัติงานของฉัน</h3>
+            <p class="mt-1 text-base font-semibold text-ink">
               {{ confirmedCompany ? `${confirmedCompany.name} · ${confirmedCompany.branch}` : 'ยังไม่มีสถานประกอบการที่ยืนยันในรอบนี้' }}
             </p>
           </div>
@@ -127,7 +127,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
             <h3 class="text-lg font-bold text-ink">รายการคำร้องของฉัน</h3>
             <p class="mt-1 text-sm leading-6 text-muted">นักศึกษามีคำร้องที่กำลังดำเนินการได้ครั้งละหนึ่งรายการต่อรอบ</p>
           </div>
-          <UiButton v-if="activeRequest" class="shrink-0" :icon="Eye" @click="navigateTo(`/student/placements/${activeRequest.id}`)">ดูคำร้องปัจจุบัน</UiButton>
+          <UiButton v-if="activeRequest" class="shrink-0" @click="navigateTo(`/student/placements/${activeRequest.id}`)">ดูคำร้องปัจจุบัน</UiButton>
           <UiButton v-else-if="canCreateRequest" class="shrink-0" :icon="FilePlus2" @click="navigateTo('/student/placements/new')">แจ้งข้อมูลที่ฝึกงาน</UiButton>
           <UiButton v-else class="shrink-0" variant="secondary" disabled>รอบยังไม่เปิดรับคำร้อง</UiButton>
         </div>
@@ -199,7 +199,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
                 <td class="whitespace-nowrap px-4 py-4 text-muted">{{ formatDate(request.appliedAt) }}</td>
                 <td class="max-w-xs px-4 py-4"><UiBadge :tone="placementStatusMeta[request.status].tone">{{ placementStatusMeta[request.status].label }}</UiBadge><p class="mt-1.5 text-xs leading-5 text-muted">{{ placementStatusMeta[request.status].nextStep }}</p></td>
                 <td class="px-4 py-4 text-right">
-                  <NuxtLink :to="`/student/placements/${request.id}`" class="inline-grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`ดูรายละเอียด ${request.id}`" title="ดูรายละเอียด"><Eye :size="15" aria-hidden="true" /></NuxtLink>
+                  <NuxtLink :to="`/student/placements/${request.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${request.id}`">ดูข้อมูล</NuxtLink>
                 </td>
               </tr>
             </tbody>
@@ -215,7 +215,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
             <p class="mt-3 text-xs leading-5 text-muted">{{ placementStatusMeta[request.status].nextStep }}</p>
             <div class="mt-4 flex items-center justify-between gap-3 border-t border-divider pt-3">
               <div class="text-xs text-muted"><p>{{ request.id }}</p><p class="mt-0.5">{{ formatDate(request.appliedAt) }}</p></div>
-              <UiButton size="sm" variant="secondary" :icon="Eye" @click="navigateTo(`/student/placements/${request.id}`)">ดูรายละเอียด</UiButton>
+              <UiButton size="sm" variant="secondary" @click="navigateTo(`/student/placements/${request.id}`)">ดูข้อมูล</UiButton>
             </div>
           </article>
         </div>

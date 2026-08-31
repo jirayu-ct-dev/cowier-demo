@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import {
   Blocks,
+  BriefcaseBusiness,
+  Building2,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   FileCheck2,
   GraduationCap,
@@ -37,15 +40,39 @@ const navigation = computed(() => [
           exact: false,
         },
         {
+          label: "การสมัครสหกิจของนักศึกษา",
+          to: "/staff/applications",
+          icon: BriefcaseBusiness,
+          exact: false,
+        },
+        {
+          label: "ข้อมูลสถานประกอบการ",
+          to: "/staff/companies",
+          icon: Building2,
+          exact: false,
+        },
+        {
           label: "จัดกลุ่มอาจารย์นิเทศ",
           to: "/staff/supervision/groups",
           icon: UsersRound,
           exact: false,
         },
+        {
+          label: "ตารางนิเทศ",
+          to: "/staff/supervision",
+          icon: CalendarDays,
+          exact: true,
+        },
       ]
     : []),
   ...(scenario.value.role === "student" || route.path.startsWith("/student")
     ? [
+        {
+          label: "ติดตามการสมัครสหกิจ",
+          to: "/student/applications",
+          icon: BriefcaseBusiness,
+          exact: false,
+        },
         {
           label: "คำร้องของฉัน",
           to: "/student/placements",
@@ -71,9 +98,15 @@ const navigation = computed(() => [
   ...(scenario.value.role === "lecturer" || route.path.startsWith("/lecturer")
     ? [
         {
-          label: "ตรวจคำร้องและหนังสือ",
-          to: "/lecturer/placements",
-          icon: FileCheck2,
+          label: "ตารางนิเทศ",
+          to: "/lecturer/supervision",
+          icon: CalendarDays,
+          exact: false,
+        },
+        {
+          label: "การสมัครสหกิจของนักศึกษา",
+          to: "/lecturer/applications",
+          icon: BriefcaseBusiness,
           exact: false,
         },
         {
@@ -83,9 +116,21 @@ const navigation = computed(() => [
           exact: false,
         },
         {
-          label: "ตารางนิเทศ",
-          to: "/lecturer/supervision",
-          icon: CalendarDays,
+          label: "ข้อมูลสถานประกอบการ",
+          to: "/lecturer/companies",
+          icon: Building2,
+          exact: false,
+        },
+        {
+          label: "ตรวจคำร้องและหนังสือ",
+          to: "/lecturer/placements",
+          icon: FileCheck2,
+          exact: false,
+        },
+        {
+          label: "ประเมินนิเทศสหกิจ",
+          to: "/lecturer/evaluations",
+          icon: ClipboardCheck,
           exact: false,
         },
       ]

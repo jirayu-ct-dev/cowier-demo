@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ClipboardCheck, RotateCcw, Search, UserMinus, UserPlus, X } from '@lucide/vue'
+import { RotateCcw, Search, UserMinus, UserPlus, X } from '@lucide/vue'
 import type { SupervisionAppointment } from '~/composables/useSupervisionAppointments'
 
 definePageMeta({ title: 'ตารางนิเทศ', middleware: 'lecturer-prototype' })
@@ -73,12 +73,6 @@ const isParticipating = (appointment: SupervisionAppointment) => appointment.lec
 const isResponsibleGroup = (appointment: SupervisionAppointment) => groups.value
   .find(group => group.id === appointment.groupId)?.lecturerIds.includes(currentLecturerId) ?? false
 const isLocked = (appointment: SupervisionAppointment) => appointment.status === 'completed' || appointment.status === 'cancelled'
-const detailActionLabel = (appointment: SupervisionAppointment) => {
-  if (appointment.status === 'completed') return 'ดูผลและการประเมิน'
-  if (appointment.status === 'cancelled') return 'ดูรายละเอียด'
-  if (isParticipating(appointment) || isResponsibleGroup(appointment)) return 'บันทึกผลและประเมิน'
-  return 'ดูข้อมูลการนิเทศ'
-}
 const toggleParticipation = (appointment: SupervisionAppointment) => {
   workingAppointmentId.value = appointment.id
   try {
@@ -152,7 +146,7 @@ watchEffect(() => {
                 <td class="px-4 py-4 align-top"><p class="font-medium text-ink">{{ groupName(item.groupId) }}</p><UiBadge v-if="isResponsibleGroup(item)" class="mt-2" tone="info">กลุ่มของคุณ</UiBadge></td>
                 <td class="px-4 py-4 align-top"><div v-if="item.lecturerIds.length" class="space-y-1"><p v-for="id in item.lecturerIds" :key="id" class="text-sm leading-5 text-ink">{{ lecturerName(id) }}</p></div><p v-else class="text-sm text-danger">ยังไม่มีอาจารย์เข้าร่วม</p></td>
                 <td class="px-4 py-4 align-top"><p class="font-semibold text-ink">{{ item.studentIds.length }} คน</p><p class="mt-1 text-xs text-muted">ดูรายชื่อในรายละเอียด</p></td>
-                <td class="px-4 py-4 align-top"><div class="flex items-center justify-end gap-2"><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`${detailActionLabel(item)} ${item.id}`" :title="detailActionLabel(item)" @click="navigateTo(`/lecturer/supervision/${item.id}`)"><ClipboardCheck :size="16" aria-hidden="true" /></button><UiButton v-if="!isLocked(item)" :variant="isParticipating(item) ? 'secondary' : 'primary'" size="sm" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton></div></td>
+                <td class="px-4 py-4 align-top"><div class="flex items-center justify-end gap-2"><UiButton size="sm" variant="secondary" @click="navigateTo(`/lecturer/supervision/${item.id}`)">ดูข้อมูล</UiButton><UiButton v-if="!isLocked(item)" :variant="isParticipating(item) ? 'secondary' : 'primary'" size="sm" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton></div></td>
               </tr>
             </tbody>
           </table>
@@ -160,7 +154,7 @@ watchEffect(() => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="item in currentAppointments" :key="item.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-semibold text-ink">{{ companyName(item.companyId) }}</h3><p class="mt-1 text-xs text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></div><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted transition-colors hover:bg-surface hover:text-ink" :aria-label="`${detailActionLabel(item)} ${item.id}`" :title="detailActionLabel(item)" @click="navigateTo(`/lecturer/supervision/${item.id}`)"><ClipboardCheck :size="17" aria-hidden="true" /></button></div>
+            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-semibold text-ink">{{ companyName(item.companyId) }}</h3><p class="mt-1 text-xs text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></div><UiButton class="shrink-0" size="sm" variant="secondary" @click="navigateTo(`/lecturer/supervision/${item.id}`)">ดูข้อมูล</UiButton></div>
             <div class="mt-3 flex flex-wrap items-center gap-2"><UiBadge v-if="isResponsibleGroup(item)" tone="info">กลุ่มของคุณ</UiBadge><UiBadge :tone="supervisionAppointmentStatusMeta[item.status].tone">{{ supervisionAppointmentStatusMeta[item.status].label }}</UiBadge><span class="text-sm text-muted">{{ formatDate(item.date) }} · {{ supervisionPeriodMeta[item.period].label }}</span></div>
             <dl class="mt-3 grid gap-2 border-t border-divider pt-3 text-sm"><div><dt class="text-xs font-medium text-muted">กลุ่มรับผิดชอบ</dt><dd class="mt-1 text-ink">{{ groupName(item.groupId) }}</dd></div><div><dt class="text-xs font-medium text-muted">อาจารย์ผู้เข้าร่วม</dt><dd class="mt-1 text-ink">{{ item.lecturerIds.length ? item.lecturerIds.map(lecturerName).join(', ') : 'ยังไม่มีอาจารย์เข้าร่วม' }}</dd></div><div><dt class="text-xs font-medium text-muted">นักศึกษา</dt><dd class="mt-1 text-ink">{{ studentNames(item).join(', ') }} ({{ item.studentIds.length }} คน)</dd></div></dl>
             <UiButton v-if="!isLocked(item)" class="mt-4 w-full" :variant="isParticipating(item) ? 'secondary' : 'primary'" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกการเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton>

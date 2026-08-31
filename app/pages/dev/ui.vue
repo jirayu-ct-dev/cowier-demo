@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="mt-5 flex flex-wrap gap-2">
-        <UiBadge>ค่าเริ่มต้น</UiBadge><UiBadge tone="info">รอดำเนินการ</UiBadge><UiBadge tone="warning">รอตรวจสอบ</UiBadge><UiBadge tone="success">ยืนยันแล้ว</UiBadge><UiBadge tone="danger">ไม่ผ่าน</UiBadge>
+        <UiBadge>ค่าเริ่มต้น</UiBadge><UiBadge tone="info">รอดำเนินการ</UiBadge><UiBadge tone="warning">รอตรวจสอบ</UiBadge><UiBadge tone="interview">รอสัมภาษณ์</UiBadge><UiBadge tone="success">ยืนยันแล้ว</UiBadge><UiBadge tone="danger">ไม่ผ่าน</UiBadge>
       </div>
     </UiCard>
 
