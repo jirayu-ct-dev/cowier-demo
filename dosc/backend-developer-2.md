@@ -119,12 +119,12 @@ Feature ของผู้พัฒนาคนที่ 1เรียก public
 
 ระหว่างที่ผู้พัฒนาคนที่ 1สร้าง initial migration สามารถทำงานเหล่านี้ได้โดยไม่แก้ shared files:
 
-- [ ] อ่าน requirement และกำหนด Zod schema ของ Company, Cycle และ Supervision
-- [ ] กำหนด supervision status transition
-- [ ] กำหนด evaluation rules และ score range
-- [ ] กำหนด notification event type ที่ใช้งานจริง
-- [ ] เขียน unit tests ของ business rules ที่ไม่ต้องเชื่อมฐานข้อมูล
-- [ ] ตกลง Confirmed Placement read contract กับผู้พัฒนาคนที่ 1
+- [x] อ่าน requirement และกำหนด Zod schema ของ Company, Cycle และ Supervision
+- [x] กำหนด supervision status transition สำหรับ contract ระยะแรก โดยยังไม่ผูกกับ API จนกว่าจะยืนยัน flow ที่ UI ยังไม่รองรับ
+- [x] กำหนด evaluation rules และ score range ตาม Requirement/Prisma เป็น 7 หัวข้อต่อนักศึกษาและ 7 หัวข้อต่อสถานประกอบการ
+- [x] กำหนด notification event type ที่ใช้งานจริงใน contract ระยะแรก
+- [x] เขียน unit tests ของ business rules ที่ไม่ต้องเชื่อมฐานข้อมูล
+- [x] ตกลง Confirmed Placement read contract กับผู้พัฒนาคนที่ 1 และเตรียม Zod read model แล้วใน `server/features/supervision/schema.ts`
 
 เมื่อ baseline พร้อม ให้ generate Prisma client จาก schema เดียวกันและเริ่ม repository/integration tests
 
