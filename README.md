@@ -56,7 +56,7 @@
 ## 📁 โครงสร้างโปรเจกต์ (Project Structure)
 
 ```text
-cowier-demo/
+ciwie-comsci/
 ├── app/
 │   ├── assets/
 │   │   └── css/main.css          # Tailwind CSS configuration
@@ -93,8 +93,8 @@ cowier-demo/
 
 ### 1. โคลนโปรเจกต์และติดตั้ง Dependencies
 ```bash
-git clone https://github.com/jirayu-ct-dev/cowier-demo.git
-cd cowier-demo
+git clone https://github.com/jirayu-ct-dev/ciwie-comsci.git
+cd ciwie-comsci
 pnpm install
 ```
 

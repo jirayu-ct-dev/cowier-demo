@@ -1,16 +1,18 @@
+name: ciwie-comsci
+
 services:
   # ==============================================================================
   # MySQL 8.4 LTS Database Service
   # ==============================================================================
   mysql:
     image: mysql:8.4
-    container_name: cowier-mysql
+    container_name: ciwie-comsci-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-cowier_db}
-      MYSQL_USER: ${MYSQL_USER:-cowier}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-cowier}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cowier_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ciwie_db}
+      MYSQL_USER: ${MYSQL_USER:-ciwie}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ciwie}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ciwie_root}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
@@ -22,7 +24,7 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - cowier-network
+      - ciwie-comsci-network
 
   # ==============================================================================
   # Nuxt 4 Application Service
@@ -31,13 +33,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cowier-app
+    container_name: ciwie-comsci-app
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: mysql://${MYSQL_USER:-cowier}:${MYSQL_PASSWORD:-cowier}@mysql:3306/${MYSQL_DATABASE:-cowier_db}
+      DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
       NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:-change_this_to_at_least_32_characters_long_secret_key}
       PORT: 3000
       HOST: 0.0.0.0
@@ -45,7 +47,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - cowier-network
+      - ciwie-comsci-network
 
 # ==============================================================================
 # Volumes & Networks
@@ -55,5 +57,5 @@ volumes:
     driver: local
 
 networks:
-  cowier-network:
+  ciwie-comsci-network:
     driver: bridge
