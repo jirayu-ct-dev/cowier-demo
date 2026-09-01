@@ -132,9 +132,9 @@ server/                       # เริ่มใช้เมื่อเข้
 2. **Master Data** — Student, lecturer และ company
 3. **Co-op Cycle** — รอบสหกิจและสถานะการฝึกของนักศึกษา
 4. **Placement Submission** — คำร้อง ชุดหนังสือ PDF ตอบกลับ และการยืนยัน
-5. **Supervision** — กลุ่ม ตาราง ผู้เข้าร่วม สถานะ และงบประมาณประมาณการ
+5. **Supervision** — กลุ่ม ตาราง ผู้เข้าร่วม สถานะ และผลการนิเทศ
 6. **Evaluation** — ประเมินนักศึกษาและสถานประกอบการรายอาจารย์
-7. **Notification** — การแจ้งเตือนภายในระบบ
+7. **Notification and Calendar** — การแจ้งเตือนและกิจกรรมที่ผู้ใช้สร้างเอง
 
 Page สามารถประกอบหลาย Module ได้ แต่กฎของแต่ละ Module ควรอยู่ใน Composable/Service
 ของ Module นั้น ไม่เขียนซ้ำในหลาย Page
@@ -161,18 +161,21 @@ Design Foundation แล้วทำ Flow ยื่นสถานประก�
 
 ## 9. การเปลี่ยนจาก PostgreSQL เป็น MySQL
 
-การตัดสินใจเป้าหมายเปลี่ยนเป็น **MySQL 8.4 LTS** แต่ยังไม่แก้ `schema.prisma`,
-`prisma.config.ts`, `.env.example` หรือ Database service ใน `docker-compose.yml`
-ระหว่างระยะ UI เพื่อไม่ให้เกิด config ครึ่งหนึ่งเป็น MySQL แต่ schema ยังเป็น PostgreSQL
+หลัง UI flow ผ่านการสรุป ระบบเริ่มระยะออกแบบฐานข้อมูลและเปลี่ยนเป้าหมายเป็น
+**MySQL 8.4 LTS** พร้อมกันทั้ง `schema.prisma`, `prisma.config.ts`, `.env.example`
+และ Database service ใน `docker-compose.yml` แล้ว เพื่อลดความเสี่ยงจาก config
+ครึ่งหนึ่งเป็น PostgreSQL และอีกครึ่งเป็น MySQL
 
-เมื่อเริ่ม Backend ให้เปลี่ยนพร้อมกันหนึ่งครั้งดังนี้:
+สถานะปัจจุบัน:
 
-1. ตรวจ field/native type และ constraint เดิมที่อาจเฉพาะ PostgreSQL
-2. เปลี่ยน Prisma datasource provider เป็น `mysql`
-3. เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `mysql://...`
-4. เปลี่ยน Compose database service และ healthcheck เป็น MySQL 8.4 LTS
-5. สร้าง migration เริ่มต้นใหม่ เนื่องจากระบบยังไม่มีข้อมูล Production
-6. รัน Prisma validation, migration, build และ smoke test ครบชุด
+1. Prisma datasource และ native type ใช้ MySQL
+2. Compose ใช้ MySQL 8.4 พร้อม healthcheck
+3. Database design อยู่ที่ [`database-design.md`](./database-design.md) และลดเหลือ
+   25 ตารางสำหรับระบบภายในสาขา โดยยังคง relationship และประวัติหลักครบ
+4. Import/export รุ่นแรกประมวลผล synchronous และเก็บสรุปใน AuditLog
+   จึงยังไม่มี background job หรือ import-row persistence
+5. Schema ผ่าน Prisma format, validate และ generate แล้ว
+6. ยังไม่สร้าง migration เริ่มต้น, seed, repository, service หรือ API
 
-แนวทางนี้ทำให้การเลือก MySQL ถูกบันทึกตั้งแต่ตอนนี้ โดยไม่เริ่มงานฐานข้อมูลก่อนที่
-Requirement และ UI flow จะนิ่ง
+เมื่อยืนยัน schema รอบสุดท้ายจึงสร้าง migration เริ่มต้นใหม่ เพราะระบบยังไม่มีข้อมูล
+Production และรัน migration, build, integration test กับ smoke test ตามลำดับ

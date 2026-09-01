@@ -1,25 +1,26 @@
 services:
   # ==============================================================================
-  # PostgreSQL Database Service
+  # MySQL 8.4 LTS Database Service
   # ==============================================================================
-  postgres:
-    image: postgres:16-alpine
-    container_name: cowier-postgres
+  mysql:
+    image: mysql:8.4
+    container_name: cowier-mysql
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-cowier_db}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-cowier_db}
+      MYSQL_USER: ${MYSQL_USER:-cowier}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-cowier}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cowier_root}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cowier_db}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 20s
     networks:
       - cowier-network
 
@@ -36,12 +37,12 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cowier_db}?schema=public
+      DATABASE_URL: mysql://${MYSQL_USER:-cowier}:${MYSQL_PASSWORD:-cowier}@mysql:3306/${MYSQL_DATABASE:-cowier_db}
       NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:-change_this_to_at_least_32_characters_long_secret_key}
       PORT: 3000
       HOST: 0.0.0.0
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
     networks:
       - cowier-network
@@ -50,7 +51,7 @@ services:
 # Volumes & Networks
 # ==============================================================================
 volumes:
-  postgres_data:
+  mysql_data:
     driver: local
 
 networks:
