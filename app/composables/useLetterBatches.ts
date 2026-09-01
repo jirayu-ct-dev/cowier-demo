@@ -1,17 +1,19 @@
 export type PlacementReviewStatus =
   | "submitted"
   | "returned"
-  | "waiting_response"
-  | "response_uploaded"
+  | "batched"
+  | "waiting-response"
+  | "waiting-review"
   | "confirmed"
-  | "not_accepted"
+  | "not-accepted"
   | "cancelled";
 export type LetterBatchStatus =
-  | "waiting_response"
-  | "response_uploaded"
+  | "draft"
+  | "waiting-response"
+  | "waiting-review"
   | "completed"
   | "cancelled";
-export type IndividualResultStatus = "waiting" | "confirmed" | "not_accepted";
+export type IndividualResultStatus = "waiting" | "confirmed" | "not-accepted";
 
 export interface PlacementReviewRequest {
   id: string;
@@ -162,7 +164,7 @@ const requestsSeed: PlacementReviewRequest[] = [
     recipientRole: "สำนักงานจังหวัดบุรีรัมย์",
     letterAddress:
       "สำนักงานจังหวัดบุรีรัมย์ ศาลากลางจังหวัดบุรีรัมย์ ถนนจิระ ตำบลเสม็ด อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000",
-    status: "waiting_response",
+    status: "waiting-response",
     batchId: "LB-001",
   }),
   createRequest({
@@ -179,7 +181,7 @@ const requestsSeed: PlacementReviewRequest[] = [
     recipientRole: "สำนักงานจังหวัดบุรีรัมย์",
     letterAddress:
       "สำนักงานจังหวัดบุรีรัมย์ ศาลากลางจังหวัดบุรีรัมย์ ถนนจิระ ตำบลเสม็ด อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000",
-    status: "waiting_response",
+    status: "waiting-response",
     batchId: "LB-001",
   }),
   createRequest({
@@ -196,7 +198,7 @@ const requestsSeed: PlacementReviewRequest[] = [
     recipientRole: "ผู้จัดการฝ่ายบุคคล",
     letterAddress:
       "บริษัท โคราชซอฟต์ จำกัด 99 ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา 30000",
-    status: "response_uploaded",
+    status: "waiting-review",
     batchId: "LB-002",
   }),
   createRequest({
@@ -213,7 +215,7 @@ const requestsSeed: PlacementReviewRequest[] = [
     recipientRole: "ผู้จัดการฝ่ายบุคคล",
     letterAddress:
       "บริษัท โคราชซอฟต์ จำกัด 99 ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา 30000",
-    status: "response_uploaded",
+    status: "waiting-review",
     batchId: "LB-002",
   }),
 ];
@@ -222,7 +224,7 @@ const batchesSeed: LetterBatch[] = [
   {
     id: "LB-001",
     requestIds: ["REQ-021", "REQ-023"],
-    status: "waiting_response",
+    status: "waiting-response",
     letterDate: "2026-08-25",
     outgoingDocuments: [
       {
@@ -241,7 +243,7 @@ const batchesSeed: LetterBatch[] = [
   {
     id: "LB-002",
     requestIds: ["REQ-030", "REQ-031"],
-    status: "response_uploaded",
+    status: "waiting-review",
     letterDate: "2026-08-20",
     outgoingDocuments: [
       {
@@ -257,7 +259,7 @@ const batchesSeed: LetterBatch[] = [
         version: 1,
         fileName: "หนังสือตอบกลับ-LB-002.pdf",
         uploadedAt: "2026-08-28T14:20:00+07:00",
-        uploadedBy: "นางสาวนภัสสร มีสุข",
+        uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
         status: "active",
       },
     ],
@@ -332,7 +334,7 @@ export const useLetterBatches = () => {
     const batch: LetterBatch = {
       id: batchId,
       requestIds: selected.map((request) => request.id),
-      status: "waiting_response",
+      status: "waiting-response",
       letterDate: payload.letterDate,
       outgoingDocuments: [
         {
@@ -353,24 +355,24 @@ export const useLetterBatches = () => {
     batches.value.unshift(batch);
     selected.forEach((request) => {
       request.batchId = batchId;
-      request.status = "waiting_response";
+      request.status = "waiting-response";
     });
     return batch;
   };
 
   const returnResponseDocument = (batchId: string, reason: string) => {
     const batch = getBatch(batchId);
-    if (!batch || batch.status !== "response_uploaded")
+    if (!batch || batch.status !== "waiting-review")
       throw new Error("ไม่มีเอกสารตอบกลับที่รอตรวจ");
     const document = [...batch.responseDocuments]
       .reverse()
       .find((item) => item.status === "active");
     if (document)
       Object.assign(document, { status: "returned" as const, note: reason });
-    batch.status = "waiting_response";
+    batch.status = "waiting-response";
     batch.updatedAt = new Date().toISOString();
     getBatchRequests(batchId).forEach((request) => {
-      request.status = "waiting_response";
+      request.status = "waiting-response";
     });
   };
 
@@ -379,14 +381,14 @@ export const useLetterBatches = () => {
     results: Record<string, Exclude<IndividualResultStatus, "waiting">>,
   ) => {
     const batch = getBatch(batchId);
-    if (!batch || batch.status !== "response_uploaded")
+    if (!batch || batch.status !== "waiting-review")
       throw new Error("ชุดหนังสือนี้ไม่พร้อมยืนยันผล");
     batch.results = { ...batch.results, ...results };
     batch.status = "completed";
     batch.updatedAt = new Date().toISOString();
     getBatchRequests(batchId).forEach((request) => {
       request.status =
-        results[request.id] === "confirmed" ? "confirmed" : "not_accepted";
+        results[request.id] === "confirmed" ? "confirmed" : "not-accepted";
     });
   };
 

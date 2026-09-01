@@ -24,13 +24,17 @@ export default defineNitroPlugin(() => {
 
   sessionHooks.hook('clear', async (session, event) => {
     if (!session.user?.id) return
-    await recordAudit({
-      actorUserId: session.user.id,
-      action: 'AUTH_LOGOUT',
-      entityType: 'User',
-      entityId: session.user.id,
-      ...getAuditRequestContext(event),
-    })
+    try {
+      await recordAudit({
+        actorUserId: session.user.id,
+        action: 'AUTH_LOGOUT',
+        entityType: 'User',
+        entityId: session.user.id,
+        ...getAuditRequestContext(event),
+      })
+    }
+    catch (error) {
+      console.error('Unable to record logout audit', error)
+    }
   })
 })
-

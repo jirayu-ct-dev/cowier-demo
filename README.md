@@ -1,7 +1,7 @@
 # 🎓 CWIE BRU — Co-op Supervision System
 
 > **ระบบบริหารจัดการและนิเทศงานสหกิจศึกษา (Cooperative Education Management & Supervision System)**  
-> ระบบสำหรับบริหารจัดการและติดตามการฝึกงานสหกิจศึกษาของนักศึกษา ตั้งแต่การเลือกสถานประกอบการ การจัดสรรอาจารย์นิเทศ การวางแผนตารางนิเทศ การบันทึกผลและประเมินผล ไปจนถึงการคำนวณค่าใช้จ่ายในการนิเทศ
+> ระบบสำหรับบริหารจัดการและติดตามการฝึกงานสหกิจศึกษาของนักศึกษา ตั้งแต่การเลือกสถานประกอบการ การจัดสรรอาจารย์นิเทศ การวางแผนตารางนิเทศ ไปจนถึงการบันทึกผลและประเมินผล
 
 > **สถานะปัจจุบัน:** Database foundation และ Authentication/Session/RBAC พร้อมใช้งานแล้ว
 > ส่วน Feature API อื่นกำลังพัฒนาแบบทีละ Checkpoint ดูสถานะที่ [`dosc/backend-plan.md`](./dosc/backend-plan.md)
@@ -23,7 +23,7 @@
 - **เข้าสู่ระบบ / ยืนยันตัวตน:** ระบบเข้าสู่ระบบตามสิทธิ์อาจารย์
 - **ดูตารางนิเทศ:** ดูตารางนิเทศที่ตนเองได้รับมอบหมาย แยกตามครั้งที่ 1 และ 2
 - **ดูข้อมูลนักศึกษาและสถานประกอบการ:** ค้นหาและดูรายละเอียดนักศึกษาและสถานประกอบการที่ได้รับมอบหมาย
-- **อัปเดตสถานะการนิเทศ:** บันทึกสถานะ (จัดตารางแล้ว, นิเทศเสร็จแล้ว, เลื่อน, ยกเลิก)
+- **ดำเนินการนิเทศ:** บันทึกตารางและผู้เข้าร่วม ยืนยันนิเทศเสร็จแล้ว และบันทึกผล
 - **บันทึกผลและข้อเสนอแนะ:** บันทึกผลการนิเทศ ความก้าวหน้า และข้อเสนอแนะ
 - **ประเมินผล:** ประเมินสมรรถนะนักศึกษา และประเมินสถานประกอบการหลังการนิเทศ
 
@@ -44,7 +44,7 @@
 | **Icons** | [Lucide Icons](https://lucide.dev/) (`@lucide/vue`) |
 | **Date & Time** | [date-fns](https://date-fns.org/) |
 | **Schema Validation** | [Zod](https://zod.dev/) |
-| **Database & ORM (ระยะ Backend)** | [MySQL 8.4 LTS](https://dev.mysql.com/doc/refman/8.4/en/) + [Prisma ORM](https://www.prisma.io/) |
+| **Database & ORM** | [MySQL 8.4 LTS](https://dev.mysql.com/doc/refman/8.4/en/) + [Prisma ORM](https://www.prisma.io/) |
 | **Authentication** | [nuxt-auth-utils](https://github.com/atinux/nuxt-auth-utils) (Session-based RBAC) |
 | **Data Processing** | `read-excel-file` + `write-excel-file` และ CSV utilities |
 | **DevOps & Deploy** | Docker (Multi-stage build) + Docker Compose |
@@ -73,7 +73,9 @@ ciwie-comsci/
 │   └── schema.prisma             # MySQL data model จำนวน 25 models
 ├── dosc/
 │   ├── requirement.md            # Requirement Documentation
-│   ├── architecture.md           # UI-first Architecture
+│   ├── architecture.md           # Modular-monolith Architecture
+│   ├── database-design.md        # Database source-of-truth guide
+│   ├── backend-plan.md           # Backend checkpoints และ API contract
 │   └── ui-plan.md                # UI Checkpoints and Acceptance Plan
 ├── Dockerfile                    # Multi-stage Production Dockerfile
 ├── docker-compose.yml            # MySQL → one-shot migration → Nuxt app

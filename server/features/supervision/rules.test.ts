@@ -12,7 +12,9 @@ describe('supervision rules', () => {
   it('allows only the explicitly defined appointment transitions', () => {
     expect(canTransitionAppointmentStatus('draft', 'published')).toBe(true)
     expect(canTransitionAppointmentStatus('published', 'completed')).toBe(true)
-    expect(canTransitionAppointmentStatus('postponed', 'published')).toBe(true)
+    expect(canTransitionAppointmentStatus('published', 'postponed')).toBe(false)
+    expect(canTransitionAppointmentStatus('postponed', 'published')).toBe(false)
+    expect(canTransitionAppointmentStatus('published', 'cancelled')).toBe(false)
     expect(canTransitionAppointmentStatus('completed', 'published')).toBe(false)
     expect(canTransitionAppointmentStatus('cancelled', 'draft')).toBe(false)
   })

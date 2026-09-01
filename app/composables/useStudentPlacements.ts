@@ -1,7 +1,8 @@
 import type { StudentWorkStatus } from './useCoopCycles'
+import { provinceSeeds } from '~~/shared/constants/provinces'
 
 export type CompanyStatus = 'active' | 'pending' | 'inactive'
-export type PlacementStatus = 'draft' | 'submitted' | 'returned' | 'batched' | 'letter-issued' | 'confirmed' | 'cancelled'
+export type PlacementStatus = 'draft' | 'submitted' | 'returned' | 'batched' | 'waiting-response' | 'waiting-review' | 'confirmed' | 'not-accepted' | 'cancelled'
 
 export interface Company {
   id: string
@@ -161,24 +162,27 @@ const cloneRequests = () => initialRequests.map(request => ({
   timeline: request.timeline.map(item => ({ ...item })),
 }))
 
-const provinceRegions: Record<string, string> = {
-  กรุงเทพมหานคร: 'ภาคกลาง',
-  บุรีรัมย์: 'ภาคตะวันออกเฉียงเหนือ',
-  นครราชสีมา: 'ภาคตะวันออกเฉียงเหนือ',
-  ขอนแก่น: 'ภาคตะวันออกเฉียงเหนือ',
-  เชียงใหม่: 'ภาคเหนือ',
-  ชลบุรี: 'ภาคตะวันออก',
-  สงขลา: 'ภาคใต้',
-  สุพรรณบุรี: 'ภาคกลาง',
-}
+const regionLabels = {
+  NORTH: 'ภาคเหนือ',
+  NORTHEAST: 'ภาคตะวันออกเฉียงเหนือ',
+  CENTRAL: 'ภาคกลาง',
+  EAST: 'ภาคตะวันออก',
+  WEST: 'ภาคตะวันตก',
+  SOUTH: 'ภาคใต้',
+} as const
+const provinceRegions = Object.fromEntries(
+  provinceSeeds.map(province => [province.nameTh, regionLabels[province.region]]),
+) as Record<string, string>
 
 export const placementStatusMeta: Record<PlacementStatus, { label: string, tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info', nextStep: string }> = {
   draft: { label: 'ฉบับร่าง', tone: 'neutral', nextStep: 'กรอกข้อมูลให้ครบแล้วส่งคำร้อง' },
   submitted: { label: 'ส่งคำร้องแล้ว', tone: 'warning', nextStep: 'รออาจารย์ตรวจสอบข้อมูล' },
   returned: { label: 'ส่งกลับให้แก้ไข', tone: 'danger', nextStep: 'ตรวจเหตุผล แก้ข้อมูล แล้วส่งคำร้องอีกครั้ง' },
   batched: { label: 'รวมในชุดหนังสือแล้ว', tone: 'info', nextStep: 'รออาจารย์จัดทำหนังสือขอฝึกงาน' },
-  'letter-issued': { label: 'ออกหนังสือแล้ว', tone: 'success', nextStep: 'ดาวน์โหลดหนังสือและนำส่งสถานประกอบการ' },
+  'waiting-response': { label: 'รอหนังสือตอบกลับ', tone: 'warning', nextStep: 'ประสานงานและรอหนังสือตอบกลับจากสถานประกอบการ' },
+  'waiting-review': { label: 'รอตรวจผล', tone: 'info', nextStep: 'รออาจารย์ตรวจหนังสือตอบกลับและบันทึกผลรายบุคคล' },
   confirmed: { label: 'ยืนยันสถานประกอบการแล้ว', tone: 'success', nextStep: 'ติดตามวันเริ่มปฏิบัติงานตามรอบสหกิจศึกษา' },
+  'not-accepted': { label: 'ไม่ได้รับการตอบรับ', tone: 'danger', nextStep: 'กระบวนการนี้สิ้นสุดแล้ว สามารถสร้างคำร้องใหม่เมื่อรอบเปิดรับ' },
   cancelled: { label: 'ยกเลิกคำร้อง', tone: 'neutral', nextStep: 'รายการนี้สิ้นสุดแล้ว' },
 }
 
@@ -195,7 +199,8 @@ export const useStudentPlacements = () => {
   const findCompany = (id: string) => companies.value.find(company => company.id === id)
   const findRequest = (id: string) => requests.value.find(request => request.id === id)
   const cycleRequests = computed(() => requests.value.filter(request => request.cycleId === selectedCycle.value.id))
-  const activeRequest = computed(() => cycleRequests.value.find(request => request.status !== 'cancelled'))
+  const activeStatuses: PlacementStatus[] = ['draft', 'submitted', 'returned', 'batched', 'waiting-response', 'waiting-review']
+  const activeRequest = computed(() => requests.value.find(request => activeStatuses.includes(request.status)))
   const confirmedRequest = computed(() => cycleRequests.value.find(request => request.status === 'confirmed'))
   const confirmedCompany = computed(() => confirmedRequest.value ? findCompany(confirmedRequest.value.companyId) : undefined)
 
@@ -236,10 +241,7 @@ export const useStudentPlacements = () => {
       throw new Error('cycle-not-open')
     }
 
-    const ongoingCycleIds = new Set(requests.value
-      .filter(request => request.status !== 'cancelled' && !(request.status === 'confirmed' && ['completed', 'terminated'].includes(request.workStatus ?? '')))
-      .map(request => request.cycleId))
-    if (activeRequest.value || (ongoingCycleIds.size && !ongoingCycleIds.has(selectedCycle.value.id))) {
+    if (activeRequest.value) {
       throw new Error('active-placement-request-exists')
     }
 

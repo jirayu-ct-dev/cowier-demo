@@ -39,7 +39,7 @@ const filteredStudents = computed(() => {
       const matchesStatus = applicationStatus.value === 'all'
         || (applicationStatus.value === 'not-submitted' && !latestStatus)
         || latestStatus === applicationStatus.value
-        || (applicationStatus.value === 'in-progress' && ['submitted', 'letter-issued'].includes(latestStatus || ''))
+        || (applicationStatus.value === 'in-progress' && ['submitted', 'waiting-response', 'waiting-review'].includes(latestStatus || ''))
       return matchesSearch && matchesStatus
     })
     .sort((a, b) => `${a.firstName}${a.lastName}`.localeCompare(`${b.firstName}${b.lastName}`, 'th'))

@@ -13,7 +13,7 @@ const request = computed(() => findRequest(requestId.value))
 const company = computed(() => request.value ? findCompany(request.value.companyId) : undefined)
 const canEdit = computed(() => request.value && ['draft', 'submitted', 'returned'].includes(request.value.status))
 const canCancel = computed(() => request.value && ['draft', 'submitted', 'returned'].includes(request.value.status))
-const isLocked = computed(() => request.value && ['batched', 'letter-issued'].includes(request.value.status))
+const isLocked = computed(() => request.value && ['batched', 'waiting-response', 'waiting-review'].includes(request.value.status))
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 
 const formatDate = (date: string, includeTime = false) => new Intl.DateTimeFormat('th-TH', includeTime

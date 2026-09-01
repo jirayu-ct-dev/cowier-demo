@@ -1,0 +1,888 @@
+Project CWIE_BRU_Coop_Supervision {
+  database_type: 'MySQL'
+  Note: 'Generated from prisma/schema.prisma. Target database: MySQL 8.4 LTS.'
+}
+
+Enum UserRole {
+  STAFF
+  LECTURER
+  STUDENT
+}
+
+Enum AccountStatus {
+  FIRST_LOGIN
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+Enum RecordStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum AcademicTerm {
+  FIRST
+  SECOND
+  SUMMER
+  OTHER
+}
+
+Enum CoopCycleStatus {
+  DRAFT
+  OPEN_FOR_REQUESTS
+  CLOSED_TO_REQUESTS
+  TRAINING
+  CLOSED
+}
+
+Enum CycleEnrollmentStatus {
+  ACTIVE
+  TRANSFERRED_OUT
+  COMPLETED
+  TERMINATED
+}
+
+Enum StudentWorkStatus {
+  NOT_STARTED
+  TRAINING
+  COMPLETED
+  TERMINATED
+}
+
+Enum CompanyStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+Enum RegionCode {
+  NORTH
+  NORTHEAST
+  CENTRAL
+  EAST
+  WEST
+  SOUTH
+}
+
+Enum TrackedApplicationStatus {
+  SUBMITTED
+  WAITING_RESPONSE
+  RESPONDED
+  WAITING_INTERVIEW
+  ACCEPTED
+  REJECTED
+}
+
+Enum PlacementRequestStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  BATCHED
+  WAITING_RESPONSE
+  WAITING_REVIEW
+  CONFIRMED
+  NOT_ACCEPTED
+  CANCELLED
+}
+
+Enum LetterBatchStatus {
+  DRAFT
+  WAITING_RESPONSE
+  WAITING_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+Enum LetterDocumentType {
+  OUTGOING_REQUEST
+  COMPANY_RESPONSE
+}
+
+Enum DocumentVersionStatus {
+  ACTIVE
+  RETURNED
+  SUPERSEDED
+  CANCELLED
+}
+
+Enum FileValidationStatus {
+  PENDING
+  VALID
+  INVALID
+}
+
+Enum SupervisionRound {
+  ROUND_1
+  ROUND_2
+}
+
+Enum SupervisionPeriod {
+  MORNING
+  AFTERNOON
+}
+
+Enum SupervisionAppointmentStatus {
+  DRAFT
+  PUBLISHED
+  POSTPONED
+  COMPLETED
+  CANCELLED
+}
+
+Enum SupervisionParticipantSource {
+  GROUP
+  MANUAL
+}
+
+Enum SupervisionParticipantRole {
+  LEAD
+  PARTICIPANT
+}
+
+Enum EvaluationStatus {
+  DRAFT
+  SUBMITTED
+}
+
+Enum CompanyRecommendation {
+  RECOMMENDED
+  CONDITIONAL
+  FOLLOW_UP
+  NOT_RECOMMENDED
+  SAFETY_RISK
+}
+
+Enum NotificationSeverity {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+}
+
+Enum CalendarEventType {
+  SUPERVISION
+  DOCUMENT
+  DEADLINE
+  EVALUATION
+  GENERAL
+}
+
+Table users {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  username varchar(100) [not null, unique, note: 'ชื่อเข้าสู่ระบบ; ใช้เป็นรหัสนักศึกษา/รหัสอาจารย์/ชื่อผู้ใช้ Staff และห้ามซ้ำทั้งระบบ; Unique; Required']
+  passwordHash varchar(255) [not null, note: 'ค่า hash ของรหัสผ่าน ไม่เก็บรหัสผ่านแบบ plain text; Required']
+  role UserRole [not null, note: 'บทบาทหลักที่ใช้ทำ RBAC; Required; Enum UserRole']
+  status AccountStatus [not null, default: 'FIRST_LOGIN', note: 'สถานะบัญชีที่ควบคุม first-login, active, suspended และ terminated; Required; Enum AccountStatus; Default \'FIRST_LOGIN\'']
+  recordStatus RecordStatus [not null, default: 'ACTIVE', note: 'สถานะเปิด/ปิดการใช้งานของข้อมูลโดยยังคงประวัติ; Required; Enum RecordStatus; Default \'ACTIVE\'']
+  namePrefix varchar(50) [not null, note: 'คำนำหน้าชื่อ; Required']
+  firstName varchar(100) [not null, note: 'ชื่อจริง; Required']
+  lastName varchar(100) [not null, note: 'นามสกุล; Required']
+  cohortYear int [note: 'ปีรุ่นของนักศึกษา; ใช้เฉพาะ role STUDENT; Nullable']
+  section varchar(50) [note: 'หมู่เรียน/section ของนักศึกษา; Nullable']
+  canReviewPlacements boolean [not null, default: false, note: 'สิทธิ์พิเศษให้อาจารย์ตรวจคำร้องและจัดการเอกสาร Placement; Required; Default false']
+  failedLoginCount int [not null, default: 0, note: 'จำนวนครั้งที่เข้าสู่ระบบผิดใน failure window ปัจจุบัน; Required; Default 0']
+  failedWindowAt datetime(3) [note: 'เวลาเริ่ม/ล่าสุดของช่วงนับ login failure; Nullable']
+  lockedUntil datetime(3) [note: 'เวลาสิ้นสุดการล็อกบัญชีชั่วคราวจากการ login ผิด; Nullable']
+  sessionVersion int [not null, default: 1, note: 'เลขรุ่น session; เพิ่มค่าเพื่อทำให้ session cookie เดิมใช้ไม่ได้; Required; Default 1']
+  passwordChangedAt datetime(3) [note: 'เวลาที่เปลี่ยนรหัสผ่านสำเร็จล่าสุด; Nullable']
+  suspendedAt datetime(3) [note: 'เวลาที่ระงับบัญชีชั่วคราว; Nullable']
+  terminatedAt datetime(3) [note: 'เวลาที่ยุติบัญชี; Nullable']
+  lastLoginAt datetime(3) [note: 'เวลา login สำเร็จล่าสุด; Nullable']
+  createdById varchar(30) [note: 'รหัส User ผู้สร้าง row; Foreign Key (FK) → users.id; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Master Data / Authentication — เก็บบัญชีและข้อมูลบุคคลของ Staff, Lecturer และ Student ในตารางเดียว รวมบทบาท สถานะบัญชี การล็อกอิน และข้อมูลที่ใช้ยืนยัน session เกี่ยวข้องกับ Authentication, RBAC, People Master Data และการตรวจคำร้อง.'
+  Indexes {
+    (role, status)
+    (recordStatus, firstName, lastName)
+    (cohortYear, section)
+    createdById
+  }
+}
+
+Table audit_logs {
+  id bigint [pk, increment, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  actorAccountId varchar(30) [note: 'รหัส User ผู้กระทำเหตุการณ์; ว่างได้เมื่อไม่ทราบตัวตน; Foreign Key (FK) → users.id; Nullable']
+  action varchar(100) [not null, note: 'รหัสการกระทำที่ audit เช่น AUTH_LOGIN_SUCCESS; Required']
+  entityType varchar(100) [not null, note: 'ชนิด entity เป้าหมายของเหตุการณ์; Required']
+  entityId varchar(100) [not null, note: 'รหัสของ entity เป้าหมาย; เป็น String เพื่อรองรับหลายชนิด; Required']
+  reason text [note: 'เหตุผลประกอบการเปลี่ยนแปลง; Nullable']
+  beforeData json [note: 'snapshot JSON ก่อนเปลี่ยนแปลง; Nullable']
+  afterData json [note: 'snapshot JSON หลังเปลี่ยนแปลง; Nullable']
+  metadata json [note: 'บริบทเพิ่มเติมแบบ JSON ที่ต่างกันตาม action; Nullable']
+  correlationId varchar(100) [note: 'request/correlation id สำหรับติดตามเหตุการณ์ข้าม log; Nullable']
+  ipAddress varchar(45) [note: 'IP address ของ request; Nullable']
+  userAgent text [note: 'HTTP User-Agent ของผู้เรียก; Nullable']
+  occurredAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่เหตุการณ์ audit เกิดขึ้น; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'History / Audit Log — เก็บหลักฐานการกระทำสำคัญของระบบ เช่น login, logout, เปลี่ยนรหัสผ่าน เปลี่ยนสถานะบัญชี และ mutation ของข้อมูล พร้อมบริบท request และค่าก่อน/หลัง เกี่ยวข้องกับ Security, auditability และ troubleshooting.'
+  Indexes {
+    (action, occurredAt)
+    (entityType, entityId, occurredAt)
+    (actorAccountId, occurredAt)
+    correlationId
+  }
+}
+
+Table coop_cycles {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  code varchar(50) [not null, unique, note: 'รหัสอ้างอิงที่มนุษย์อ่านได้และห้ามซ้ำ; Unique; Required']
+  label varchar(150) [not null, note: 'ชื่อแสดงผลของรอบสหกิจ; Required']
+  academicYear int [not null, note: 'ปีการศึกษาของรอบ; Composite Unique (academicYear, term, targetCohortYear); Required']
+  term AcademicTerm [not null, note: 'ภาคเรียนตาม AcademicTerm; Composite Unique (academicYear, term, targetCohortYear); Required; Enum AcademicTerm']
+  termLabel varchar(100) [not null, note: 'ข้อความชื่อภาคเรียนสำหรับแสดงผล; Required']
+  targetCohortYear int [not null, note: 'ปีรุ่นนักศึกษาเป้าหมายของรอบ; Composite Unique (academicYear, term, targetCohortYear); Required']
+  requestStartDate date [not null, note: 'วันเริ่มรับคำร้องสถานประกอบการ; Required']
+  requestEndDate date [not null, note: 'วันสิ้นสุดรับคำร้อง; Required']
+  trainingStartDate date [not null, note: 'วันเริ่มปฏิบัติงานสหกิจ; Required']
+  trainingEndDate date [not null, note: 'วันสิ้นสุดปฏิบัติงานสหกิจ; Required']
+  status CoopCycleStatus [not null, default: 'DRAFT', note: 'สถานะ lifecycle ของรอบสหกิจ; Required; Enum CoopCycleStatus; Default \'DRAFT\'']
+  closedAt datetime(3) [note: 'เวลาที่ปิดรอบ; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Master Data / Workflow Configuration — เก็บนิยามรอบสหกิจตามปีการศึกษา ภาคเรียน รุ่น ช่วงรับคำร้อง ช่วงปฏิบัติงาน และสถานะของรอบ เกี่ยวข้องกับ Cycle context ที่ Placement, Letter และ Supervision ใช้ร่วมกัน.'
+  Indexes {
+    (academicYear, term, targetCohortYear) [unique]
+    (status, requestStartDate, requestEndDate)
+    (trainingStartDate, trainingEndDate)
+  }
+}
+
+Table coop_cycle_status_history {
+  id bigint [pk, increment, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  cycleId varchar(30) [not null, note: 'รหัสรอบสหกิจที่ row นี้สังกัด; Foreign Key (FK) → coop_cycles.id; Required']
+  fromStatus CoopCycleStatus [note: 'สถานะเดิมก่อน transition; ว่างได้สำหรับเหตุการณ์เริ่มต้น; Nullable; Enum CoopCycleStatus']
+  toStatus CoopCycleStatus [not null, note: 'สถานะใหม่หลัง transition; Required; Enum CoopCycleStatus']
+  reason text [not null, note: 'เหตุผลประกอบการเปลี่ยนแปลง; Required']
+  changedById varchar(30) [not null, note: 'รหัส User ผู้เปลี่ยนสถานะ; Foreign Key (FK) → users.id; Required']
+  changedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่เปลี่ยนสถานะ; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'History Table — เก็บ timeline การเปลี่ยนสถานะของรอบสหกิจ พร้อมผู้ดำเนินการ เหตุผล และเวลา เกี่ยวข้องกับ การบริหารรอบสหกิจและ Audit.'
+  Indexes {
+    (cycleId, changedAt)
+    changedById
+  }
+}
+
+Table cycle_enrollments {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  cycleId varchar(30) [not null, note: 'รหัสรอบสหกิจที่ row นี้สังกัด; Foreign Key (FK) → coop_cycles.id; Composite Unique (cycleId, studentId); Required']
+  studentId varchar(30) [not null, note: 'รหัส User ของนักศึกษา; Foreign Key (FK) → users.id; Composite Unique (cycleId, studentId); Required']
+  cohortYearSnapshot int [not null, note: 'snapshot ปีรุ่นเมื่อเข้ารอบ เพื่อไม่ให้ประวัติเปลี่ยนตาม User; Required']
+  sectionSnapshot varchar(50) [note: 'snapshot หมู่เรียนเมื่อเข้ารอบ; Nullable']
+  enrollmentStatus CycleEnrollmentStatus [not null, default: 'ACTIVE', note: 'สถานะการเข้าร่วมรอบ; Required; Enum CycleEnrollmentStatus; Default \'ACTIVE\'']
+  workStatus StudentWorkStatus [not null, default: 'NOT_STARTED', note: 'สถานะการปฏิบัติงานของนักศึกษาในรอบ; Required; Enum StudentWorkStatus; Default \'NOT_STARTED\'']
+  currentStudentKey varchar(30) [unique, note: 'Nullable Unique Slot ที่ใส่ student id เฉพาะ enrollment ปัจจุบัน; Unique; Nullable']
+  joinedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่นักศึกษาเข้าร่วมรอบ; Required; Default `CURRENT_TIMESTAMP(3)`']
+  exitedAt datetime(3) [note: 'เวลาที่ออก/ย้าย/ยุติจากรอบ; Nullable']
+  exitReason text [note: 'เหตุผลที่ออกจากรอบ; Nullable']
+  createdById varchar(30) [not null, note: 'รหัส User ผู้สร้าง row; Foreign Key (FK) → users.id; Required']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Transaction / Association — เก็บการเข้าร่วมรอบสหกิจของนักศึกษา พร้อม snapshot รุ่น/หมู่เรียน สถานะ enrollment และสถานะการปฏิบัติงาน เกี่ยวข้องกับ Student cycle context, Placement และ Application Tracker.'
+  Indexes {
+    (cycleId, studentId) [unique]
+    (cycleId, enrollmentStatus, workStatus)
+    (studentId, enrollmentStatus)
+    createdById
+  }
+}
+
+Table provinces {
+  id int [pk, increment, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  code varchar(10) [not null, unique, note: 'รหัสอ้างอิงที่มนุษย์อ่านได้และห้ามซ้ำ; Unique; Required']
+  nameTh varchar(100) [not null, unique, note: 'ชื่อจังหวัดภาษาไทย; Unique; Required']
+  region RegionCode [not null, note: 'ภูมิภาคของจังหวัดซึ่งเป็น source of truth; Required; Enum RegionCode']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Lookup / Master Data — ทะเบียนจังหวัด 77 จังหวัดและภูมิภาค เป็น source of truth ของพื้นที่ โดยระบบไม่รับ region อิสระจาก Company เกี่ยวข้องกับ Company Master Data, search และ filter ตามพื้นที่.'
+  Indexes {
+    (region, nameTh)
+  }
+}
+
+Table companies {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  code varchar(50) [not null, unique, note: 'รหัสอ้างอิงที่มนุษย์อ่านได้และห้ามซ้ำ; Unique; Required']
+  legalName varchar(255) [not null, note: 'ชื่อนิติบุคคลตามกฎหมาย; Required']
+  taxId varchar(20) [unique, note: 'เลขประจำตัวผู้เสียภาษี; ว่างได้และเมื่อมีค่าต้องไม่ซ้ำ; Unique; Nullable']
+  status CompanyStatus [not null, default: 'PENDING', note: 'สถานะ Company: PENDING, ACTIVE หรือ INACTIVE; Required; Enum CompanyStatus; Default \'PENDING\'']
+  createdById varchar(30) [not null, note: 'รหัส User ผู้สร้าง row; Foreign Key (FK) → users.id; Required']
+  deactivatedAt datetime(3) [note: 'เวลาที่ยุติการใช้งาน Company; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Master Data — เก็บข้อมูลระดับนิติบุคคลของสถานประกอบการ แยกจากสาขาเพื่อไม่ให้ชื่อและเลขประจำตัวผู้เสียภาษีซ้ำเมื่อมีหลายสถานที่ เกี่ยวข้องกับ Company Master Data และการอนุมัติรายการที่ Student เสนอ.'
+  Indexes {
+    (legalName, status)
+    createdById
+  }
+}
+
+Table company_sites {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  companyId varchar(30) [not null, note: 'รหัส Company เจ้าของสาขา; Foreign Key (FK) → companies.id; Composite Unique (companyId, branchName); Required']
+  branchName varchar(150) [not null, default: 'สำนักงานใหญ่', note: 'ชื่อสาขาหรือสถานที่ปฏิบัติงาน; Composite Unique (companyId, branchName); Required; Default \'สำนักงานใหญ่\'']
+  address text [not null, note: 'ที่อยู่เต็มของสาขา; Required']
+  provinceId int [not null, note: 'รหัสจังหวัดของสาขา; Foreign Key (FK) → provinces.id; Required']
+  postalCode varchar(10) [note: 'รหัสไปรษณีย์; Nullable']
+  contactName varchar(150) [note: 'ชื่อผู้ติดต่อของสาขา; Nullable']
+  contactRole varchar(150) [note: 'ตำแหน่ง/หน่วยงานของผู้ติดต่อ; Nullable']
+  contactPhone varchar(50) [note: 'หมายเลขโทรศัพท์ผู้ติดต่อ; Nullable']
+  contactEmail varchar(255) [note: 'อีเมลผู้ติดต่อ; Nullable']
+  recordStatus RecordStatus [not null, default: 'ACTIVE', note: 'สถานะเปิด/ปิดการใช้งานของข้อมูลโดยยังคงประวัติ; Required; Enum RecordStatus; Default \'ACTIVE\'']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Master Data / Child Entity — เก็บสาขาหรือสถานที่ปฏิบัติงาน ที่อยู่ จังหวัด และข้อมูลผู้ติดต่อของ Company แต่ละแห่ง; คำร้อง หนังสือ และการนิเทศอ้างอิงระดับสาขานี้ เกี่ยวข้องกับ Company, Placement, Letter และ Supervision.'
+  Indexes {
+    (companyId, branchName) [unique]
+    (provinceId, recordStatus)
+    branchName
+  }
+}
+
+Table student_applications {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  enrollmentId varchar(30) [not null, note: 'รหัสการเข้าร่วมรอบของนักศึกษา; Foreign Key (FK) → cycle_enrollments.id; Required']
+  companySiteId varchar(30) [note: 'รหัสสาขาหรือสถานที่ปฏิบัติงาน; Foreign Key (FK) → company_sites.id; Nullable']
+  companyNameSnapshot varchar(255) [not null, note: 'ชื่อบริษัท ณ เวลาบันทึก เพื่อรักษาประวัติ; Required']
+  provinceSnapshot varchar(100) [not null, note: 'ชื่อจังหวัด ณ เวลาบันทึก tracker; Required']
+  positionTitle varchar(150) [not null, note: 'ชื่อตำแหน่งที่สมัครหรือขอฝึก; Required']
+  appliedDate date [not null, note: 'วันที่นักศึกษาสมัครกับสถานประกอบการ; Required']
+  status TrackedApplicationStatus [not null, default: 'SUBMITTED', note: 'สถานะที่นักศึกษาใช้ติดตามการสมัครส่วนตัว; Required; Enum TrackedApplicationStatus; Default \'SUBMITTED\'']
+  details text [note: 'รายละเอียดงานหรือหมายเหตุเพิ่มเติม; Nullable']
+  responseDate date [note: 'วันที่ได้รับคำตอบจากสถานประกอบการ; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Transaction — เก็บรายการสมัครงาน/ฝึกงานส่วนตัวที่นักศึกษาใช้ติดตามได้หลายแห่งต่อ enrollment โดยไม่ใช่คำร้องขอออกหนังสือและไม่ยืนยันสถานที่ฝึก เกี่ยวข้องกับ Student Application Tracker และมุมมอง read-only ของ Staff/Lecturer.'
+  Indexes {
+    (enrollmentId, appliedDate)
+    (status, provinceSnapshot)
+    companySiteId
+    companyNameSnapshot
+  }
+}
+
+Table placement_requests {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  requestNo varchar(50) [not null, unique, note: 'เลขที่คำร้องที่มนุษย์ใช้อ้างอิงและห้ามซ้ำ; Unique; Required']
+  enrollmentId varchar(30) [not null, note: 'รหัสการเข้าร่วมรอบของนักศึกษา; Foreign Key (FK) → cycle_enrollments.id; Required']
+  companySiteId varchar(30) [not null, note: 'รหัสสาขาหรือสถานที่ปฏิบัติงาน; Foreign Key (FK) → company_sites.id; Required']
+  positionTitle varchar(150) [not null, note: 'ชื่อตำแหน่งที่สมัครหรือขอฝึก; Required']
+  details text [note: 'รายละเอียดงานหรือหมายเหตุเพิ่มเติม; Nullable']
+  recipientName varchar(150) [not null, note: 'ชื่อบุคคล/ตำแหน่งที่ขึ้นต้นคำเรียนในหนังสือ; Required']
+  recipientRole varchar(150) [not null, note: 'ตำแหน่งหรือหน่วยงานของผู้รับหนังสือ; Required']
+  letterAddress text [not null, note: 'ที่อยู่สำหรับออกหนังสือ; Required']
+  status PlacementRequestStatus [not null, default: 'DRAFT', note: 'สถานะ state machine ของคำร้องทางการ; Required; Enum PlacementRequestStatus; Default \'DRAFT\'']
+  activeSlotKey varchar(30) [unique, note: 'Nullable Unique Slot; ใส่ student user id เมื่อคำร้องยัง active; Unique; Nullable']
+  confirmedSlotKey varchar(30) [unique, note: 'Nullable Unique Slot; ใส่ enrollment id เมื่อคำร้อง CONFIRMED; Unique; Nullable']
+  submittedAt datetime(3) [note: 'เวลาส่งรายการเข้าสู่ workflow หรือเวลาส่งแบบประเมิน; Nullable']
+  returnedAt datetime(3) [note: 'เวลาที่ส่งคำร้องกลับให้แก้ไข; Nullable']
+  completedAt datetime(3) [note: 'เวลาที่ workflow หรือนัดเสร็จสมบูรณ์; Nullable']
+  cancelledAt datetime(3) [note: 'เวลาที่ยกเลิก; Nullable']
+  cancellationReason text [note: 'เหตุผลการยกเลิก; Nullable']
+  confirmedPosition varchar(150) [note: 'ตำแหน่งฝึกที่สถานประกอบการยืนยัน; Nullable']
+  resultNote text [note: 'หมายเหตุผลตอบรับรายบุคคล; Nullable']
+  confirmedById varchar(30) [note: 'รหัส User ผู้ยืนยันผลคำร้อง; Foreign Key (FK) → users.id; Nullable']
+  confirmedAt datetime(3) [note: 'เวลาที่ยืนยันผลหรือยืนยันการเข้าร่วม; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Core Transaction — เก็บคำร้องทางการขอออกหนังสือ สถานประกอบการ ตำแหน่ง ผู้รับหนังสือ state machine ผลตอบรับ และสถานที่ฝึกที่ยืนยันแล้ว เกี่ยวข้องกับ Student Placement, Lecturer Review, Letter Batch และ Confirmed Placement.'
+  Indexes {
+    (enrollmentId, status)
+    (companySiteId, status)
+    submittedAt
+    confirmedById
+  }
+}
+
+Table placement_request_status_history {
+  id bigint [pk, increment, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  requestId varchar(30) [not null, note: 'รหัส Placement Request; Foreign Key (FK) → placement_requests.id; Required']
+  fromStatus PlacementRequestStatus [note: 'สถานะเดิมก่อน transition; ว่างได้สำหรับเหตุการณ์เริ่มต้น; Nullable; Enum PlacementRequestStatus']
+  toStatus PlacementRequestStatus [not null, note: 'สถานะใหม่หลัง transition; Required; Enum PlacementRequestStatus']
+  reason text [note: 'เหตุผลประกอบการเปลี่ยนแปลง; Nullable']
+  changedById varchar(30) [not null, note: 'รหัส User ผู้เปลี่ยนสถานะ; Foreign Key (FK) → users.id; Required']
+  changedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่เปลี่ยนสถานะ; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'History Table — เก็บ timeline ทุกการเปลี่ยนสถานะของ Placement Request ใน transaction เดียวกับการแก้คำร้อง เกี่ยวข้องกับ Placement workflow, UI timeline และ Audit.'
+  Indexes {
+    (requestId, changedAt)
+    changedById
+  }
+}
+
+Table letter_batches {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  batchNo varchar(50) [not null, unique, note: 'เลขที่ชุดหนังสือที่ใช้อ้างอิงและห้ามซ้ำ; Unique; Required']
+  cycleId varchar(30) [not null, note: 'รหัสรอบสหกิจที่ row นี้สังกัด; Foreign Key (FK) → coop_cycles.id; Required']
+  companySiteId varchar(30) [not null, note: 'รหัสสาขาหรือสถานที่ปฏิบัติงาน; Foreign Key (FK) → company_sites.id; Required']
+  status LetterBatchStatus [not null, default: 'DRAFT', note: 'สถานะ workflow ของชุดหนังสือ; Required; Enum LetterBatchStatus; Default \'DRAFT\'']
+  companyNameSnapshot varchar(255) [not null, note: 'ชื่อบริษัท ณ เวลาบันทึก เพื่อรักษาประวัติ; Required']
+  branchNameSnapshot varchar(150) [not null, note: 'ชื่อสาขา ณ เวลาออกหนังสือ; Required']
+  companyAddressSnapshot text [not null, note: 'ที่อยู่บริษัท ณ เวลาออกหนังสือ; Required']
+  recipientNameSnapshot varchar(150) [not null, note: 'ชื่อผู้รับ ณ เวลาออกหนังสือ; Required']
+  recipientRoleSnapshot varchar(150) [not null, note: 'ตำแหน่งผู้รับ ณ เวลาออกหนังสือ; Required']
+  letterAddressSnapshot text [not null, note: 'ที่อยู่ออกหนังสือ ณ เวลาออกหนังสือ; Required']
+  letterDate date [note: 'วันที่ระบุบนหนังสือ; Nullable']
+  issuedAt datetime(3) [note: 'เวลาที่ออกหนังสือ; Nullable']
+  publishedAt datetime(3) [note: 'เวลาที่เผยแพร่ชุดหนังสือหรือนัด; Nullable']
+  cancelledAt datetime(3) [note: 'เวลาที่ยกเลิก; Nullable']
+  cancellationReason text [note: 'เหตุผลการยกเลิก; Nullable']
+  createdById varchar(30) [not null, note: 'รหัส User ผู้สร้าง row; Foreign Key (FK) → users.id; Required']
+  issuedById varchar(30) [note: 'รหัส User ผู้ออกหนังสือ; Foreign Key (FK) → users.id; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Core Transaction — เก็บชุดคำร้องที่มี cycle, company site, ผู้รับ และที่อยู่ออกหนังสือตรงกัน พร้อม snapshot ข้อมูลสำหรับหนังสือและสถานะของชุด เกี่ยวข้องกับ การจัดทำและเผยแพร่หนังสือขอฝึกงาน/หนังสือตอบกลับ.'
+  Indexes {
+    (cycleId, status)
+    (companySiteId, status)
+    createdById
+    issuedById
+  }
+}
+
+Table letter_batch_members {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  batchId varchar(30) [not null, note: 'รหัส Letter Batch; Foreign Key (FK) → letter_batches.id; Composite Unique (batchId, requestId); Required']
+  requestId varchar(30) [not null, note: 'รหัส Placement Request; Foreign Key (FK) → placement_requests.id; Composite Unique (batchId, requestId); Required']
+  activeMembershipKey varchar(30) [unique, note: 'Nullable Unique Slot สำหรับป้องกันคำร้องอยู่ใน active batch มากกว่าหนึ่งชุด; Unique; Nullable']
+  studentCodeSnapshot varchar(50) [not null, note: 'snapshot รหัสนักศึกษาที่ใช้บนหนังสือ; Required']
+  namePrefixSnapshot varchar(50) [not null, note: 'snapshot คำนำหน้าชื่อนักศึกษา; Required']
+  firstNameSnapshot varchar(100) [not null, note: 'snapshot ชื่อนักศึกษา; Required']
+  lastNameSnapshot varchar(100) [not null, note: 'snapshot นามสกุลนักศึกษา; Required']
+  positionSnapshot varchar(150) [not null, note: 'snapshot ตำแหน่งฝึก; Required']
+  addedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่เพิ่มสมาชิกหรือผู้เข้าร่วม; Required; Default `CURRENT_TIMESTAMP(3)`']
+  removedAt datetime(3) [note: 'เวลาที่นำสมาชิกออก; ว่างเมื่อยังเป็นสมาชิก; Nullable']
+  lockedAt datetime(3) [note: 'เวลาที่ล็อก row ไม่ให้แก้ไขต่อ; Nullable']
+
+  Note: 'Junction / Snapshot — เชื่อม Letter Batch กับ Placement Request และเก็บ snapshot นักศึกษา/ตำแหน่ง ณ เวลาจัดชุด เพื่อให้หนังสือเดิมไม่เปลี่ยนตาม Master Data เกี่ยวข้องกับ Letter batching, membership history และ document generation.'
+  Indexes {
+    (batchId, requestId) [unique]
+    (requestId, removedAt)
+    (batchId, removedAt)
+  }
+}
+
+Table letter_document_versions {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  batchId varchar(30) [not null, note: 'รหัส Letter Batch; Foreign Key (FK) → letter_batches.id; Composite Unique (batchId, documentType, versionNumber); Required']
+  documentType LetterDocumentType [not null, note: 'ประเภทเอกสารตาม LetterDocumentType; Composite Unique (batchId, documentType, versionNumber); Required; Enum LetterDocumentType']
+  versionNumber int [not null, note: 'ลำดับ version ภายใน batch และ document type; Composite Unique (batchId, documentType, versionNumber); Required']
+  status DocumentVersionStatus [not null, default: 'ACTIVE', note: 'สถานะของ document version; Required; Enum DocumentVersionStatus; Default \'ACTIVE\'']
+  storageKey varchar(500) [not null, unique, note: 'ตำแหน่งอ้างอิงไฟล์ใน storage; ไม่ใช่ binary และห้ามซ้ำ; Unique; Required']
+  originalFileName varchar(255) [not null, note: 'ชื่อไฟล์เดิมที่ผู้ใช้อัปโหลด; Required']
+  mimeType varchar(100) [not null, note: 'MIME type ที่ client/adapter แจ้ง; Required']
+  detectedMimeType varchar(100) [note: 'MIME type ที่ตรวจจากเนื้อหาไฟล์; Nullable']
+  sizeBytes bigint [not null, note: 'ขนาดไฟล์เป็น byte; Required']
+  sha256 char(64) [not null, note: 'ค่า SHA-256 checksum สำหรับตรวจ integrity/ไฟล์ซ้ำ; Required']
+  validationStatus FileValidationStatus [not null, default: 'PENDING', note: 'ผลการตรวจไฟล์; Required; Enum FileValidationStatus; Default \'PENDING\'']
+  validationError text [note: 'ข้อความสาเหตุเมื่อไฟล์ไม่ผ่าน validation; Nullable']
+  validatedAt datetime(3) [note: 'เวลาที่ตรวจไฟล์เสร็จ; Nullable']
+  uploadedById varchar(30) [not null, note: 'รหัส User ผู้อัปโหลด; Foreign Key (FK) → users.id; Required']
+  uploadedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาอัปโหลด; Required; Default `CURRENT_TIMESTAMP(3)`']
+  replacementReason text [note: 'เหตุผลที่สร้าง version ทดแทน; Nullable']
+  reviewedById varchar(30) [note: 'รหัส User ผู้ตรวจเอกสาร; Foreign Key (FK) → users.id; Nullable']
+  reviewedAt datetime(3) [note: 'เวลาตรวจเอกสาร; Nullable']
+  reviewNote text [note: 'หมายเหตุจากการตรวจเอกสาร; Nullable']
+
+  Note: 'Transaction / File Metadata — เก็บ metadata และ version ของ PDF หนังสือขอฝึกงานหรือหนังสือตอบกลับ; binary อยู่ใน file storage ไม่ได้เก็บใน MySQL เกี่ยวข้องกับ Document upload, validation, review, versioning และ download authorization.'
+  Indexes {
+    (batchId, documentType, versionNumber) [unique]
+    (batchId, documentType, status)
+    sha256
+    uploadedById
+    reviewedById
+  }
+}
+
+Table supervision_groups {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Composite Unique (id, cycleId, round); Required']
+  code varchar(50) [not null, unique, note: 'รหัสอ้างอิงที่มนุษย์อ่านได้และห้ามซ้ำ; Unique; Required']
+  cycleId varchar(30) [not null, note: 'รหัสรอบสหกิจที่ row นี้สังกัด; Foreign Key (FK) → coop_cycles.id; Composite Unique (id, cycleId, round); Composite Unique (cycleId, round, name); Required']
+  round SupervisionRound [not null, note: 'ครั้งที่นิเทศตาม SupervisionRound; Composite Unique (id, cycleId, round); Composite Unique (cycleId, round, name); Required; Enum SupervisionRound']
+  name varchar(150) [not null, note: 'ชื่อกลุ่มนิเทศ; Composite Unique (cycleId, round, name); Required']
+  createdById varchar(30) [not null, note: 'รหัส User ผู้สร้าง row; Foreign Key (FK) → users.id; Required']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Transaction / Aggregate Root — เก็บกลุ่มนิเทศภายใต้รอบสหกิจและครั้งที่นิเทศ เป็นหัวรวมสำหรับอาจารย์และสาขาบริษัทที่รับผิดชอบ เกี่ยวข้องกับ Staff Supervision Group Management.'
+  Indexes {
+    (id, cycleId, round) [unique]
+    (cycleId, round, name) [unique]
+    (cycleId, round)
+    createdById
+  }
+}
+
+Table supervision_group_lecturers {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  groupId varchar(30) [not null, note: 'รหัส Supervision Group; Foreign Key (FK) → supervision_groups.id,cycleId,round; Required']
+  cycleId varchar(30) [not null, note: 'รหัสรอบสหกิจที่ row นี้สังกัด; Foreign Key (FK) → supervision_groups.id,cycleId,round; Composite Unique (cycleId, round, lecturerId); Required']
+  round SupervisionRound [not null, note: 'ครั้งที่นิเทศตาม SupervisionRound; Foreign Key (FK) → supervision_groups.id,cycleId,round; Composite Unique (cycleId, round, lecturerId); Required; Enum SupervisionRound']
+  lecturerId varchar(30) [not null, note: 'รหัส User ของอาจารย์นิเทศ; Foreign Key (FK) → users.id; Composite Unique (cycleId, round, lecturerId); Required']
+  assignedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลามอบหมายเข้ากลุ่ม/นัด; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'Junction / Mapping — เชื่อม Supervision Group กับ Lecturer และบังคับไม่ให้อาจารย์อยู่หลายกลุ่มใน cycle/round เดียวกัน เกี่ยวข้องกับ การมอบหมายอาจารย์นิเทศและ ownership.'
+  Indexes {
+    (cycleId, round, lecturerId) [unique]
+    lecturerId
+  }
+}
+
+Table supervision_group_companies {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  groupId varchar(30) [not null, note: 'รหัส Supervision Group; Foreign Key (FK) → supervision_groups.id,cycleId,round; Required']
+  cycleId varchar(30) [not null, note: 'รหัสรอบสหกิจที่ row นี้สังกัด; Foreign Key (FK) → supervision_groups.id,cycleId,round; Composite Unique (cycleId, round, companySiteId); Required']
+  round SupervisionRound [not null, note: 'ครั้งที่นิเทศตาม SupervisionRound; Foreign Key (FK) → supervision_groups.id,cycleId,round; Composite Unique (cycleId, round, companySiteId); Required; Enum SupervisionRound']
+  companySiteId varchar(30) [not null, note: 'รหัสสาขาหรือสถานที่ปฏิบัติงาน; Foreign Key (FK) → company_sites.id; Composite Unique (cycleId, round, companySiteId); Required']
+  assignedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลามอบหมายเข้ากลุ่ม/นัด; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'Junction / Mapping — เชื่อม Supervision Group กับ Company Site และบังคับไม่ให้สาขาอยู่หลายกลุ่มใน cycle/round เดียวกัน เกี่ยวข้องกับ การแบ่งความรับผิดชอบสถานประกอบการและการสร้าง Appointment.'
+  Indexes {
+    (cycleId, round, companySiteId) [unique]
+    companySiteId
+  }
+}
+
+Table supervision_appointments {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  appointmentNo varchar(50) [not null, unique, note: 'เลขที่ Appointment ที่มนุษย์ใช้อ้างอิงและห้ามซ้ำ; Unique; Required']
+  groupCompanyId varchar(30) [not null, note: 'รหัส assignment ระหว่างกลุ่มกับ Company Site; Foreign Key (FK) → supervision_group_companies.id; Required']
+  scheduledDate date [note: 'วันที่กำหนดนิเทศ; Nullable']
+  period SupervisionPeriod [note: 'ช่วงเวลานิเทศเช้าหรือบ่าย; Nullable; Enum SupervisionPeriod']
+  status SupervisionAppointmentStatus [not null, default: 'DRAFT', note: 'สถานะ lifecycle ของ Appointment; Required; Enum SupervisionAppointmentStatus; Default \'DRAFT\'']
+  splitReason text [note: 'เหตุผลที่แยกการนิเทศของ Company Site เป็นมากกว่าหนึ่ง Appointment; Nullable']
+  postponementReason text [note: 'เหตุผลการเลื่อนนัด; Nullable']
+  cancellationReason text [note: 'เหตุผลการยกเลิก; Nullable']
+  publishedAt datetime(3) [note: 'เวลาที่เผยแพร่ชุดหนังสือหรือนัด; Nullable']
+  completedAt datetime(3) [note: 'เวลาที่ workflow หรือนัดเสร็จสมบูรณ์; Nullable']
+  lockedAt datetime(3) [note: 'เวลาที่ล็อก row ไม่ให้แก้ไขต่อ; Nullable']
+  resultSummary longtext [note: 'สรุปภาพรวมผลการนิเทศ; Nullable']
+  resultIssues longtext [note: 'ปัญหาที่พบระหว่างนิเทศ; Nullable']
+  resultSuggestions longtext [note: 'ข้อเสนอแนะจากการนิเทศ; Nullable']
+  companyRequirements longtext [note: 'ความต้องการหรือข้อมูลที่สถานประกอบการแจ้ง; Nullable']
+  resultRecordedById varchar(30) [note: 'รหัส User ผู้บันทึกผลนิเทศ; Foreign Key (FK) → users.id; Nullable']
+  resultRecordedAt datetime(3) [note: 'เวลาบันทึกผลนิเทศ; Nullable']
+  createdById varchar(30) [not null, note: 'รหัส User ผู้สร้าง row; Foreign Key (FK) → users.id; Required']
+  publishedById varchar(30) [note: 'รหัส User ผู้เผยแพร่นัด; Foreign Key (FK) → users.id; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Core Transaction — เก็บรายการนัดนิเทศของสาขา วัน/ช่วงเวลา สถานะ เหตุผลการเปลี่ยนแปลง ผู้ดำเนินการ และผลการนิเทศร่วม เกี่ยวข้องกับ Supervision schedule, completion และ evaluation.'
+  Indexes {
+    (groupCompanyId, status)
+    (scheduledDate, period)
+    createdById
+    publishedById
+    resultRecordedById
+  }
+}
+
+Table supervision_appointment_lecturers {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  appointmentId varchar(30) [not null, note: 'รหัส Supervision Appointment; Foreign Key (FK) → supervision_appointments.id; Composite Unique (appointmentId, lecturerId); Required']
+  lecturerId varchar(30) [not null, note: 'รหัส User ของอาจารย์นิเทศ; Foreign Key (FK) → users.id; Composite Unique (appointmentId, lecturerId); Required']
+  source SupervisionParticipantSource [not null, note: 'แหล่งที่มาของผู้เข้าร่วมตาม Group หรือ Manual; Required; Enum SupervisionParticipantSource']
+  role SupervisionParticipantRole [not null, default: 'PARTICIPANT', note: 'บทบาทของอาจารย์ใน Appointment: LEAD หรือ PARTICIPANT; Required; Enum SupervisionParticipantRole; Default \'PARTICIPANT\'']
+  isActual boolean [not null, default: false, note: 'ระบุว่าอาจารย์เข้าร่วมนิเทศจริง; Required; Default false']
+  addedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่เพิ่มสมาชิกหรือผู้เข้าร่วม; Required; Default `CURRENT_TIMESTAMP(3)`']
+  confirmedAt datetime(3) [note: 'เวลาที่ยืนยันผลหรือยืนยันการเข้าร่วม; Nullable']
+
+  Note: 'Junction / Mapping — เชื่อม Appointment กับ Lecturer โดยแยกแหล่งที่มาของผู้เข้าร่วม บทบาทตามแผน และการเข้าร่วมจริง เกี่ยวข้องกับ Planned/actual supervision participants และสิทธิ์จัดการนัด.'
+  Indexes {
+    (appointmentId, lecturerId) [unique]
+    lecturerId
+  }
+}
+
+Table supervision_appointment_students {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  appointmentId varchar(30) [not null, note: 'รหัส Supervision Appointment; Foreign Key (FK) → supervision_appointments.id; Composite Unique (appointmentId, placementRequestId); Required']
+  placementRequestId varchar(30) [not null, note: 'รหัส Placement Request ที่ยืนยันแล้วและถูกนัดนิเทศ; Foreign Key (FK) → placement_requests.id; Composite Unique (appointmentId, placementRequestId); Required']
+  assignedAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลามอบหมายเข้ากลุ่ม/นัด; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'Junction / Mapping — เชื่อม Appointment กับ Placement Request ที่ยืนยันแล้ว เพื่อระบุนักศึกษาที่ถูกนิเทศในนัดนั้น เกี่ยวข้องกับ Student supervision schedule และ Student Evaluation.'
+  Indexes {
+    (appointmentId, placementRequestId) [unique]
+    placementRequestId
+  }
+}
+
+Table student_evaluations {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  appointmentStudentId varchar(30) [not null, note: 'รหัส mapping นักศึกษาภายใน Appointment; Foreign Key (FK) → supervision_appointment_students.id; Composite Unique (appointmentStudentId, evaluatorLecturerId); Required']
+  evaluatorLecturerId varchar(30) [not null, note: 'รหัส User ของอาจารย์ผู้ประเมิน; Foreign Key (FK) → users.id; Composite Unique (appointmentStudentId, evaluatorLecturerId); Required']
+  rubricVersion int [not null, default: 1, note: 'เลขรุ่นแบบประเมินที่ใช้ เพื่อแปลความหมายคะแนนย้อนหลัง; Required; Default 1']
+  status EvaluationStatus [not null, default: 'DRAFT', note: 'สถานะแบบประเมิน Draft หรือ Submitted; Required; Enum EvaluationStatus; Default \'DRAFT\'']
+  responsibilityScore "tinyint unsigned" [note: 'คะแนนความรับผิดชอบและตรงต่อเวลา; Nullable']
+  disciplineScore "tinyint unsigned" [note: 'คะแนนวินัยและจรรยาบรรณในการทำงาน; Nullable']
+  communicationScore "tinyint unsigned" [note: 'คะแนนการสื่อสารและทำงานร่วมกับผู้อื่น; Nullable']
+  knowledgeScore "tinyint unsigned" [note: 'คะแนนการประยุกต์ใช้ความรู้กับงาน; Nullable']
+  workQualityScore "tinyint unsigned" [note: 'คะแนนคุณภาพและความก้าวหน้าของงาน; Nullable']
+  problemSolvingScore "tinyint unsigned" [note: 'คะแนนการเรียนรู้และแก้ปัญหา; Nullable']
+  safetyScore "tinyint unsigned" [note: 'คะแนนการปฏิบัติตามกฎและความปลอดภัย; Nullable']
+  strengths longtext [note: 'จุดแข็งของนักศึกษา; Nullable']
+  issues longtext [note: 'ปัญหาหรือประเด็นที่พบ; Nullable']
+  suggestions longtext [note: 'ข้อเสนอแนะเพื่อปรับปรุง; Nullable']
+  nextFollowUp longtext [note: 'ประเด็นที่ต้องติดตามครั้งถัดไป; Nullable']
+  submittedAt datetime(3) [note: 'เวลาส่งรายการเข้าสู่ workflow หรือเวลาส่งแบบประเมิน; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Transaction — เก็บแบบประเมินนักศึกษารายคนต่ออาจารย์ผู้ประเมิน มีคะแนน 7 หัวข้อ ข้อความประกอบ รุ่น rubric และสถานะ Draft/Submitted เกี่ยวข้องกับ Post-supervision Student Evaluation.'
+  Indexes {
+    (appointmentStudentId, evaluatorLecturerId) [unique]
+    (evaluatorLecturerId, status)
+  }
+}
+
+Table company_evaluations {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  appointmentId varchar(30) [not null, unique, note: 'รหัส Supervision Appointment; Foreign Key (FK) → supervision_appointments.id; Unique; Required']
+  evaluatorLecturerId varchar(30) [not null, note: 'รหัส User ของอาจารย์ผู้ประเมิน; Foreign Key (FK) → users.id; Required']
+  rubricVersion int [not null, default: 1, note: 'เลขรุ่นแบบประเมินที่ใช้ เพื่อแปลความหมายคะแนนย้อนหลัง; Required; Default 1']
+  status EvaluationStatus [not null, default: 'DRAFT', note: 'สถานะแบบประเมิน Draft หรือ Submitted; Required; Enum EvaluationStatus; Default \'DRAFT\'']
+  workRelevanceScore "tinyint unsigned" [note: 'คะแนนความสัมพันธ์ของงานกับสาขาวิชา; Nullable']
+  workChallengeScore "tinyint unsigned" [note: 'คะแนนความเหมาะสมของปริมาณและความท้าทายของงาน; Nullable']
+  supervisorReadinessScore "tinyint unsigned" [note: 'คะแนนความพร้อมของผู้ควบคุมงาน; Nullable']
+  studentSupportScore "tinyint unsigned" [note: 'คะแนนการดูแลและติดตามนักศึกษา; Nullable']
+  environmentSafetyScore "tinyint unsigned" [note: 'คะแนนสภาพแวดล้อมและความปลอดภัย; Nullable']
+  resourceReadinessScore "tinyint unsigned" [note: 'คะแนนความพร้อมของอุปกรณ์และทรัพยากร; Nullable']
+  universityCoordinationScore "tinyint unsigned" [note: 'คะแนนการประสานงานกับมหาวิทยาลัย; Nullable']
+  recommendation CompanyRecommendation [note: 'คำแนะนำว่าจะส่งนักศึกษารุ่นถัดไปหรือไม่; Nullable; Enum CompanyRecommendation']
+  observations longtext [note: 'ข้อสังเกตทั่วไปต่อสถานประกอบการ; Nullable']
+  issues longtext [note: 'ปัญหาหรือความเสี่ยงที่พบในสถานประกอบการ; Nullable']
+  suggestions longtext [note: 'ข้อเสนอแนะต่อสถานประกอบการหรือการประสานงาน; Nullable']
+  submittedAt datetime(3) [note: 'เวลาส่งรายการเข้าสู่ workflow หรือเวลาส่งแบบประเมิน; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Transaction — เก็บแบบประเมินสถานประกอบการหนึ่งชุดต่อ Appointment มีคะแนน 7 หัวข้อ คำแนะนำ ข้อสังเกต และสถานะ Draft/Submitted เกี่ยวข้องกับ Post-supervision Company Evaluation.'
+  Indexes {
+    (evaluatorLecturerId, status)
+  }
+}
+
+Table notifications {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  type varchar(100) [not null, note: 'รหัสประเภทเหตุการณ์ Notification ที่ service ใช้เลือก template/behavior; Required']
+  severity NotificationSeverity [not null, default: 'INFO', note: 'ระดับความสำคัญสำหรับรูปแบบการแสดงผล; Required; Enum NotificationSeverity; Default \'INFO\'']
+  title varchar(255) [not null, note: 'หัวข้อข้อความหรือกิจกรรม; Required']
+  body text [not null, note: 'เนื้อหาการแจ้งเตือน; Required']
+  deepLink varchar(500) [note: 'internal path ไปหน้าที่เกี่ยวข้อง; Nullable']
+  placementRequestId varchar(30) [note: 'รหัส Placement Request ที่ยืนยันแล้วและถูกนัดนิเทศ; Foreign Key (FK) → placement_requests.id; Nullable']
+  letterBatchId varchar(30) [note: 'รหัส Letter Batch ที่เป็นต้นเหตุของ Notification; Foreign Key (FK) → letter_batches.id; Nullable']
+  appointmentId varchar(30) [note: 'รหัส Supervision Appointment; Foreign Key (FK) → supervision_appointments.id; Nullable']
+  createdById varchar(30) [note: 'รหัส User หรือ service actor ผู้สร้าง Notification; ว่างได้สำหรับเหตุการณ์ระบบ; Foreign Key (FK) → users.id; Nullable']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาสร้าง row; Required; Default `CURRENT_TIMESTAMP(3)`']
+
+  Note: 'Transaction / Message — เก็บเนื้อหาการแจ้งเตือนหนึ่งเหตุการณ์และ optional link ไปยังธุรกรรมต้นทาง โดยแยกผู้รับออกเป็น NotificationRecipient เพื่อส่งข้อความเดียวให้หลายคน เกี่ยวข้องกับ In-app Notification.'
+  Indexes {
+    placementRequestId
+    letterBatchId
+    appointmentId
+    createdAt
+  }
+}
+
+Table notification_recipients {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  notificationId varchar(30) [not null, note: 'รหัส Notification; Foreign Key (FK) → notifications.id; Composite Unique (notificationId, accountId); Required']
+  accountId varchar(30) [not null, note: 'รหัส User ผู้รับ Notification; Foreign Key (FK) → users.id; Composite Unique (notificationId, accountId); Required']
+  deliveredAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่สร้างการส่งให้ผู้รับ; Required; Default `CURRENT_TIMESTAMP(3)`']
+  readAt datetime(3) [note: 'เวลาที่ผู้รับอ่าน; ว่างหมายถึงยังไม่อ่าน; Nullable']
+
+  Note: 'Junction / Delivery State — เชื่อม Notification กับ User แต่ละผู้รับ พร้อมเวลาส่งและเวลาอ่าน เกี่ยวข้องกับ Notification delivery, unread count และ mark-as-read.'
+  Indexes {
+    (notificationId, accountId) [unique]
+    (accountId, readAt, deliveredAt)
+  }
+}
+
+Table calendar_events {
+  id varchar(30) [pk, not null, note: 'รหัสหลักของ row; Primary Key (PK); Required']
+  eventType CalendarEventType [not null, note: 'ประเภทกิจกรรมปฏิทิน; Required; Enum CalendarEventType']
+  title varchar(255) [not null, note: 'หัวข้อข้อความหรือกิจกรรม; Required']
+  description text [note: 'รายละเอียดกิจกรรม; Nullable']
+  startsAt datetime(3) [not null, note: 'วันเวลาที่กิจกรรมเริ่ม; Required']
+  endsAt datetime(3) [note: 'วันเวลาที่กิจกรรมสิ้นสุด; Nullable']
+  isAllDay boolean [not null, default: false, note: 'ระบุว่าเป็นกิจกรรมทั้งวัน; Required; Default false']
+  ownerAccountId varchar(30) [not null, note: 'รหัส User เจ้าของกิจกรรม; Foreign Key (FK) → users.id; Required']
+  createdAt datetime(3) [not null, default: `CURRENT_TIMESTAMP(3)`, note: 'เวลาที่ผู้ใช้สร้างกิจกรรมส่วนตัว; Required; Default `CURRENT_TIMESTAMP(3)`']
+  updatedAt datetime(3) [not null, note: 'เวลาแก้ไข row ล่าสุด; Required']
+
+  Note: 'Transaction / User-owned — เก็บกิจกรรมปฏิทินที่ผู้ใช้สร้างเอง; กิจกรรมระบบ เช่น Appointment และ deadline อ่านจากตารางต้นทางและไม่บันทึกซ้ำ เกี่ยวข้องกับ Role Calendar และ Personal Event.'
+  Indexes {
+    (startsAt, endsAt)
+    (ownerAccountId, startsAt)
+  }
+}
+
+// Authentication, ownership and audit relations
+// Relationship: 1:N (child N → parent 1); users.createdById → users.id; เก็บว่า User ใดสร้างบัญชีนี้ โดยคงบัญชีที่สร้างไว้เมื่อผู้สร้างถูกลบ
+Ref: users.createdById > users.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); audit_logs.actorAccountId → users.id; เชื่อม audit กับผู้กระทำเมื่อระบุตัวตนได้
+Ref: audit_logs.actorAccountId > users.id [delete: set null]
+
+// Co-op cycle and enrollment relations
+// Relationship: 1:N (child N → parent 1); coop_cycle_status_history.cycleId → coop_cycles.id; จัด timeline ให้รอบสหกิจที่ถูกเปลี่ยนสถานะ
+Ref: coop_cycle_status_history.cycleId > coop_cycles.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); coop_cycle_status_history.changedById → users.id; ระบุผู้ดำเนินการเปลี่ยนสถานะรอบ
+Ref: coop_cycle_status_history.changedById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); cycle_enrollments.cycleId → coop_cycles.id; ระบุรอบที่นักศึกษาเข้าร่วม
+Ref: cycle_enrollments.cycleId > coop_cycles.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); cycle_enrollments.studentId → users.id; ระบุนักศึกษาของ enrollment
+Ref: cycle_enrollments.studentId > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); cycle_enrollments.createdById → users.id; ระบุเจ้าหน้าที่/ผู้สร้าง enrollment
+Ref: cycle_enrollments.createdById > users.id [delete: restrict]
+
+// Company and student application relations
+// Relationship: 1:N (child N → parent 1); companies.createdById → users.id; ระบุผู้สร้าง Company master data
+Ref: companies.createdById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); company_sites.companyId → companies.id; จัดสาขาทั้งหมดให้อยู่ภายใต้ Company เดียว
+Ref: company_sites.companyId > companies.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); company_sites.provinceId → provinces.id; อ่านจังหวัดและภูมิภาคของสาขาจากทะเบียนกลาง
+Ref: company_sites.provinceId > provinces.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); student_applications.enrollmentId → cycle_enrollments.id; กำหนด ownership และรอบของ tracker นักศึกษา
+Ref: student_applications.enrollmentId > cycle_enrollments.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); student_applications.companySiteId → company_sites.id; เชื่อม tracker กับสาขาในทะเบียนเมื่อมีข้อมูลตรงกัน; SET NULL เพื่อรักษา snapshot
+Ref: student_applications.companySiteId > company_sites.id [delete: set null]
+
+// Placement and letter relations
+// Relationship: 1:N (child N → parent 1); placement_requests.enrollmentId → cycle_enrollments.id; ผูกคำร้องกับนักศึกษาและรอบสหกิจ
+Ref: placement_requests.enrollmentId > cycle_enrollments.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); placement_requests.companySiteId → company_sites.id; ระบุสาขาที่ขอไปฝึก
+Ref: placement_requests.companySiteId > company_sites.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); placement_requests.confirmedById → users.id; ระบุอาจารย์ผู้ยืนยันผลรายบุคคล
+Ref: placement_requests.confirmedById > users.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); placement_request_status_history.requestId → placement_requests.id; จัด timeline ให้คำร้องต้นทาง
+Ref: placement_request_status_history.requestId > placement_requests.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); placement_request_status_history.changedById → users.id; ระบุผู้ทำ status transition
+Ref: placement_request_status_history.changedById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_batches.cycleId → coop_cycles.id; กำหนดรอบของชุดหนังสือ
+Ref: letter_batches.cycleId > coop_cycles.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_batches.companySiteId → company_sites.id; กำหนดสาขาปลายทางร่วมของชุดหนังสือ
+Ref: letter_batches.companySiteId > company_sites.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_batches.createdById → users.id; ระบุอาจารย์ผู้สร้างชุด
+Ref: letter_batches.createdById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_batches.issuedById → users.id; ระบุอาจารย์ผู้ออก/เผยแพร่หนังสือ
+Ref: letter_batches.issuedById > users.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); letter_batch_members.batchId → letter_batches.id; ระบุชุดที่ membership อยู่
+Ref: letter_batch_members.batchId > letter_batches.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_batch_members.requestId → placement_requests.id; ระบุคำร้องที่ถูกนำเข้าชุด
+Ref: letter_batch_members.requestId > placement_requests.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_document_versions.batchId → letter_batches.id; จัด version เอกสารให้อยู่ภายใต้ชุดหนังสือ
+Ref: letter_document_versions.batchId > letter_batches.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_document_versions.uploadedById → users.id; ระบุผู้รับผิดชอบการอัปโหลดไฟล์
+Ref: letter_document_versions.uploadedById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); letter_document_versions.reviewedById → users.id; ระบุผู้ตรวจเอกสารเมื่อมีการ review
+Ref: letter_document_versions.reviewedById > users.id [delete: set null]
+
+// Supervision relations
+// Relationship: 1:N (child N → parent 1); supervision_groups.cycleId → coop_cycles.id; กำหนดรอบของกลุ่มนิเทศ
+Ref: supervision_groups.cycleId > coop_cycles.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_groups.createdById → users.id; ระบุ Staff ผู้สร้างกลุ่ม
+Ref: supervision_groups.createdById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_group_lecturers.groupId,cycleId,round → supervision_groups.id,cycleId,round; ผูกอาจารย์กับกลุ่มเดียวกันอย่างสอดคล้องทั้ง id, cycle และ round
+Ref: supervision_group_lecturers.(groupId, cycleId, round) > supervision_groups.(id, cycleId, round) [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_group_lecturers.lecturerId → users.id; ระบุ User role LECTURER ที่เป็นสมาชิกกลุ่ม
+Ref: supervision_group_lecturers.lecturerId > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_group_companies.groupId,cycleId,round → supervision_groups.id,cycleId,round; ผูก Company Site assignment กับกลุ่มใน cycle/round เดียวกัน
+Ref: supervision_group_companies.(groupId, cycleId, round) > supervision_groups.(id, cycleId, round) [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_group_companies.companySiteId → company_sites.id; ระบุสาขาที่กลุ่มรับผิดชอบ
+Ref: supervision_group_companies.companySiteId > company_sites.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_appointments.groupCompanyId → supervision_group_companies.id; สร้างนัดภายใต้ assignment ของกลุ่มต่อสาขา
+Ref: supervision_appointments.groupCompanyId > supervision_group_companies.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_appointments.createdById → users.id; ระบุผู้สร้าง Appointment
+Ref: supervision_appointments.createdById > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_appointments.publishedById → users.id; ระบุผู้เผยแพร่ Appointment
+Ref: supervision_appointments.publishedById > users.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); supervision_appointments.resultRecordedById → users.id; ระบุอาจารย์ผู้บันทึกผลร่วม
+Ref: supervision_appointments.resultRecordedById > users.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); supervision_appointment_lecturers.appointmentId → supervision_appointments.id; จัดผู้เข้าร่วมให้อยู่ใน Appointment
+Ref: supervision_appointment_lecturers.appointmentId > supervision_appointments.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_appointment_lecturers.lecturerId → users.id; ระบุอาจารย์ตามแผน/ผู้เข้าร่วมจริง
+Ref: supervision_appointment_lecturers.lecturerId > users.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_appointment_students.appointmentId → supervision_appointments.id; จัดนักศึกษาให้อยู่ใน Appointment
+Ref: supervision_appointment_students.appointmentId > supervision_appointments.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); supervision_appointment_students.placementRequestId → placement_requests.id; อ้าง confirmed placement เป็น source of truth ของนักศึกษาและสาขา
+Ref: supervision_appointment_students.placementRequestId > placement_requests.id [delete: restrict]
+
+// Evaluation relations
+// Relationship: 1:N (child N → parent 1); student_evaluations.appointmentStudentId → supervision_appointment_students.id; ระบุนักศึกษาที่ถูกประเมินใน Appointment
+Ref: student_evaluations.appointmentStudentId > supervision_appointment_students.id [delete: restrict]
+// Relationship: 1:N (child N → parent 1); student_evaluations.evaluatorLecturerId → users.id; ระบุอาจารย์เจ้าของแบบประเมิน
+Ref: student_evaluations.evaluatorLecturerId > users.id [delete: restrict]
+// Relationship: 1:1; company_evaluations.appointmentId → supervision_appointments.id; บังคับ Company Evaluation หนึ่งชุดต่อ Appointment
+Ref: supervision_appointments.id - company_evaluations.appointmentId [delete: restrict]
+// Relationship: 1:N (child N → parent 1); company_evaluations.evaluatorLecturerId → users.id; ระบุอาจารย์เจ้าของแบบประเมินสถานประกอบการ
+Ref: company_evaluations.evaluatorLecturerId > users.id [delete: restrict]
+
+// Notification and calendar relations
+// Relationship: 1:N (child N → parent 1); notifications.placementRequestId → placement_requests.id; เชื่อมข้อความกับคำร้องเพื่อเปิดรายละเอียดและติดตามต้นเหตุ
+Ref: notifications.placementRequestId > placement_requests.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); notifications.letterBatchId → letter_batches.id; เชื่อมข้อความกับชุดหนังสือ
+Ref: notifications.letterBatchId > letter_batches.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); notifications.appointmentId → supervision_appointments.id; เชื่อมข้อความกับ Appointment
+Ref: notifications.appointmentId > supervision_appointments.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); notifications.createdById → users.id; ระบุผู้สร้างข้อความเมื่อเป็น user action
+Ref: notifications.createdById > users.id [delete: set null]
+// Relationship: 1:N (child N → parent 1); notification_recipients.notificationId → notifications.id; ระบุข้อความที่ส่งให้ผู้รับ
+Ref: notification_recipients.notificationId > notifications.id [delete: cascade]
+// Relationship: 1:N (child N → parent 1); notification_recipients.accountId → users.id; ระบุ User ผู้รับและเก็บ read state แยกรายคน
+Ref: notification_recipients.accountId > users.id [delete: cascade]
+// Relationship: 1:N (child N → parent 1); calendar_events.ownerAccountId → users.id; กำหนด ownership เพื่อให้ผู้ใช้เห็นและจัดการเฉพาะกิจกรรมของตน
+Ref: calendar_events.ownerAccountId > users.id [delete: cascade]
+
+TableGroup authentication_and_audit {
+  users
+  audit_logs
+}
+
+TableGroup cycles_and_enrollment {
+  coop_cycles
+  coop_cycle_status_history
+  cycle_enrollments
+}
+
+TableGroup companies_and_applications {
+  provinces
+  companies
+  company_sites
+  student_applications
+}
+
+TableGroup placements_and_letters {
+  placement_requests
+  placement_request_status_history
+  letter_batches
+  letter_batch_members
+  letter_document_versions
+}
+
+TableGroup supervision_and_evaluation {
+  supervision_groups
+  supervision_group_lecturers
+  supervision_group_companies
+  supervision_appointments
+  supervision_appointment_lecturers
+  supervision_appointment_students
+  student_evaluations
+  company_evaluations
+}
+
+TableGroup communication {
+  notifications
+  notification_recipients
+  calendar_events
+}

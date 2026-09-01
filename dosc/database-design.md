@@ -75,9 +75,16 @@ Schema ปัจจุบันมี **25 ตาราง และ 24 enum**
 `PlacementRequest` เป็น source of truth ของผลรายบุคคลและสถานที่ฝึกที่ยืนยัน
 จึงไม่มี `WorkPlacement` หรือผลซ้ำใน `LetterBatchMember`
 
-`activeSlotKey` มีค่าเท่ากับ enrollment id เฉพาะคำร้องที่ยังดำเนินการ และ
+`activeSlotKey` มีค่าเท่ากับ student user id เฉพาะคำร้องที่ยังดำเนินการ และ
 `confirmedSlotKey` มีค่าเท่ากับ enrollment id เฉพาะคำร้องที่ยืนยันแล้ว เพื่อบังคับ
-หนึ่ง active request และหนึ่ง confirmed placement ต่อ enrollment ผ่าน unique index
+หนึ่ง active request ต่อคนทั้งระบบและหนึ่ง confirmed placement ต่อ enrollment ผ่าน unique index
+
+สถานะคำร้องที่ยังดำเนินการคือ `DRAFT`, `SUBMITTED`, `RETURNED`, `BATCHED`,
+`WAITING_RESPONSE`, `WAITING_REVIEW`; เมื่อเป็น `CONFIRMED`, `NOT_ACCEPTED` หรือ
+`CANCELLED` ต้องล้าง `activeSlotKey` ใน transaction เดียวกับ status history
+
+`LetterBatch` เริ่มที่ `DRAFT` ระหว่างจัดสมาชิกและตรวจ outgoing PDF จากนั้นเปลี่ยนเป็น
+`WAITING_RESPONSE` เมื่อ publish แล้ว Draft batch ที่ยกเลิกต้องคืนคำร้องเป็น `SUBMITTED`
 
 ### 2.6 กลุ่มและรายการนิเทศ — 6 ตาราง
 
@@ -92,6 +99,10 @@ Schema ปัจจุบันมี **25 ตาราง และ 24 enum**
 
 ไม่มีตารางงบประมาณ เพราะ requirement ปัจจุบันระบุว่าอยู่นอกขอบเขต
 ตาราง junction ยังจำเป็นเพื่อบังคับสมาชิกไม่ซ้ำและตรวจ ownership/RBAC
+
+เมื่อ Staff สร้างกลุ่ม ระบบสร้าง `SupervisionAppointment` สถานะ `DRAFT` หนึ่งรายการ
+ต่อ `SupervisionGroupCompany` อัตโนมัติ อาจารย์ประจำกลุ่มบันทึก schedule แล้ว publish
+และ complete ได้ ส่วน manual create/postpone/cancel ไม่อยู่ใน MVP
 
 ### 2.7 แบบประเมิน — 2 ตาราง
 
@@ -144,25 +155,30 @@ Schema ปัจจุบันมี **25 ตาราง และ 24 enum**
 - Appointment หนึ่งรายการมี company evaluation หนึ่งชุด
 - คะแนนทุกช่องต้องเป็น `NULL`, `0` หรือ `1..5`; submitted evaluation ห้ามแก้
 - Calendar event เป็นของ owner เพียงคนเดียว
+- หนังสือขอฝึกงาน/ตอบกลับ upload และ download ได้เฉพาะ Lecturer ที่มี `canReviewPlacements`
+- Region ของสถานประกอบการอ่านผ่าน `CompanySite.province.region`; mutation รับ `provinceId`
+  และไม่รับค่า region อิสระ
 
 ## 5. Transaction boundary
 
 1. เพิ่ม/นำเข้าผู้ใช้: user + audit
 2. เปลี่ยนรอบ: ปิด enrollment เดิม + สร้างใหม่ + audit
 3. เปลี่ยนสถานะคำร้อง: request + history + notification
-4. สร้างชุดหนังสือ: batch + members + document + request history
+4. สร้าง/เผยแพร่ชุดหนังสือ: batch + members + document + request status/history
 5. ยืนยันรายบุคคล: request result + confirmed key + enrollment work status
 6. บันทึกผลนิเทศ: appointment + actual lecturers + evaluations
+7. สร้างกลุ่มนิเทศ: group + lecturer/company members + draft appointments
 
 ## 6. สิ่งที่ยังไม่สร้าง
 
-- Initial migration และ Production seed
-- Backend repository/service/API และ authentication จริง
+- Production credential/seed policy นอกเหนือจาก environment-driven Staff bootstrap
+- Feature repository/service/API ถัดจาก Authentication และ Company data layer ระยะแรก
 - ตารางงบประมาณและเบิกจ่าย
 - Workflow คำขอยกเลิกหลังออกหนังสือ
 - ตารางประวัติการย้ายรอบเฉพาะทาง
 - ระบบแบบประเมินที่ผู้ดูแลแก้หัวข้อเอง
 - Background import/export job และ reporting warehouse
 
-ให้สร้าง initial migration หลังยืนยันชื่อ field และ state machine ของคำร้องรอบสุดท้าย
-จากนั้นเพิ่ม integration test สำหรับกฎที่ Foreign Key หรือ unique index บังคับไม่ได้
+Initial migration ถูกสร้างและใช้งานแล้ว การแก้ schema หลังจากนี้ต้องเพิ่ม migration ใหม่
+โดยไม่แก้ migration เดิม และเพิ่ม integration test สำหรับกฎที่ Foreign Key หรือ unique index
+บังคับไม่ได้

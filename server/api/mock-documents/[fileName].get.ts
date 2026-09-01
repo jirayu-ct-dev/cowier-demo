@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { defineApiHandler } from '../../core/api-handler'
+import { requirePlacementReviewer } from '../../core/auth/session'
 
 const fileNameSchema = z
   .string()
@@ -43,7 +45,8 @@ const createMockPdf = (fileName: string) => {
   return `${body}${xref}\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
 };
 
-export default defineEventHandler((event) => {
+export default defineApiHandler(async (event) => {
+  await requirePlacementReviewer(event)
   const parsed = fileNameSchema.safeParse(getRouterParam(event, "fileName"));
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: "Invalid PDF file name" });

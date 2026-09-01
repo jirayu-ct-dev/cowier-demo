@@ -5,12 +5,12 @@ import { requireUser } from '../core/auth/session'
 const publicApiPaths = new Set([
   '/api/health',
   '/api/auth/login',
+  '/api/auth/logout',
   '/api/auth/session',
   '/api/_auth/session',
 ])
 
 const firstLoginApiPaths = new Set([
-  '/api/auth/logout',
   '/api/auth/password/first-login',
 ])
 

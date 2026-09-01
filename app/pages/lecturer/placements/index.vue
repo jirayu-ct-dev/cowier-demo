@@ -37,10 +37,11 @@ const statusOptions = [
   { value: "all", label: "ทุกสถานะ" },
   { value: "submitted", label: "รอตรวจคำร้อง" },
   { value: "returned", label: "ส่งกลับแก้ไข" },
-  { value: "waiting_response", label: "รอเอกสารตอบกลับ" },
-  { value: "response_uploaded", label: "รอตรวจผล" },
+  { value: "batched", label: "รวมในชุดหนังสือแล้ว" },
+  { value: "waiting-response", label: "รอเอกสารตอบกลับ" },
+  { value: "waiting-review", label: "รอตรวจผล" },
   { value: "confirmed", label: "ยืนยันสถานประกอบการ" },
-  { value: "not_accepted", label: "ไม่ได้รับการตอบรับ" },
+  { value: "not-accepted", label: "ไม่ได้รับการตอบรับ" },
 ];
 const companyOptions = [
   { value: "all", label: "ทุกสถานประกอบการ" },
@@ -55,10 +56,11 @@ const pageSizeOptions = [
 const statusMeta = {
   submitted: { label: "รอตรวจคำร้อง", tone: "warning" },
   returned: { label: "ส่งกลับแก้ไข", tone: "danger" },
-  waiting_response: { label: "รอเอกสารตอบกลับ", tone: "warning" },
-  response_uploaded: { label: "รอตรวจผล", tone: "info" },
+  batched: { label: "รวมในชุดหนังสือแล้ว", tone: "info" },
+  "waiting-response": { label: "รอเอกสารตอบกลับ", tone: "warning" },
+  "waiting-review": { label: "รอตรวจผล", tone: "info" },
   confirmed: { label: "ยืนยันสถานประกอบการ", tone: "success" },
-  not_accepted: { label: "ไม่ได้รับการตอบรับ", tone: "danger" },
+  "not-accepted": { label: "ไม่ได้รับการตอบรับ", tone: "danger" },
   cancelled: { label: "ยกเลิก", tone: "neutral" },
 } as const;
 
@@ -132,8 +134,9 @@ const openRequest = (id: string) => navigateTo(`/lecturer/placements/${id}`);
 const requestActionLabel = (request: PlacementReviewRequest) => {
   if (request.status === "submitted") return "ตรวจคำร้อง";
   if (request.status === "returned") return "ติดตามการแก้ไข";
-  if (request.status === "waiting_response") return "ติดตามหนังสือตอบกลับ";
-  if (request.status === "response_uploaded") return "ตรวจหนังสือตอบกลับ";
+  if (request.status === "batched") return "จัดทำหนังสือ";
+  if (request.status === "waiting-response") return "ติดตามหนังสือตอบกลับ";
+  if (request.status === "waiting-review") return "ตรวจหนังสือตอบกลับ";
   return "ดูผลคำร้อง";
 };
 

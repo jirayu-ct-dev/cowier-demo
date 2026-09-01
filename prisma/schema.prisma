@@ -94,6 +94,7 @@ enum PlacementRequestStatus {
 }
 
 enum LetterBatchStatus {
+  DRAFT
   WAITING_RESPONSE
   WAITING_REVIEW
   COMPLETED
@@ -497,7 +498,7 @@ model LetterBatch {
   batchNo                String            @unique @db.VarChar(50)
   cycleId                String            @db.VarChar(30)
   companySiteId          String            @db.VarChar(30)
-  status                 LetterBatchStatus @default(WAITING_RESPONSE)
+  status                 LetterBatchStatus @default(DRAFT)
   companyNameSnapshot    String            @db.VarChar(255)
   branchNameSnapshot     String            @db.VarChar(150)
   companyAddressSnapshot String            @db.Text

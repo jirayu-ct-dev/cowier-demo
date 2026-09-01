@@ -5,9 +5,9 @@ import type {
 } from './schema'
 
 const allowedAppointmentTransitions = {
-  draft: ['published', 'cancelled'],
-  published: ['postponed', 'completed', 'cancelled'],
-  postponed: ['published', 'cancelled'],
+  draft: ['published'],
+  published: ['completed'],
+  postponed: [],
   completed: [],
   cancelled: [],
 } as const satisfies Record<SupervisionAppointmentStatusInput, readonly SupervisionAppointmentStatusInput[]>

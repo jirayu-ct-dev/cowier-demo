@@ -55,29 +55,56 @@ UI contract → API route → Zod validation → service/rules
 6. Staff/Lecturer สร้างบริษัทเป็น `ACTIVE`; Student สร้างบริษัทใหม่เป็น `PENDING`
 7. บริษัท `PENDING` ค้นหาและนำไปใช้ในคำร้องได้ แต่การ merge บริษัทซ้ำยังไม่อยู่ใน MVP
 8. ใช้ `inactive` แทน hard delete เมื่อข้อมูลมีประวัติอ้างอิง
-9. Appointment รุ่นแรกทำเฉพาะ read, ownership, บันทึกตารางพร้อม completion และผลนิเทศ
-   ตาม action ที่ Prototype มีจริง; create/publish/postpone/cancel แยกเป็น optional scope
+9. สร้าง Appointment สถานะ `DRAFT` อัตโนมัติหนึ่งรายการต่อบริษัทเมื่อสร้างกลุ่มนิเทศ
+   อาจารย์ประจำกลุ่มเป็นผู้บันทึกตารางและ publish; ไม่เปิด manual create/postpone/cancel ใน MVP
 10. PDF เก็บใน storage volume/adapter และเก็บเฉพาะ metadata ใน MySQL
 11. ไม่มีงบประมาณ/เบิกจ่าย, reporting warehouse, background jobs และ custom rubric ใน MVP
+12. ภูมิภาคอ่านจาก `Province.region` เท่านั้น Request รับ `provinceId` และไม่รับ region อิสระ
+13. `PlacementRequest.activeSlotKey` ใช้ `studentUserId` สำหรับสถานะที่ยังดำเนินการ
+    เพื่อบังคับหนึ่ง active request ต่อคนทั้งระบบ; `confirmedSlotKey` ใช้ `enrollmentId`
+    เพื่อบังคับหนึ่ง confirmed placement ต่อรอบ
 
-ก่อนทำ Letter/PDF ต้องยืนยันเพิ่มเพียงเรื่องเดียว: ผู้ใดเป็นผู้อัปโหลดหนังสือตอบกลับในระบบจริง
-เพราะ Prototype ปัจจุบันมีเพียงข้อมูลจำลองและยังไม่มี upload action ที่ชัดเจน
+ผู้ upload หนังสือขอฝึกงานและหนังสือตอบกลับใน MVP คือ Lecturer ที่มี
+`canReviewPlacements`; ผู้มีสิทธิ์เดียวกันดาวน์โหลดเอกสารได้ทั้งหมด ส่วน Student และ Staff
+ยังไม่มี download contract ใน MVP เพราะไม่มี action ที่ยืนยันใน Prototype
+
+สถานะ public API ใช้ kebab-case เพียงรูปแบบเดียว เช่น `waiting-response`,
+`waiting-review`, `not-accepted`; Prisma enum ใช้ UPPER_SNAKE_CASE และ map ที่ service boundary
+
+### Placement/Letter state machine ที่ freeze แล้ว
+
+| จาก | ไปได้ | ผู้ดำเนินการ/เงื่อนไข |
+|---|---|---|
+| `draft` | `submitted`, `cancelled` | Student เจ้าของคำร้อง |
+| `submitted` | `draft`, `returned`, `batched`, `cancelled` | Student แก้/ยกเลิก หรือ Reviewer ส่งกลับ/สร้างชุด |
+| `returned` | `draft`, `submitted`, `cancelled` | Student เจ้าของคำร้อง |
+| `batched` | `submitted`, `waiting-response` | ยกเลิก draft batch หรือ publish outgoing PDF |
+| `waiting-response` | `waiting-review` | Reviewer upload หนังสือตอบกลับ |
+| `waiting-review` | `waiting-response`, `confirmed`, `not-accepted` | Reviewer ส่งเอกสารกลับหรือบันทึกผลรายบุคคล |
+| `confirmed`, `not-accepted`, `cancelled` | — | สถานะสิ้นสุด |
+
+Letter Batch ใช้ `draft → waiting-response → waiting-review → completed` โดย `draft`
+ยกเลิกได้และคืนสมาชิกเป็น `submitted`; หลัง publish แล้วไม่มี cancel/แก้สมาชิกใน MVP
 
 ## 4. ลำดับ Checkpoint
 
 ### Checkpoint 0 — Freeze contract และทำเอกสารให้ตรงกัน
 
-เป้าหมาย: มี source of truth เดียวก่อนสร้าง migration ซึ่งแก้ย้อนหลังได้ยาก
+เป้าหมาย: มี source of truth เดียวสำหรับ migration และ Feature ที่พัฒนาต่อจาก Foundation
 
-- [ ] ยืนยัน Placement Request state transition จาก enum ปัจจุบัน
-- [ ] ยืนยันผู้ upload หนังสือตอบกลับและสิทธิ์ดาวน์โหลด
-- [ ] ยืนยันว่า Appointment optional actions ใดจะอยู่ใน MVP
-- [ ] ยืนยันการใช้ `User.username` เป็นรหัสบุคคลและชื่อเข้าระบบแบบ unique ทั้งระบบ
-- [ ] แก้ `architecture.md`, `database-design.md` และ `README.md` ที่ยังระบุว่า Backend ไม่เริ่ม
-- [ ] ลบข้อความเรื่อง budget และ dependency รุ่นเก่าที่ไม่ตรง Requirement/`package.json`
-- [ ] Freeze `prisma/schema.prisma` สำหรับ initial migration
+- [x] ยืนยัน Placement Request state transition จาก enum ปัจจุบัน
+- [x] ยืนยันผู้ upload หนังสือตอบกลับและสิทธิ์ดาวน์โหลด
+- [x] ยืนยันว่า Appointment optional actions ใดจะอยู่ใน MVP
+- [x] ยืนยันการใช้ `User.username` เป็นรหัสบุคคลและชื่อเข้าระบบแบบ unique ทั้งระบบ
+- [x] แก้ `architecture.md`, `database-design.md` และ `README.md` ที่ยังระบุว่า Backend ไม่เริ่ม
+- [x] ลบข้อความเรื่อง budget และ dependency รุ่นเก่าที่ไม่ตรง Requirement/`package.json`
+- [x] Freeze `prisma/schema.prisma` และเพิ่ม corrective migration โดยไม่แก้ initial migration เดิม
 
 ผ่านเมื่อ: Requirement, schema และ UI ใช้ชื่อสถานะ/จำนวนหัวข้อ/ownership ตรงกัน
+
+สถานะ: **เสร็จแล้วเมื่อ 2 กันยายน 2569** — state machine ถูกตรึงด้วย executable rules/tests,
+เพิ่ม `DRAFT` ให้ Letter Batch, กำหนด document ownership และตัด Appointment transition
+ที่ไม่มีผู้รับผิดชอบออกจาก MVP
 
 ### Checkpoint 1 — Backend และ Database Foundation
 
@@ -219,7 +246,7 @@ Tests ขั้นต่ำ:
 - [ ] File storage adapter พร้อม local Docker volume
 - [ ] ตรวจ PDF extension, declared/detected MIME, magic bytes, size และ SHA-256
 - [ ] Document version, supersede/return/review/publish
-- [ ] Authenticated download และป้องกัน path traversal
+- [ ] Upload/download เฉพาะ Lecturer ที่มี `canReviewPlacements` และป้องกัน path traversal
 - [ ] บันทึกผลรายบุคคล: confirmed/not accepted
 - [ ] ยืนยันแล้วตั้ง confirmed key และ work status เริ่มต้นอย่าง atomic
 - [ ] เปิด Confirmed Placement read contract ให้ Supervision
@@ -371,7 +398,7 @@ Contract เหล่านี้ต้องกำหนดใน server code �
 ```ts
 type AuthContext = {
   userId: string
-  role: 'STAFF' | 'LECTURER' | 'STUDENT'
+  role: 'staff' | 'lecturer' | 'student'
   sessionVersion: number
   canReviewPlacements: boolean
 }
@@ -431,6 +458,7 @@ companyStatus
 companySiteId
 siteName
 provinceId
+region // derived from Province.region
 ```
 
 ### Cycle/Enrollment Read Model
@@ -519,8 +547,8 @@ GET             /api/supervision/appointments
 GET             /api/supervision/appointments/:id
 POST            /api/supervision/appointments/:id/join
 POST            /api/supervision/appointments/:id/leave
-PATCH           /api/supervision/appointments/:id/status
-PUT             /api/supervision/appointments/:id/actual-participants
+PUT             /api/supervision/appointments/:id/schedule
+POST            /api/supervision/appointments/:id/complete
 PUT             /api/supervision/appointments/:id/result
 GET/PUT         /api/evaluations/students/:appointmentStudentId
 POST            /api/evaluations/students/:appointmentStudentId/submit
@@ -529,8 +557,9 @@ POST            /api/evaluations/companies/:appointmentId/submit
 GET             /api/evaluations/completeness
 ```
 
-Endpoint เปลี่ยนสถานะ Appointment ที่ Checkpoint 0 ตัดออกจาก MVP ให้คง route read/result
-ไว้ก่อน และไม่เปิด transition ที่ไม่มี UI หรือผู้รับผิดชอบชัดเจน
+Group create สร้าง draft appointment ต่อ company โดยอัตโนมัติ; `schedule` บันทึกวัน/ช่วงเวลา/
+planned participants และ publish ส่วน `complete` บันทึก actual participants กับ completion
+แบบ atomic ไม่เปิด generic status route หรือ manual create/postpone/cancel ใน MVP
 
 ### Notification, Calendar และ Dashboard
 

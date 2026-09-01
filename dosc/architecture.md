@@ -1,17 +1,17 @@
 # สถาปัตยกรรมระบบ CWIE BRU
 
-เอกสารนี้กำหนดสถาปัตยกรรมเป้าหมายของระบบ โดยเริ่มพัฒนาเฉพาะส่วนติดต่อผู้ใช้
-(UI-first) ก่อน และยังไม่ผูกหน้าจอกับฐานข้อมูลหรือ Backend เพื่อให้สามารถปรับ Flow
-และ Requirement ได้โดยมีต้นทุนต่ำ
+เอกสารนี้กำหนดสถาปัตยกรรมของระบบหลังผ่าน UI Prototype, Database Foundation และ
+Authentication แล้ว Feature ที่เหลือทยอยเปลี่ยนจาก mock data เป็น Nitro API แบบ vertical slice
+โดยคง UI contract เดิม
 
 ## 1. เป้าหมายและแนวทางหลัก
 
 - ใช้ **Nuxt แบบ Modular Monolith** หนึ่งโปรเจกต์ ไม่แยก Microservices
-- ระยะแรกทำ UI ด้วยข้อมูลจำลองที่มี Type และสถานะตรงกับ Requirement
-- แยกจุดเรียกข้อมูลออกจาก Page/Component เพื่อเปลี่ยนจาก Mock เป็น API ได้ภายหลัง
+- UI ที่ยังไม่เชื่อม Feature API ใช้ข้อมูลจำลองที่มี Type และสถานะตรงกับ Requirement
+- แยกจุดเรียกข้อมูลออกจาก Page/Component และเปลี่ยนเป็น API ทีละ Feature
 - ใช้ Component และ Pattern ร่วมกันเฉพาะเมื่อมีการใช้ซ้ำจริง
-- ใช้ฐานข้อมูลเป้าหมายเป็น **MySQL 8.4 LTS** ผ่าน **Prisma ORM** เมื่อเริ่ม Backend
-- ใช้ Docker สำหรับทดสอบ Production build และรันระบบครบชุดในระยะ Backend
+- ใช้ **MySQL 8.4 LTS** ผ่าน **Prisma ORM** และ migration ที่อยู่ใน repository
+- ใช้ Docker Compose รัน MySQL → migration → Nuxt app พร้อม healthcheck
 
 ## 2. ภาพรวมสถาปัตยกรรมเป้าหมาย
 
@@ -21,8 +21,8 @@ Browser
     → Feature Components
       → Feature Composables
         → Typed Data Functions
-          ├─ ระยะ UI: Mock Data
-          └─ ระยะ Backend: Nitro API
+          ├─ Feature ที่ยังไม่เชื่อม: Mock Data
+          └─ Feature ที่เชื่อมแล้ว: Nitro API
                 → Application Service
                   → Prisma ORM → MySQL
                   → File Storage Adapter → PDF Storage
@@ -49,15 +49,15 @@ Browser
 Composable และ `useState` ของ Nuxt ก่อน เพิ่ม Pinia เฉพาะเมื่อพบ state ข้ามหลายหน้า
 ที่ซับซ้อนจริง
 
-### 3.2 ระยะ Backend (ยังไม่เริ่มในรอบนี้)
+### 3.2 Backend และข้อมูล
 
 | หน้าที่ | เครื่องมือ | แนวทางใช้ |
 |---|---|---|
 | API | Nuxt Nitro Server Routes | API อยู่ในโปรเจกต์เดียวกับ Nuxt |
-| Authentication | nuxt-auth-utils | ติดตั้งเมื่อเริ่ม Authentication; ใช้ Session-based authentication และตรวจ RBAC ที่ Server |
-| ORM | Prisma ORM | ติดตั้งเมื่อเริ่ม Backend; Query แบบ type-safe และใช้ migration อย่างเป็นลำดับ |
+| Authentication | nuxt-auth-utils | Encrypted cookie session, `sessionVersion` และ RBAC ที่ Server |
+| ORM | Prisma ORM 7 + MariaDB adapter | Query แบบ type-safe และใช้ migration อย่างเป็นลำดับ |
 | Database | MySQL 8.4 LTS | ใช้ `utf8mb4`; กำหนด timezone ของระบบให้ชัดเจน |
-| Import/export | ExcelJS + PapaParse | ติดตั้งเมื่อเริ่ม Import/Export; ใช้ CSV/XLSX สำหรับข้อมูลนักศึกษาและอาจารย์ |
+| Import/export | read-excel-file + write-excel-file + CSV utilities | ใช้ CSV/XLSX สำหรับข้อมูลนักศึกษาและอาจารย์ |
 | PDF metadata | MySQL ผ่าน Prisma | เก็บชื่อไฟล์ รุ่น ผู้อัปโหลด และสถานะ |
 | PDF binary | Storage adapter | Development ใช้ local volume; Production ใช้ object storage |
 
@@ -66,7 +66,7 @@ Composable และ `useState` ของ Nuxt ก่อน เพิ่ม Pini
 
 ### 3.3 การทดสอบและคุณภาพ
 
-- เริ่มเพิ่ม **Vitest + Nuxt Test Utils** เมื่อมี Component/Composable ที่มี logic
+- ใช้ **Vitest** สำหรับ pure rules, service และ integration tests กับ MySQL แยกฐานข้อมูล
 - เพิ่ม **Playwright** เมื่อ Flow หลักหน้าแรกทำงานครบ เพื่อทดสอบแยกตาม 3 บทบาท
 - ตรวจ UI ทุกหน้าครบ Loading, Empty, Error และ Data state
 - ตรวจ keyboard navigation, focus, responsive และข้อความภาษาไทยที่ยาว
@@ -114,11 +114,18 @@ app/
 ├── types/                    # UI/domain contracts ที่ไม่อิง Prisma type
 └── utils/                    # Pure functions
 
-server/                       # เริ่มใช้เมื่อเข้าสู่ระยะ Backend
-├── api/                      # Route handler, auth, validation
-├── services/                 # Use case และ business rules
-├── repositories/             # Prisma queries
-└── utils/                    # Server-only utilities
+server/
+├── api/                      # Thin Nitro route handlers
+├── core/                     # Database, auth, API error/response, validation และ audit
+├── features/                 # Schema, rules, service และ repository แยกตาม Feature
+├── middleware/               # Global API authentication
+└── plugins/                  # Runtime hooks เช่น session revalidation/audit
+
+prisma/
+├── migrations/               # Migration history ที่ห้ามแก้ย้อนหลังหลัง apply
+├── seed-data/                # ข้อมูลตั้งต้นที่ทดสอบซ้ำได้
+├── seed.ts                   # Idempotent development seed
+└── schema.prisma             # Source of truth ของ persistence model
 ```
 
 ไม่ควร import Type จาก Prisma เข้า Component โดยตรง ให้ UI ใช้ Type contract ของตนเอง
@@ -146,7 +153,7 @@ Page สามารถประกอบหลาย Module ได้ แต่
 - ทำชุดข้อมูลอย่างน้อย: ปกติ, ว่าง, ข้อมูลยาว, สถานะผิดพลาด และไม่มีสิทธิ์
 - Mutation ใน Mock ต้องสะท้อน flow จริง เช่น Draft → Submitted → Locked
 - ใช้ developer-only role/scenario switcher ได้ แต่ห้ามนำไปเป็นกลไกสิทธิ์จริง
-- เมื่อเริ่ม Backend ให้เปลี่ยนภายใน data function เป็น `$fetch` โดยคง contract เดิม
+- เมื่อทำ Feature checkpoint ให้เปลี่ยนภายใน data function เป็น `$fetch` โดยคง contract เดิม
 
 ยังไม่ต้องสร้าง Repository interface ให้ทุก Entity ในระยะนี้ เพราะจะเป็น abstraction
 ที่ยังไม่มีประโยชน์ ให้สร้าง data function ตาม use case ของหน้าจอ เช่น
@@ -174,8 +181,8 @@ Design Foundation แล้วทำ Flow ยื่นสถานประก�
    25 ตารางสำหรับระบบภายในสาขา โดยยังคง relationship และประวัติหลักครบ
 4. Import/export รุ่นแรกประมวลผล synchronous และเก็บสรุปใน AuditLog
    จึงยังไม่มี background job หรือ import-row persistence
-5. Schema ผ่าน Prisma format, validate และ generate แล้ว
-6. ยังไม่สร้าง migration เริ่มต้น, seed, repository, service หรือ API
+5. Initial migration, seed จังหวัด 77 จังหวัด, Prisma singleton และ integration bootstrap พร้อมแล้ว
+6. Authentication/Session/RBAC และ health API ใช้ฐานข้อมูลจริง; Feature API อื่นทำตาม checkpoint
+7. ทุก schema correction หลัง initial migration ต้องเพิ่ม migration ใหม่ ห้ามแก้ไฟล์ migration เดิม
 
-เมื่อยืนยัน schema รอบสุดท้ายจึงสร้าง migration เริ่มต้นใหม่ เพราะระบบยังไม่มีข้อมูล
-Production และรัน migration, build, integration test กับ smoke test ตามลำดับ
+สถานะราย Checkpoint และ public API contract อยู่ที่ [`backend-plan.md`](./backend-plan.md)
