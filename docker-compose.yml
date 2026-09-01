@@ -13,10 +13,12 @@ services:
       MYSQL_USER: ${MYSQL_USER:-ciwie}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ciwie}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ciwie_root}
+      MYSQL_TEST_DATABASE: ${MYSQL_TEST_DATABASE:-ciwie_test}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
       interval: 10s
@@ -27,6 +29,24 @@ services:
       - ciwie-comsci-network
 
   # ==============================================================================
+  # One-shot migration service
+  # ============================================================================
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
+    command: ["pnpm", "run", "db:migrate:deploy"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ciwie-comsci-network
+
+  # ============================================================================
   # Nuxt 4 Application Service
   # ==============================================================================
   app:
@@ -44,8 +64,8 @@ services:
       PORT: 3000
       HOST: 0.0.0.0
     depends_on:
-      mysql:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - ciwie-comsci-network
 
