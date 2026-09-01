@@ -3,7 +3,7 @@ import { ArrowLeft, KeyRound, Pencil, Power, Save, ShieldBan, UserRoundCheck } f
 import { z } from 'zod'
 import type { PersonInput, PersonType } from '~/composables/usePeopleDirectory'
 
-definePageMeta({ title: 'รายละเอียดข้อมูลบุคคล', middleware: 'staff-prototype' })
+definePageMeta({ title: 'รายละเอียดข้อมูลบุคคล', middleware: 'staff' })
 
 const route = useRoute()
 const { showToast } = useToast()

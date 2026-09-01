@@ -2,7 +2,7 @@
 import { RotateCcw, Search, UserMinus, UserPlus, X } from '@lucide/vue'
 import type { SupervisionAppointment } from '~/composables/useSupervisionAppointments'
 
-definePageMeta({ title: 'ตารางนิเทศ', middleware: 'lecturer-prototype' })
+definePageMeta({ title: 'ตารางนิเทศ', middleware: 'lecturer' })
 useHead({ title: 'ตารางนิเทศ' })
 
 const { scenario } = useScenario()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft } from '@lucide/vue'
 
-definePageMeta({ title: 'แบบประเมินการนิเทศ', middleware: 'lecturer-prototype' })
+definePageMeta({ title: 'แบบประเมินการนิเทศ', middleware: 'lecturer' })
 
 const route = useRoute()
 const { scenario } = useScenario()

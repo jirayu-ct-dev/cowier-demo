@@ -7,11 +7,12 @@ const defaults: Record<string, Record<LecturerFeature, boolean>> = {
 
 export const useLecturerPermissions = () => {
   const permissions = useState<Record<string, Record<LecturerFeature, boolean>>>('lecturer-permissions', () => structuredClone(defaults))
-  const { currentAccount } = useAuthPrototype()
+  const { currentAccount } = useAuth()
 
   const normalizeId = (id: string) => id === 'lecturer-001' ? 'L0012' : id
   const getPermissions = (id: string) => permissions.value[normalizeId(id)] ?? { placements: false }
-  const canAccess = (feature: LecturerFeature = 'placements') => currentAccount.value?.role === 'lecturer' && getPermissions(currentAccount.value.id)[feature]
+  const canAccess = (feature: LecturerFeature = 'placements') => currentAccount.value?.role === 'lecturer'
+    && (feature !== 'placements' || currentAccount.value.canReviewPlacements)
   const setPermission = (id: string, enabled: boolean) => {
     permissions.value[normalizeId(id)] = { placements: enabled }
   }

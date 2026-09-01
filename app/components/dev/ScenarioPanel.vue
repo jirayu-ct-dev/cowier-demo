@@ -4,12 +4,7 @@ import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigge
 
 const { scenario, events, resetScenario } = useScenario()
 const { resetPlacementData } = useStudentPlacements()
-const { switchPrototypeRole } = useAuthPrototype()
-const roleOptions = [
-  { value: 'staff', label: 'เจ้าหน้าที่' },
-  { value: 'lecturer', label: 'อาจารย์' },
-  { value: 'student', label: 'นักศึกษา' },
-]
+const { currentAccount } = useAuth()
 const cycleOptions = [
   { value: 'ภาคเรียนที่ 2/2569', label: 'ภาคเรียนที่ 2/2569' },
   { value: 'ภาคฤดูร้อน/2569', label: 'ภาคฤดูร้อน/2569' },
@@ -31,12 +26,6 @@ const viewStateOptions = [
   { value: 'error', label: 'ผิดพลาด' },
 ]
 
-const selectedRole = computed({
-  get: () => scenario.value.role,
-  set: (value: string) => {
-    if (value === 'staff' || value === 'lecturer' || value === 'student') switchPrototypeRole(value)
-  },
-})
 const selectedDataSet = computed({
   get: () => scenario.value.dataSet,
   set: (value: string) => {
@@ -59,7 +48,10 @@ const selectedViewState = computed({
 const resetAllMockData = () => {
   resetScenario()
   resetPlacementData()
-  switchPrototypeRole('staff')
+  if (currentAccount.value) {
+    scenario.value.role = currentAccount.value.role
+    scenario.value.userName = currentAccount.value.name
+  }
 }
 </script>
 
@@ -82,8 +74,10 @@ const resetAllMockData = () => {
         </div>
 
         <div class="mt-5 space-y-4">
-          <UiSelect v-model="selectedRole" :options="roleOptions" label="บทบาท" />
-          <div><UiInput v-model="scenario.userName" label="ผู้ใช้งาน" /></div>
+          <div class="rounded-control bg-surface p-3 text-sm text-ink">
+            <p class="text-xs text-muted">Session ปัจจุบัน</p>
+            <p class="mt-1 font-semibold">{{ scenario.userName }}</p>
+          </div>
           <UiSelect v-model="scenario.cycle" :options="cycleOptions" label="รอบสหกิจศึกษา" />
           <UiSelect v-model="selectedDataSet" :options="dataSetOptions" label="ชุดข้อมูล" />
           <UiSelect v-model="selectedDelay" :options="delayOptions" label="ความเร็วเครือข่ายจำลอง" />

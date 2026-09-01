@@ -27,6 +27,45 @@ services:
       - ciwie-comsci-network
 
   # ==============================================================================
+  # Apply pending migrations once; the app starts only after this exits successfully.
+  # ==============================================================================
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migration
+    container_name: ciwie-comsci-migration
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ciwie-comsci-network
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migration
+    profiles: ["tools"]
+    restart: "no"
+    command: ["pnpm", "run", "db:seed"]
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
+      SEED_STAFF_USERNAME: ${SEED_STAFF_USERNAME:-}
+      SEED_STAFF_PASSWORD: ${SEED_STAFF_PASSWORD:-}
+      SEED_STAFF_NAME_PREFIX: ${SEED_STAFF_NAME_PREFIX:-}
+      SEED_STAFF_FIRST_NAME: ${SEED_STAFF_FIRST_NAME:-}
+      SEED_STAFF_LAST_NAME: ${SEED_STAFF_LAST_NAME:-}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - ciwie-comsci-network
+
+  # ==============================================================================
   # Nuxt 4 Application Service
   # ==============================================================================
   app:
@@ -41,11 +80,12 @@ services:
       NODE_ENV: production
       DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
       NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:-change_this_to_at_least_32_characters_long_secret_key}
+      NUXT_SESSION_COOKIE_SECURE: ${NUXT_SESSION_COOKIE_SECURE:-false}
       PORT: 3000
       HOST: 0.0.0.0
     depends_on:
-      mysql:
-        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
     networks:
       - ciwie-comsci-network
 

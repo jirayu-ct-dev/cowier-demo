@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Ban, Building2, CalendarDays, Edit3, FileText, MapPin, UserRound } from '@lucide/vue'
 
-definePageMeta({ title: 'รายละเอียดคำร้อง', middleware: 'student-prototype' })
+definePageMeta({ title: 'รายละเอียดคำร้อง', middleware: 'student' })
 useHead({ title: 'รายละเอียดคำร้อง' })
 
 const route = useRoute()

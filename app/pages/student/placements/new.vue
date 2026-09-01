@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { z } from 'zod'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'แจ้งข้อมูลที่ฝึกงาน', middleware: 'student-prototype' })
+definePageMeta({ title: 'แจ้งข้อมูลที่ฝึกงาน', middleware: 'student' })
 useHead({ title: 'แจ้งข้อมูลที่ฝึกงาน' })
 
 const route = useRoute()

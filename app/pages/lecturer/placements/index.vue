@@ -13,7 +13,7 @@ import {
 import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 import { getPageCount, paginateItems } from "~/utils/table";
 
-definePageMeta({ title: "ตรวจคำร้อง", middleware: "lecturer-prototype" });
+definePageMeta({ title: "ตรวจคำร้อง", middleware: "lecturer" });
 useHead({ title: "ตรวจคำร้องและหนังสือขออนุญาต" });
 
 type ViewState = "data" | "loading" | "empty" | "error";

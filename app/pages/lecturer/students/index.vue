@@ -2,7 +2,7 @@
 import { ChevronLeft, ChevronRight, RotateCcw, Search, X } from '@lucide/vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'ข้อมูลนักศึกษา', middleware: 'lecturer-prototype' })
+definePageMeta({ title: 'ข้อมูลนักศึกษา', middleware: 'lecturer' })
 useHead({ title: 'ข้อมูลนักศึกษา' })
 
 const { scenario } = useScenario()

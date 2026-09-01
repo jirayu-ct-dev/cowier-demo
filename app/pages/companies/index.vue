@@ -2,7 +2,7 @@
 import { ChevronLeft, ChevronRight, Plus, RotateCcw, Search } from '@lucide/vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'ข้อมูลสถานประกอบการ', middleware: 'company-prototype', alias: ['/staff/companies', '/lecturer/companies'] })
+definePageMeta({ title: 'ข้อมูลสถานประกอบการ', middleware: 'company-access', alias: ['/staff/companies', '/lecturer/companies'] })
 useHead({ title: 'ข้อมูลสถานประกอบการ' })
 
 const { scenario } = useScenario()

@@ -4,7 +4,7 @@ import type { ImportRowStatus, PeopleFileFormat, PeopleImportRow } from '~/compo
 import type { PersonPrefix, PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'นำเข้าข้อมูลบุคคล', middleware: 'staff-prototype' })
+definePageMeta({ title: 'นำเข้าข้อมูลบุคคล', middleware: 'staff' })
 useHead({ title: 'นำเข้าข้อมูลบุคคล' })
 
 const route = useRoute()

@@ -5,7 +5,7 @@ import { z } from 'zod'
 definePageMeta({ title: 'เปลี่ยนรหัสผ่าน' })
 useHead({ title: 'เปลี่ยนรหัสผ่าน' })
 
-const { currentAccount, changePassword } = useAuthPrototype()
+const { currentAccount, changePassword } = useAuth()
 const { showToast } = useToast()
 const currentPassword = ref('')
 const newPassword = ref('')
@@ -35,16 +35,17 @@ const submitPassword = async () => {
 
   isSubmitting.value = true
   try {
-    await changePassword(parsed.data.currentPassword, parsed.data.newPassword)
+    await changePassword(parsed.data.currentPassword, parsed.data.newPassword, parsed.data.confirmPassword)
     currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
     showToast({ title: 'เปลี่ยนรหัสผ่านแล้ว', description: 'กรุณาใช้รหัสผ่านใหม่ในการเข้าสู่ระบบครั้งถัดไป' })
   }
   catch (error) {
-    fieldErrors.currentPassword = error instanceof Error && error.message === 'current-password-invalid'
-      ? 'รหัสผ่านปัจจุบันไม่ถูกต้อง'
-      : 'ไม่สามารถเปลี่ยนรหัสผ่านได้ กรุณาลองใหม่'
+    const authError = error as { fieldErrors?: Record<string, string> }
+    fieldErrors.currentPassword = authError.fieldErrors?.currentPassword ?? 'ไม่สามารถเปลี่ยนรหัสผ่านได้ กรุณาลองใหม่'
+    fieldErrors.newPassword = authError.fieldErrors?.newPassword ?? ''
+    fieldErrors.confirmPassword = authError.fieldErrors?.confirmPassword ?? ''
   }
   finally {
     isSubmitting.value = false

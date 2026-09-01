@@ -3,7 +3,7 @@ import { ArrowLeft, Building2, Check, Save, Search, UsersRound } from '@lucide/v
 import { z } from 'zod'
 import type { SupervisionCompany } from '~/composables/useSupervisionGroups'
 
-definePageMeta({ title: 'สร้างกลุ่มอาจารย์นิเทศ', middleware: 'staff-prototype' })
+definePageMeta({ title: 'สร้างกลุ่มอาจารย์นิเทศ', middleware: 'staff' })
 useHead({ title: 'สร้างกลุ่มอาจารย์นิเทศ' })
 
 const { showToast } = useToast()

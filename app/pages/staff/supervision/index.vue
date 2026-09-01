@@ -3,7 +3,7 @@ import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, RotateCc
 import type { SupervisionAppointment, SupervisionAppointmentStatus } from '~/composables/useSupervisionAppointments'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'ตารางนิเทศ', middleware: 'staff-prototype' })
+definePageMeta({ title: 'ตารางนิเทศ', middleware: 'staff' })
 useHead({ title: 'ตารางนิเทศ' })
 
 const { scenario } = useScenario()

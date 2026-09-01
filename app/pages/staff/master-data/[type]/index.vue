@@ -4,7 +4,7 @@ import type { PeopleFileFormat } from '~/composables/usePeopleImport'
 import type { PersonRecord, PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff-prototype' })
+definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff' })
 
 const route = useRoute()
 const { scenario } = useScenario()

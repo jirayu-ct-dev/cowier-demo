@@ -3,7 +3,7 @@ import { Building2, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, UsersRou
 import type { SupervisionCompany, SupervisionGroup } from '~/composables/useSupervisionGroups'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'จัดกลุ่มอาจารย์นิเทศ', middleware: 'staff-prototype' })
+definePageMeta({ title: 'จัดกลุ่มอาจารย์นิเทศ', middleware: 'staff' })
 useHead({ title: 'จัดกลุ่มอาจารย์นิเทศ' })
 
 const { scenario } = useScenario()

@@ -2,7 +2,7 @@
 import { ArrowLeft } from '@lucide/vue'
 import type { CompanyInput } from '~/composables/useSupervisionGroups'
 
-definePageMeta({ title: 'เพิ่มสถานประกอบการ', middleware: 'company-prototype', alias: ['/staff/companies/new', '/lecturer/companies/new'] })
+definePageMeta({ title: 'เพิ่มสถานประกอบการ', middleware: 'company-access', alias: ['/staff/companies/new', '/lecturer/companies/new'] })
 useHead({ title: 'เพิ่มสถานประกอบการ' })
 
 const { createCompany } = useSupervisionGroups()

@@ -2,7 +2,7 @@
 import { CalendarClock } from '@lucide/vue'
 import type { SupervisionPeriod } from '~/composables/useSupervisionAppointments'
 
-definePageMeta({ title: 'รายละเอียดการนิเทศ', middleware: 'lecturer-prototype' })
+definePageMeta({ title: 'รายละเอียดการนิเทศ', middleware: 'lecturer' })
 
 const route = useRoute()
 const { scenario } = useScenario()

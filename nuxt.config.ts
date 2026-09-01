@@ -4,7 +4,16 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@nuxt/eslint'],
+  modules: ['@nuxt/eslint', 'nuxt-auth-utils'],
+  runtimeConfig: {
+    session: {
+      maxAge: 60 * 60 * 8,
+      cookie: {
+        sameSite: 'lax',
+        secure: process.env.NUXT_SESSION_COOKIE_SECURE === 'true',
+      },
+    },
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'th' },

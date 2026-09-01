@@ -30,7 +30,7 @@ import { z } from 'zod'
 import type { StudentApplication, StudentApplicationFormValue, TrackedApplicationStatus } from '~/composables/useStudentApplications'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'ติดตามการสมัครสหกิจ', middleware: 'student-prototype' })
+definePageMeta({ title: 'ติดตามการสมัครสหกิจ', middleware: 'student' })
 useHead({ title: 'ติดตามการสมัครสหกิจ' })
 
 const { scenario } = useScenario()
