@@ -130,6 +130,14 @@ Feature ของผู้พัฒนาคนที่ 1เรียก public
 
 ### ระยะ B — Company Master Data
 
+Checkpoint B1 (business/data layer):
+
+- [x] เพิ่ม Prisma repository สำหรับจังหวัด บริษัท และสถานที่ปฏิบัติงาน โดยใช้ `select` แบบจำกัด field
+- [x] เพิ่ม service สำหรับ create/update/status/delete และตรวจ ownership ของ site
+- [x] ตรวจ reference ก่อน hard delete ภายใน transaction เดียวกัน
+- [x] เพิ่ม unit tests สำหรับ create, update, inactive/restore และ delete guard
+- [ ] เชื่อม API หลัง shared Prisma client, Auth/RBAC และ Audit service ของผู้พัฒนาคนที่ 1 พร้อมใช้งาน
+
 - [ ] API จังหวัดสำหรับ search/select
 - [ ] CRUD สถานประกอบการ
 - [ ] CRUD สถานที่ปฏิบัติงานของบริษัท

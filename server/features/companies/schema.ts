@@ -55,9 +55,29 @@ export const companyWithSiteCreateSchema = z.object({
   site: companySiteCreateSchema,
 })
 
+export const companyWithSiteUpdateSchema = z.object({
+  company: companyUpdateSchema.optional(),
+  site: companySiteUpdateSchema.optional(),
+}).refine(
+  input => input.company !== undefined || input.site !== undefined,
+  { message: 'ต้องระบุข้อมูลบริษัทหรือสถานที่ปฏิบัติงานที่ต้องการแก้ไข' },
+)
+
+export const companyStatusUpdateSchema = z.object({
+  status: z.enum(['active', 'inactive']),
+})
+
+export const companySiteStatusUpdateSchema = z.object({
+  status: recordStatusSchema,
+})
+
 export type CompanyListQuery = z.infer<typeof companyListQuerySchema>
+export type ProvinceListQuery = z.infer<typeof provinceListQuerySchema>
 export type CompanyCreateInput = z.infer<typeof companyCreateSchema>
 export type CompanyUpdateInput = z.infer<typeof companyUpdateSchema>
 export type CompanySiteCreateInput = z.infer<typeof companySiteCreateSchema>
 export type CompanySiteUpdateInput = z.infer<typeof companySiteUpdateSchema>
 export type CompanyWithSiteCreateInput = z.infer<typeof companyWithSiteCreateSchema>
+export type CompanyWithSiteUpdateInput = z.infer<typeof companyWithSiteUpdateSchema>
+export type CompanyStatusUpdateInput = z.infer<typeof companyStatusUpdateSchema>
+export type CompanySiteStatusUpdateInput = z.infer<typeof companySiteStatusUpdateSchema>

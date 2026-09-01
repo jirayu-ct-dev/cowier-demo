@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   companyListQuerySchema,
   companySiteCreateSchema,
+  companyStatusUpdateSchema,
   companyUpdateSchema,
   companyWithSiteCreateSchema,
+  companyWithSiteUpdateSchema,
 } from './schema'
 
 describe('company schemas', () => {
@@ -35,6 +37,11 @@ describe('company schemas', () => {
 
   it('rejects an empty update', () => {
     expect(companyUpdateSchema.safeParse({}).success).toBe(false)
+    expect(companyWithSiteUpdateSchema.safeParse({}).success).toBe(false)
+  })
+
+  it('does not allow pending to be selected by the staff status action', () => {
+    expect(companyStatusUpdateSchema.safeParse({ status: 'pending' }).success).toBe(false)
   })
 
   it('normalizes pagination query values', () => {
