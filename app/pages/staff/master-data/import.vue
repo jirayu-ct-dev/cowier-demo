@@ -2,6 +2,7 @@
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Download, FileSpreadsheet, RotateCcw, Search, Upload, X } from '@lucide/vue'
 import type { ImportRowStatus, PeopleFileFormat, PeopleImportRow } from '~/composables/usePeopleImport'
 import type { PersonPrefix, PersonType } from '~/composables/usePeopleDirectory'
+import type { PeopleImportRowInput, TemporaryCredential } from '~/composables/usePeopleApi'
 import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({ title: 'นำเข้าข้อมูลบุคคล', middleware: 'staff' })
@@ -10,8 +11,8 @@ useHead({ title: 'นำเข้าข้อมูลบุคคล' })
 const route = useRoute()
 const { scenario } = useScenario()
 const { showToast } = useToast()
-const { people, importPeople } = usePeopleDirectory()
-const { parseFile, downloadTemplate, downloadInvalidRows } = usePeopleImport()
+const { previewImport, commitImport } = usePeopleApi()
+const { parseFile, downloadTemplate, downloadInvalidRows, downloadTemporaryCredentials } = usePeopleImport()
 
 const selectedType = ref<PersonType>(route.query.type === 'lecturer' ? 'lecturer' : 'student')
 const selectedFile = ref<File | null>(null)
@@ -22,6 +23,8 @@ const parseError = ref('')
 const isProcessing = ref(false)
 const isImporting = ref(false)
 const result = ref({ created: 0, updated: 0, invalid: 0 })
+const temporaryCredentials = ref<TemporaryCredential[]>([])
+const credentialsDownloaded = ref(false)
 const search = ref('')
 const statusFilter = ref<'all' | ImportRowStatus>('all')
 const pageSize = ref('10')
@@ -83,6 +86,8 @@ const clearFilters = () => {
 const resetImport = () => {
   selectedFile.value = null
   rows.value = []
+  temporaryCredentials.value = []
+  credentialsDownloaded.value = false
   parseError.value = ''
   stage.value = 'upload'
   clearFilters()
@@ -111,8 +116,25 @@ const processFile = async (file: File) => {
   isProcessing.value = true
   try {
     if (scenario.value.forceError) throw new Error('scenario-error')
-    const existingIds = new Set(people.value.filter(person => person.type === selectedType.value).map(person => person.id))
-    rows.value = await parseFile(file, selectedType.value, existingIds)
+    const parsedRows = await parseFile(file, selectedType.value, new Set())
+    const locallyValid = parsedRows.filter((row): row is PeopleImportRow & { prefix: PersonPrefix } => row.status !== 'invalid' && row.prefix !== '')
+    if (locallyValid.length) {
+      const preview = await previewImport(selectedType.value, locallyValid.map(row => ({
+        rowNumber: row.rowNumber,
+        username: row.id,
+        namePrefix: row.prefix,
+        firstName: row.firstName,
+        lastName: row.lastName,
+      })))
+      const previewByRow = new Map(preview.data.rows.map(row => [row.rowNumber, row]))
+      rows.value = parsedRows.map((row) => {
+        const serverRow = previewByRow.get(row.rowNumber)
+        return serverRow
+          ? { rowNumber: serverRow.rowNumber, id: serverRow.username, prefix: serverRow.namePrefix as PersonPrefix, firstName: serverRow.firstName, lastName: serverRow.lastName, status: serverRow.status, reason: serverRow.reason }
+          : row
+      })
+    }
+    else rows.value = parsedRows
     stage.value = 'preview'
   }
   catch (error) {
@@ -155,16 +177,19 @@ const handleImport = async () => {
   if (!importableRows.value.length || isImporting.value) return
   isImporting.value = true
   try {
-    const imported = importPeople(selectedType.value, importableRows.value.map(row => ({
-      id: row.id,
-      prefix: row.prefix,
+    const inputRows: PeopleImportRowInput[] = importableRows.value.map(row => ({
+      rowNumber: row.rowNumber,
+      username: row.id,
+      namePrefix: row.prefix,
       firstName: row.firstName,
       lastName: row.lastName,
-    })))
-    result.value = { ...imported, invalid: summary.value.invalid }
+    }))
+    const response = await commitImport(selectedType.value, inputRows)
+    result.value = { created: response.data.created, updated: response.data.updated, invalid: summary.value.invalid }
+    temporaryCredentials.value = response.data.credentials
     stage.value = 'complete'
     confirmOpen.value = false
-    showToast({ title: 'นำเข้าข้อมูลสำเร็จ', description: `ดำเนินการแล้ว ${imported.created + imported.updated} รายการ` })
+    showToast({ title: 'นำเข้าข้อมูลสำเร็จ', description: `ดำเนินการแล้ว ${response.data.created + response.data.updated} รายการ` })
   }
   catch (error) {
     console.error(error)
@@ -172,6 +197,20 @@ const handleImport = async () => {
   }
   finally {
     isImporting.value = false
+  }
+}
+
+const handleDownloadCredentials = async () => {
+  if (!temporaryCredentials.value.length || credentialsDownloaded.value) return
+  try {
+    await downloadTemporaryCredentials(temporaryCredentials.value)
+    credentialsDownloaded.value = true
+    temporaryCredentials.value = []
+    showToast({ title: 'ดาวน์โหลดรหัสผ่านชั่วคราวแล้ว', description: 'ไฟล์นี้สร้างได้ครั้งเดียว โปรดเก็บและส่งมอบอย่างปลอดภัย' })
+  }
+  catch (error) {
+    console.error(error)
+    showToast({ title: 'ดาวน์โหลดไฟล์ไม่สำเร็จ', description: 'กรุณาลองอีกครั้งก่อนออกจากหน้านี้' })
   }
 }
 </script>
@@ -264,8 +303,9 @@ const handleImport = async () => {
 
     <UiCard v-else>
       <UiAlert tone="success" title="นำเข้าข้อมูลสำเร็จ">ระบบดำเนินการเฉพาะรายการที่ผ่านการตรวจ และคงรายการไม่ถูกต้องไว้นอกระบบ</UiAlert>
+      <UiAlert v-if="temporaryCredentials.length" class="mt-4" tone="warning" title="ดาวน์โหลดรหัสผ่านชั่วคราวก่อนออกจากหน้านี้">รหัสผ่านของบัญชีใหม่จะแสดงผ่านไฟล์นี้เพียงครั้งเดียว ระบบเก็บเฉพาะค่าที่เข้ารหัสและไม่สามารถสร้างไฟล์เดิมซ้ำได้</UiAlert>
       <dl class="mt-6 grid gap-4 sm:grid-cols-3"><div class="rounded-control bg-surface p-4"><dt class="text-sm text-muted">เพิ่มข้อมูลและบัญชีใหม่</dt><dd class="mt-2 text-3xl font-bold text-ink">{{ result.created }}</dd></div><div class="rounded-control bg-surface p-4"><dt class="text-sm text-muted">อัปเดตข้อมูลเดิม</dt><dd class="mt-2 text-3xl font-bold text-ink">{{ result.updated }}</dd></div><div class="rounded-control bg-surface p-4"><dt class="text-sm text-muted">ไม่นำเข้า</dt><dd class="mt-2 text-3xl font-bold text-ink">{{ result.invalid }}</dd></div></dl>
-      <div class="mt-6 flex flex-wrap gap-2"><UiButton @click="navigateTo(`/staff/master-data/${context.route}`)">ดูข้อมูล{{ context.plural }}</UiButton><UiButton variant="secondary" @click="resetImport">นำเข้าไฟล์อื่น</UiButton><UiButton v-if="result.invalid" variant="secondary" :icon="Download" @click="handleDownloadErrors">ดาวน์โหลดรายการไม่สำเร็จ</UiButton></div>
+      <div class="mt-6 flex flex-wrap gap-2"><UiButton v-if="temporaryCredentials.length" :icon="Download" @click="handleDownloadCredentials">ดาวน์โหลดรหัสผ่านชั่วคราว (ครั้งเดียว)</UiButton><UiButton v-if="!temporaryCredentials.length" @click="navigateTo(`/staff/master-data/${context.route}`)">ดูข้อมูล{{ context.plural }}</UiButton><UiButton v-if="!temporaryCredentials.length" variant="secondary" @click="resetImport">นำเข้าไฟล์อื่น</UiButton><UiButton v-if="result.invalid" variant="secondary" :icon="Download" @click="handleDownloadErrors">ดาวน์โหลดรายการไม่สำเร็จ</UiButton></div>
     </UiCard>
 
     <UiDialog v-model:open="confirmOpen" title="ยืนยันการนำเข้าข้อมูล" :description="`ระบบจะดำเนินการ ${importableRows.length} รายการ และไม่นำเข้ารายการที่ไม่ถูกต้อง ${summary.invalid} รายการ`" :close-on-confirm="false">

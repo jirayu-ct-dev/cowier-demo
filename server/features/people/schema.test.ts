@@ -3,6 +3,7 @@ import {
   importPersonRowSchema,
   lecturerStudentUpdateSchema,
   peopleListQuerySchema,
+  peopleImportSchema,
   personCreateSchema,
   personUpdateSchema,
 } from './schema'
@@ -63,14 +64,29 @@ describe('people schemas', () => {
 
   it('validates import rows without accepting account secrets', () => {
     expect(importPersonRowSchema.safeParse({
-      role: 'student',
+      rowNumber: 2,
       username: '66123456701',
       namePrefix: 'นาย',
       firstName: 'ทดสอบ',
       lastName: 'ระบบ',
-      cohortYear: 2569,
-      section: 'หมู่ 1',
+    }).success).toBe(true)
+    expect(importPersonRowSchema.safeParse({
+      rowNumber: 2,
+      username: '66123456701',
+      namePrefix: 'นาย',
+      firstName: 'ทดสอบ',
+      lastName: 'ระบบ',
       temporaryPassword: 'must-not-be-imported',
+    }).success).toBe(false)
+  })
+
+  it('rejects duplicate usernames within one import request', () => {
+    expect(peopleImportSchema.safeParse({
+      role: 'student',
+      rows: [
+        { rowNumber: 2, username: 'S001', namePrefix: 'นาย', firstName: 'หนึ่ง', lastName: 'ทดสอบ' },
+        { rowNumber: 3, username: 'S001', namePrefix: 'นาย', firstName: 'สอง', lastName: 'ทดสอบ' },
+      ],
     }).success).toBe(false)
   })
 })

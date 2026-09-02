@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { getStudentCohortYear } from './useStudentCohortContext'
 import { getStudentPlacementPosition, personPrefixOptions, personPrefixValues } from './usePeopleDirectory'
 import type { PersonPrefix, PersonRecord, PersonType } from './usePeopleDirectory'
+import type { TemporaryCredential } from './usePeopleApi'
 
 export type PeopleFileFormat = 'csv' | 'xlsx'
 export type ImportRowStatus = 'new' | 'update' | 'invalid'
@@ -197,5 +198,12 @@ export const usePeopleImport = () => {
     })), `${type === 'student' ? 'student' : 'lecturer'}-import-errors`, 'csv')
   }
 
-  return { parseFile, downloadTemplate, exportPeople, downloadInvalidRows }
+  const downloadTemporaryCredentials = async (credentials: TemporaryCredential[]) => {
+    await downloadWorkbook(credentials.map(credential => ({
+      ชื่อผู้ใช้: credential.username,
+      รหัสผ่านชั่วคราว: credential.temporaryPassword,
+    })), 'temporary-passwords', 'xlsx')
+  }
+
+  return { parseFile, downloadTemplate, exportPeople, downloadInvalidRows, downloadTemporaryCredentials }
 }

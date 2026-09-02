@@ -1,5 +1,5 @@
 import type { AccountStatus, Prisma, PrismaClient, RecordStatus, UserRole } from '@prisma/client'
-import type { PeopleListQuery, PersonCreateInput, PersonUpdateInput } from './schema'
+import type { ImportPersonRow, PeopleListQuery, PersonCreateInput, PersonUpdateInput } from './schema'
 
 export const personSelect = {
   id: true,
@@ -18,6 +18,10 @@ export const personSelect = {
 } satisfies Prisma.UserSelect
 
 export type PersonRecord = Prisma.UserGetPayload<{ select: typeof personSelect }>
+
+export interface PreparedImportRow extends ImportPersonRow {
+  passwordHash?: string
+}
 
 const roleMap = { student: 'STUDENT', lecturer: 'LECTURER' } as const satisfies Record<string, UserRole>
 const accountStatusMap = {
@@ -73,6 +77,13 @@ export class PrismaPeopleRepository {
 
   findIdByUsername(username: string) {
     return this.prisma.user.findUnique({ where: { username }, select: { id: true } })
+  }
+
+  findManyByUsernames(usernames: string[]) {
+    return this.prisma.user.findMany({
+      where: { username: { in: usernames } },
+      select: { id: true, username: true, role: true },
+    })
   }
 
   create(input: PersonCreateInput, passwordHash: string, actorUserId: string) {
@@ -132,6 +143,58 @@ export class PrismaPeopleRepository {
         select: { id: true },
       })
       return user
+    })
+  }
+
+  importPeople(role: 'student' | 'lecturer', rows: PreparedImportRow[], actorUserId: string) {
+    const userRole = roleMap[role]
+    return this.prisma.$transaction(async (tx) => {
+      let created = 0
+      let updated = 0
+      const createdUsernames: string[] = []
+      for (const row of rows) {
+        const existing = await tx.user.findUnique({ where: { username: row.username }, select: { id: true, role: true } })
+        if (existing) {
+          if (existing.role !== userRole) throw new Error(`IMPORT_ROLE_CONFLICT:${row.rowNumber}`)
+          await tx.user.update({
+            where: { id: existing.id },
+            data: { namePrefix: row.namePrefix, firstName: row.firstName, lastName: row.lastName },
+            select: { id: true },
+          })
+          updated += 1
+        }
+        else {
+          if (!row.passwordHash) throw new Error(`IMPORT_PASSWORD_MISSING:${row.rowNumber}`)
+          await tx.user.create({
+            data: {
+              username: row.username,
+              passwordHash: row.passwordHash,
+              role: userRole,
+              status: 'FIRST_LOGIN',
+              recordStatus: 'ACTIVE',
+              namePrefix: row.namePrefix,
+              firstName: row.firstName,
+              lastName: row.lastName,
+              canReviewPlacements: false,
+              createdById: actorUserId,
+            },
+            select: { id: true },
+          })
+          created += 1
+          createdUsernames.push(row.username)
+        }
+      }
+      await tx.auditLog.create({
+        data: {
+          actorAccountId: actorUserId,
+          action: 'PEOPLE_IMPORT',
+          entityType: 'User',
+          entityId: actorUserId,
+          afterData: toAuditJson({ role, created, updated, total: rows.length }),
+        },
+        select: { id: true },
+      })
+      return { created, updated, createdUsernames }
     })
   }
 }

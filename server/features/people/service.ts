@@ -1,16 +1,18 @@
+import { randomBytes } from 'node:crypto'
 import { apiErrors } from '../../core/api-error'
 import { hashPassword } from '../../core/auth/password'
 import type { AuthUserRecord } from '../auth/types'
-import type { PrismaPeopleRepository, PersonRecord } from './repository'
+import type { PreparedImportRow, PrismaPeopleRepository, PersonRecord } from './repository'
 import type {
   LecturerStudentUpdateInput,
+  PeopleImportInput,
   PeopleListQuery,
   PersonCreateInput,
   PersonUpdateInput,
 } from './schema'
 
 type PeopleRepository = Pick<PrismaPeopleRepository,
-  'list' | 'findById' | 'findIdByUsername' | 'create' | 'update'
+  'list' | 'findById' | 'findIdByUsername' | 'findManyByUsernames' | 'create' | 'update' | 'importPeople'
 >
 
 const roleMap = { STAFF: 'staff', LECTURER: 'lecturer', STUDENT: 'student' } as const
@@ -37,9 +39,11 @@ export const toPublicPerson = (person: PersonRecord) => ({
 
 export const createPeopleService = (
   repository: PeopleRepository,
-  dependencies: { hash?: (password: string) => Promise<string> } = {},
+  dependencies: { hash?: (password: string) => Promise<string>, generateTemporaryPassword?: () => string } = {},
 ) => {
   const hash = dependencies.hash ?? hashPassword
+  const generateTemporaryPassword = dependencies.generateTemporaryPassword
+    ?? (() => `Cw${randomBytes(9).toString('base64url')}7`)
 
   const requirePerson = async (id: string) => {
     const person = await repository.findById(id)
@@ -92,6 +96,42 @@ export const createPeopleService = (
       }
       if (staffInput.username) await ensureUsernameAvailable(staffInput.username, person.id)
       return toPublicPerson(await repository.update(person.id, staffInput, actor.id, person))
+    },
+
+    async previewImport(actor: AuthUserRecord, input: PeopleImportInput) {
+      if (actor.role !== 'STAFF') throw apiErrors.forbidden()
+      const existing = await repository.findManyByUsernames(input.rows.map(row => row.username))
+      const existingByUsername = new Map(existing.map(person => [person.username, person]))
+      return input.rows.map((row) => {
+        const person = existingByUsername.get(row.username)
+        if (!person) return { ...row, status: 'new' as const, reason: 'พร้อมสร้างข้อมูลและบัญชีใหม่' }
+        if (roleMap[person.role] !== input.role) {
+          return { ...row, status: 'invalid' as const, reason: 'รหัสนี้ถูกใช้กับบุคคลประเภทอื่นแล้ว' }
+        }
+        return { ...row, status: 'update' as const, reason: 'จะอัปเดตคำนำหน้าและชื่อ–นามสกุลโดยคงบัญชีเดิม' }
+      })
+    },
+
+    async commitImport(actor: AuthUserRecord, input: PeopleImportInput) {
+      if (actor.role !== 'STAFF') throw apiErrors.forbidden()
+      const preview = await this.previewImport(actor, input)
+      const invalid = preview.filter(row => row.status === 'invalid')
+      if (invalid.length) throw apiErrors.conflict('ข้อมูลนำเข้าเปลี่ยนแปลง กรุณาตรวจสอบไฟล์อีกครั้ง', { rows: invalid.map(row => row.rowNumber) })
+
+      const credentials: Array<{ username: string, temporaryPassword: string }> = []
+      const preparedRows: PreparedImportRow[] = await Promise.all(preview.map(async (row) => {
+        if (row.status === 'update') return row
+        const temporaryPassword = generateTemporaryPassword()
+        credentials.push({ username: row.username, temporaryPassword })
+        return { ...row, passwordHash: await hash(temporaryPassword) }
+      }))
+      const result = await repository.importPeople(input.role, preparedRows, actor.id)
+      const createdUsernames = new Set(result.createdUsernames)
+      return {
+        created: result.created,
+        updated: result.updated,
+        credentials: credentials.filter(credential => createdUsernames.has(credential.username)),
+      }
     },
   }
 }

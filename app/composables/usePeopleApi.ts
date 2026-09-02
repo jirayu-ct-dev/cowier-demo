@@ -56,6 +56,19 @@ export interface PeopleUpdateInput {
 
 export type ManagedAccountStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED'
 
+export interface PeopleImportRowInput {
+  rowNumber: number
+  username: string
+  namePrefix: string
+  firstName: string
+  lastName: string
+}
+
+export interface TemporaryCredential {
+  username: string
+  temporaryPassword: string
+}
+
 interface ApiErrorPayload {
   error?: {
     code?: string
@@ -156,5 +169,29 @@ export const usePeopleApi = () => {
     }
   }
 
-  return { list, get, create, update, updateAccountStatus, resetPassword }
+  const previewImport = async (role: PeopleRole, rows: PeopleImportRowInput[]) => {
+    try {
+      return await $fetch<{ data: { rows: Array<PeopleImportRowInput & { status: 'new' | 'update' | 'invalid', reason: string }> } }>('/api/people/import/preview', {
+        method: 'POST',
+        body: { role, rows },
+      })
+    }
+    catch (error) {
+      throw toPeopleActionError(error)
+    }
+  }
+
+  const commitImport = async (role: PeopleRole, rows: PeopleImportRowInput[]) => {
+    try {
+      return await $fetch<{ data: { created: number, updated: number, credentials: TemporaryCredential[] } }>('/api/people/import/commit', {
+        method: 'POST',
+        body: { role, rows },
+      })
+    }
+    catch (error) {
+      throw toPeopleActionError(error)
+    }
+  }
+
+  return { list, get, create, update, updateAccountStatus, resetPassword, previewImport, commitImport }
 }

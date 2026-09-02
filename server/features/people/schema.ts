@@ -102,21 +102,30 @@ export const peopleIdParamsSchema = z.object({
   id: z.string().trim().min(1).max(30),
 })
 
-export const importPersonRowSchema = z.discriminatedUnion('role', [
-  z.object({
-    role: z.literal('student'),
-    ...sharedPersonFields,
-    ...studentFields.shape,
-  }).strict(),
-  z.object({
-    role: z.literal('lecturer'),
-    ...sharedPersonFields,
-    canReviewPlacements: z.boolean().default(false),
-  }).strict(),
-])
+export const importPersonRowSchema = z.object({
+  rowNumber: z.number().int().min(2),
+  username: usernameSchema,
+  namePrefix: z.string().trim().min(1).max(50),
+  firstName: nameSchema,
+  lastName: nameSchema,
+}).strict()
+
+export const peopleImportSchema = z.object({
+  role: z.enum(peopleRoles),
+  rows: z.array(importPersonRowSchema).min(1).max(10_000),
+}).strict().superRefine((input, context) => {
+  const counts = new Map<string, number>()
+  input.rows.forEach(row => counts.set(row.username, (counts.get(row.username) ?? 0) + 1))
+  input.rows.forEach((row, index) => {
+    if ((counts.get(row.username) ?? 0) > 1) {
+      context.addIssue({ code: 'custom', path: ['rows', index, 'username'], message: `รหัสซ้ำภายในไฟล์ที่แถว ${row.rowNumber}` })
+    }
+  })
+})
 
 export type PeopleListQuery = z.infer<typeof peopleListQuerySchema>
 export type PersonCreateInput = z.infer<typeof personCreateSchema>
 export type PersonUpdateInput = z.infer<typeof personUpdateSchema>
 export type LecturerStudentUpdateInput = z.infer<typeof lecturerStudentUpdateSchema>
 export type ImportPersonRow = z.infer<typeof importPersonRowSchema>
+export type PeopleImportInput = z.infer<typeof peopleImportSchema>
