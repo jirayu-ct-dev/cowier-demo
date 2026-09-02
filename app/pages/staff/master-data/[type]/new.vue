@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { ArrowLeft, Save } from '@lucide/vue'
 import { z } from 'zod'
-import type { PersonInput, PersonType } from '~/composables/usePeopleDirectory'
+import type { PersonPrefix, PersonType, StudentSection } from '~/composables/usePeopleDirectory'
+import { PeopleActionError } from '~/composables/usePeopleApi'
+
+interface CreatePersonForm {
+  id: string
+  prefix: PersonPrefix
+  firstName: string
+  lastName: string
+  temporaryPassword: string
+  confirmPassword: string
+  cohortYear?: string
+  section?: StudentSection
+}
 
 definePageMeta({ title: 'เพิ่มข้อมูลบุคคล', middleware: 'staff' })
 
 const route = useRoute()
-const { createPerson } = usePeopleDirectory()
-const { cycles } = useCoopCycles()
+const { create } = usePeopleApi()
 const { showToast } = useToast()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
@@ -18,17 +29,12 @@ const context = computed(() => personType.value === 'student'
 useHead({ title: () => context.value.title })
 
 const prefixOptions = computed(() => personPrefixOptions[personType.value])
-const cycleOptions = cycles.map(cycle => ({ value: cycle.label, label: cycle.label }))
-const form = reactive<PersonInput>({ id: '', prefix: personType.value === 'student' ? 'นาย' : 'อาจารย์', firstName: '', lastName: '', cycle: personType.value === 'student' ? 'ภาคเรียนที่ 2/2569' : undefined, section: personType.value === 'student' ? 'หมู่ 1' : undefined })
-const formCycle = computed({
-  get: () => form.cycle ?? '',
-  set: value => { form.cycle = value },
-})
+const form = reactive<CreatePersonForm>({ id: '', prefix: personType.value === 'student' ? 'นาย' : 'อาจารย์', firstName: '', lastName: '', temporaryPassword: '', confirmPassword: '', cohortYear: personType.value === 'student' ? '2566' : undefined, section: personType.value === 'student' ? 'หมู่ 1' : undefined })
 const formSection = computed({
   get: () => form.section ?? '',
-  set: value => { form.section = value as PersonInput['section'] },
+  set: value => { form.section = value as StudentSection },
 })
-const errors = reactive<Partial<Record<keyof PersonInput, string>>>({})
+const errors = reactive<Partial<Record<keyof CreatePersonForm, string>>>({})
 const isSubmitting = ref(false)
 
 const schema = z.object({
@@ -36,26 +42,53 @@ const schema = z.object({
   prefix: z.enum(personPrefixValues, { error: 'กรุณาเลือกคำนำหน้า' }),
   firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ').max(100, 'ชื่อต้องไม่เกิน 100 ตัวอักษร'),
   lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล').max(100, 'นามสกุลต้องไม่เกิน 100 ตัวอักษร'),
-  cycle: z.string().optional(),
+  temporaryPassword: z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร').max(128).regex(/[A-Za-zก-๙]/u, 'รหัสผ่านต้องมีตัวอักษรอย่างน้อย 1 ตัว').regex(/\d/u, 'รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว'),
+  confirmPassword: z.string().min(1, 'กรุณายืนยันรหัสผ่านชั่วคราว'),
+  cohortYear: z.string().regex(/^25\d{2}$/, 'กรุณากรอกรุ่นปี พ.ศ. 4 หลัก').optional(),
   section: z.enum(studentSectionValues).optional(),
+}).superRefine((input, context) => {
+  if (input.temporaryPassword !== input.confirmPassword) context.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' })
+  if (input.temporaryPassword === input.id) context.addIssue({ code: 'custom', path: ['temporaryPassword'], message: 'รหัสผ่านชั่วคราวต้องไม่ซ้ำกับรหัสผู้ใช้' })
+  if (personType.value === 'student' && !input.cohortYear) context.addIssue({ code: 'custom', path: ['cohortYear'], message: 'กรุณากรอกรุ่นปี' })
+  if (personType.value === 'student' && !input.section) context.addIssue({ code: 'custom', path: ['section'], message: 'กรุณาเลือกหมู่เรียน' })
 })
 
 const submit = async () => {
-  Object.assign(errors, { id: undefined, prefix: undefined, firstName: undefined, lastName: undefined, cycle: undefined, section: undefined })
+  Object.assign(errors, { id: undefined, prefix: undefined, firstName: undefined, lastName: undefined, temporaryPassword: undefined, confirmPassword: undefined, cohortYear: undefined, section: undefined })
   const result = schema.safeParse(form)
   if (!result.success) {
-    result.error.issues.forEach((issue) => { errors[issue.path[0] as keyof PersonInput] = issue.message })
+    result.error.issues.forEach((issue) => { errors[issue.path[0] as keyof CreatePersonForm] = issue.message })
     return
   }
 
   isSubmitting.value = true
   try {
-    const person = createPerson(personType.value, result.data)
-    showToast({ title: `เพิ่ม${context.value.singular}แล้ว`, description: `สร้างบัญชี ${person.id} และรอเข้าสู่ระบบครั้งแรก` })
-    await navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)
+    const response = await create(personType.value === 'student'
+      ? { role: 'student', username: result.data.id, temporaryPassword: result.data.temporaryPassword, namePrefix: result.data.prefix, firstName: result.data.firstName, lastName: result.data.lastName, cohortYear: Number(result.data.cohortYear), section: result.data.section! }
+      : { role: 'lecturer', username: result.data.id, temporaryPassword: result.data.temporaryPassword, namePrefix: result.data.prefix, firstName: result.data.firstName, lastName: result.data.lastName })
+    showToast({ title: `เพิ่ม${context.value.singular}แล้ว`, description: `สร้างบัญชี ${response.data.person.username} และรอเข้าสู่ระบบครั้งแรก` })
+    await navigateTo(`/staff/master-data/${route.params.type}/${response.data.person.username}`)
   } catch (error) {
-    if (error instanceof Error && error.message === 'duplicate-id') errors.id = `${context.value.idLabel}นี้มีอยู่ในระบบแล้ว`
-    else showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
+    if (error instanceof PeopleActionError) {
+      const fieldMap: Record<string, keyof CreatePersonForm> = {
+        username: 'id',
+        namePrefix: 'prefix',
+        firstName: 'firstName',
+        lastName: 'lastName',
+        temporaryPassword: 'temporaryPassword',
+        cohortYear: 'cohortYear',
+        section: 'section',
+      }
+      Object.entries(error.fieldErrors).forEach(([field, message]) => {
+        const formField = fieldMap[field]
+        if (formField) errors[formField] = message
+      })
+      if (!Object.keys(error.fieldErrors).length) showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: error.message })
+    }
+    else {
+      console.error(error)
+      showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -76,8 +109,10 @@ const submit = async () => {
           <div><UiSelect v-model="form.prefix" :options="prefixOptions" label="คำนำหน้า" :error="errors.prefix" required /></div>
           <div><UiInput v-model="form.firstName" label="ชื่อ" placeholder="กรอกชื่อ" :error="errors.firstName" required /></div>
           <div><UiInput v-model="form.lastName" label="นามสกุล" placeholder="กรอกนามสกุล" :error="errors.lastName" required /></div>
-          <div v-if="personType === 'student'"><UiSelect v-model="formCycle" :options="cycleOptions" label="รอบสหกิจศึกษา" help="กำหนดรอบของนักศึกษาได้ภายหลังโดยไม่ต้องสร้างบัญชีใหม่" :error="errors.cycle" /></div>
+          <div v-if="personType === 'student'"><UiInput v-model="form.cohortYear" label="รุ่นปีการศึกษา (พ.ศ.)" placeholder="เช่น 2566" :error="errors.cohortYear" required /></div>
           <div v-if="personType === 'student'"><UiSelect v-model="formSection" :options="studentSectionValues.map(value => ({ value, label: value }))" label="หมู่เรียน" :error="errors.section" required /></div>
+          <div><UiInput v-model="form.temporaryPassword" label="รหัสผ่านชั่วคราว" type="password" help="อย่างน้อย 8 ตัวอักษร และมีทั้งตัวอักษรกับตัวเลข" :error="errors.temporaryPassword" required /></div>
+          <div><UiInput v-model="form.confirmPassword" label="ยืนยันรหัสผ่านชั่วคราว" type="password" :error="errors.confirmPassword" required /></div>
         </div>
         <div class="mt-6 flex flex-col-reverse gap-2 border-t border-divider pt-5 sm:flex-row sm:justify-end"><UiButton variant="ghost" @click="navigateTo(`/staff/master-data/${route.params.type}`)">ยกเลิก</UiButton><UiButton type="submit" :icon="Save" :loading="isSubmitting">บันทึกและสร้างบัญชี</UiButton></div>
       </form>
