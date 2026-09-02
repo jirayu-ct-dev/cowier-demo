@@ -65,7 +65,10 @@ export class PrismaPeopleRepository {
   }
 
   findById(id: string) {
-    return this.prisma.user.findUnique({ where: { id }, select: personSelect })
+    return this.prisma.user.findFirst({
+      where: { OR: [{ id }, { username: id }] },
+      select: personSelect,
+    })
   }
 
   findIdByUsername(username: string) {

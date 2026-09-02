@@ -83,15 +83,15 @@ export const createPeopleService = (
       requireLecturerStudentAccess(actor, person)
       if (actor.role === 'LECTURER') {
         const lecturerInput: PersonUpdateInput = { role: 'student', ...input }
-        return toPublicPerson(await repository.update(id, lecturerInput, actor.id, person))
+        return toPublicPerson(await repository.update(person.id, lecturerInput, actor.id, person))
       }
       if (actor.role !== 'STAFF') throw apiErrors.forbidden()
       const staffInput = input as PersonUpdateInput
       if (roleMap[person.role] !== staffInput.role) {
         throw apiErrors.conflict('ประเภทบุคคลไม่ตรงกับข้อมูลเดิม')
       }
-      if (staffInput.username) await ensureUsernameAvailable(staffInput.username, id)
-      return toPublicPerson(await repository.update(id, staffInput, actor.id, person))
+      if (staffInput.username) await ensureUsernameAvailable(staffInput.username, person.id)
+      return toPublicPerson(await repository.update(person.id, staffInput, actor.id, person))
     },
   }
 }
