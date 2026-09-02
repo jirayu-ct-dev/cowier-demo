@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Settings2, Upload, X } from '@lucide/vue'
 import type { PeopleFileFormat } from '~/composables/usePeopleImport'
-import type { PersonRecord, PersonType } from '~/composables/usePeopleDirectory'
-import { getPageCount, paginateItems } from '~/utils/table'
+import type { PersonPrefix, PersonRecord, PersonType, StudentSection } from '~/composables/usePeopleDirectory'
+import type { PeopleListQuery, PeopleRecord } from '~/composables/usePeopleApi'
 
 definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff' })
 
 const route = useRoute()
 const { scenario } = useScenario()
 const { showToast } = useToast()
-const { people } = usePeopleDirectory()
 const { exportPeople } = usePeopleImport()
-const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
-const { getPermissions, setPermission } = useLecturerPermissions()
+const { studentCohort, studentSection } = useStudentCohortContext()
+const { list, update } = usePeopleApi()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
@@ -34,7 +33,7 @@ const isExporting = ref(false)
 const permissionsDialogOpen = ref(false)
 const editingLecturer = ref<PersonRecord | null>(null)
 const permissionDraft = ref(false)
-const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
+const isSavingPermission = ref(false)
 
 const recordStatusOptions = [
   { value: 'all', label: 'ทุกสถานะข้อมูล' },
@@ -54,35 +53,59 @@ const exportFormatOptions = [
   { value: 'csv', label: 'CSV (.csv)' },
 ]
 const exportDescription = computed(() => personType.value === 'student'
-  ? 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ นามสกุล รุ่น หมู่เรียน สถานประกอบการ และตำแหน่งที่ฝึก'
+  ? 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ นามสกุล รุ่น และหมู่เรียน ตามตัวกรองปัจจุบัน'
   : 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ และนามสกุล')
 
-const filteredPeople = computed(() => {
-  if (scenario.value.viewState === 'empty') return []
-  const keyword = search.value.trim().toLocaleLowerCase('th')
-  return people.value
-    .filter(person => person.type === personType.value)
-    .filter(person => personType.value !== 'student' || studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
-    .filter(person => personType.value !== 'student' || studentSemester.value === 'all' || getStudentSemester(person.cycle) === studentSemester.value)
-    .filter(person => personType.value !== 'student' || studentSection.value === 'all' || person.section === studentSection.value)
-    .filter(person => !keyword || [person.id, person.prefix, person.firstName, person.lastName, person.company]
-      .some(value => value?.toLocaleLowerCase('th').includes(keyword)))
-    .filter(person => recordStatus.value === 'all' || person.recordStatus === recordStatus.value)
-    .filter(person => accountStatus.value === 'all' || person.accountStatus === accountStatus.value)
-    .sort((a, b) => {
-      const comparison = `${a.firstName}${a.lastName}`.localeCompare(`${b.firstName}${b.lastName}`, 'th')
-      return sortDirection.value === 'asc' ? comparison : -comparison
-    })
-})
 const pageSizeNumber = computed(() => Number(pageSize.value))
-const pageCount = computed(() => getPageCount(filteredPeople.value.length, pageSizeNumber.value))
-const paginatedPeople = computed(() => paginateItems(filteredPeople.value, currentPage.value, pageSizeNumber.value))
-const resultStart = computed(() => filteredPeople.value.length ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
-const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredPeople.value.length))
+const query = computed<PeopleListQuery>(() => ({
+  role: personType.value,
+  search: search.value.trim() || undefined,
+  recordStatus: recordStatus.value === 'all' ? undefined : recordStatus.value as PeopleListQuery['recordStatus'],
+  accountStatus: accountStatus.value === 'all' ? undefined : accountStatus.value as PeopleListQuery['accountStatus'],
+  cohortYear: personType.value === 'student' && studentCohort.value !== 'all' ? Number(studentCohort.value) : undefined,
+  section: personType.value === 'student' && studentSection.value !== 'all' ? studentSection.value : undefined,
+  sort: sortDirection.value === 'asc' ? 'name-asc' : 'name-desc',
+  page: currentPage.value,
+  pageSize: pageSizeNumber.value,
+}))
+const { data: peopleResponse, error: peopleError, status: peopleStatus, refresh } = list(query)
+
+const toPersonRecord = (person: PeopleRecord): PersonRecord => ({
+  id: person.username,
+  type: person.role,
+  prefix: person.namePrefix as PersonPrefix,
+  firstName: person.firstName,
+  lastName: person.lastName,
+  recordStatus: person.recordStatus,
+  accountStatus: person.accountStatus,
+  cycle: person.cohortYear ? `รุ่นปี ${person.cohortYear}` : undefined,
+  section: person.section as StudentSection | undefined,
+  activities: [],
+})
+const paginatedPeople = computed(() => (peopleResponse.value?.data.items ?? []).map(toPersonRecord))
+const total = computed(() => peopleResponse.value?.meta.total ?? 0)
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSizeNumber.value)))
+const resultStart = computed(() => total.value ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
+const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, total.value))
+const effectiveViewState = computed(() => scenario.value.forceError || peopleError.value
+  ? 'error'
+  : peopleStatus.value === 'pending'
+    ? 'loading'
+    : 'data')
 const hasFilters = computed(() => Boolean(search.value) || recordStatus.value !== 'all' || accountStatus.value !== 'all')
 
-watch([search, recordStatus, accountStatus, pageSize, personType, studentCohort, studentSection, studentSemester], () => { currentPage.value = 1 })
+let refreshTimer: ReturnType<typeof setTimeout> | undefined
+watch([search, recordStatus, accountStatus, pageSize, personType, studentCohort, studentSection, sortDirection], () => {
+  clearTimeout(refreshTimer)
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+    return
+  }
+  refreshTimer = setTimeout(() => void refresh(), search.value ? 300 : 0)
+})
+watch(currentPage, () => void refresh())
 watch(pageCount, count => { if (currentPage.value > count) currentPage.value = count })
+onBeforeUnmount(() => clearTimeout(refreshTimer))
 
 const clearFilters = () => {
   search.value = ''
@@ -95,16 +118,31 @@ const resetTable = () => {
   pageSize.value = '10'
   currentPage.value = 1
 }
-const retry = () => {
+const retry = async () => {
   scenario.value.forceError = false
-  scenario.value.viewState = 'data'
+  await refresh()
+}
+const fetchAllPeople = async () => {
+  const firstPage = await $fetch<{ data: { items: PeopleRecord[] }, meta: { total: number } }>('/api/people', {
+    query: { ...query.value, page: 1, pageSize: 100 },
+  })
+  const items = [...firstPage.data.items]
+  const remainingPages = Math.ceil(firstPage.meta.total / 100)
+  for (let page = 2; page <= remainingPages; page++) {
+    const response = await $fetch<{ data: { items: PeopleRecord[] } }>('/api/people', {
+      query: { ...query.value, page, pageSize: 100 },
+    })
+    items.push(...response.data.items)
+  }
+  return items.map(toPersonRecord)
 }
 const handleExport = async () => {
   if (isExporting.value) return
   isExporting.value = true
   try {
-    await exportPeople(people.value, personType.value, exportFormat.value)
-    showToast({ title: `ส่งออก${context.value.title}แล้ว`, description: `${people.value.filter(person => person.type === personType.value).length} รายการ · ${exportFormat.value.toUpperCase()}` })
+    const people = await fetchAllPeople()
+    await exportPeople(people, personType.value, exportFormat.value)
+    showToast({ title: `ส่งออก${context.value.title}แล้ว`, description: `${people.length} รายการ · ${exportFormat.value.toUpperCase()}` })
   }
   catch (error) {
     console.error(error)
@@ -116,14 +154,25 @@ const handleExport = async () => {
 }
 const openPermissions = (person: PersonRecord) => {
   editingLecturer.value = person
-  permissionDraft.value = getPermissions(person.id).placements
+  permissionDraft.value = peopleResponse.value?.data.items.find(item => item.username === person.id)?.canReviewPlacements ?? false
   permissionsDialogOpen.value = true
 }
-const savePermissions = () => {
-  if (!editingLecturer.value) return
-  setPermission(editingLecturer.value.id, permissionDraft.value)
-  showToast({ title: 'บันทึกสิทธิ์แล้ว', description: `กำหนดสิทธิ์การใช้งานให้ ${getPersonFullName(editingLecturer.value)}` })
-  permissionsDialogOpen.value = false
+const savePermissions = async () => {
+  if (!editingLecturer.value || isSavingPermission.value) return
+  isSavingPermission.value = true
+  try {
+    await update(editingLecturer.value.id, { role: 'lecturer', canReviewPlacements: permissionDraft.value })
+    await refresh()
+    showToast({ title: 'บันทึกสิทธิ์แล้ว', description: `กำหนดสิทธิ์การใช้งานให้ ${getPersonFullName(editingLecturer.value)}` })
+    permissionsDialogOpen.value = false
+  }
+  catch (error) {
+    console.error(error)
+    showToast({ title: 'บันทึกสิทธิ์ไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
+  }
+  finally {
+    isSavingPermission.value = false
+  }
 }
 </script>
 
@@ -191,7 +240,7 @@ const savePermissions = () => {
                 <th scope="col" class="px-4 py-3" :aria-sort="sortDirection === 'asc' ? 'ascending' : 'descending'">
                   <button type="button" class="inline-flex items-center gap-1 font-semibold hover:text-ink" :aria-label="`เรียงชื่อ${sortDirection === 'asc' ? 'จาก ฮ ถึง ก' : 'จาก ก ถึง ฮ'}`" @click="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'">ชื่อ–นามสกุล <ArrowUp v-if="sortDirection === 'asc'" :size="15" aria-hidden="true" /><ArrowDown v-else :size="15" aria-hidden="true" /></button>
                 </th>
-                <th v-if="personType === 'student'" scope="col" class="px-4 py-3">รอบ / สถานประกอบการ</th>
+                <th v-if="personType === 'student'" scope="col" class="px-4 py-3">รุ่นนักศึกษา</th>
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">หมู่เรียน</th>
                 <th scope="col" class="px-4 py-3">สถานะข้อมูล</th>
                 <th scope="col" class="px-4 py-3">สถานะบัญชี</th>
@@ -202,7 +251,7 @@ const savePermissions = () => {
               <tr v-for="person in paginatedPeople" :key="person.id" class="transition-colors hover:bg-surface/70">
                 <td class="whitespace-nowrap px-6 py-4 font-semibold text-ink">{{ person.id }}</td>
                 <td class="px-4 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(person) }}</p><p class="mt-1 text-xs text-muted">ชื่อผู้ใช้: {{ person.id }}</p></td>
-                <td v-if="personType === 'student'" class="max-w-sm px-4 py-4"><p class="text-ink">{{ person.cycle || 'ยังไม่กำหนดรอบ' }}</p><p class="mt-1 truncate text-xs text-muted">{{ person.company || 'ยังไม่มีสถานประกอบการที่ยืนยัน' }}</p></td>
+                <td v-if="personType === 'student'" class="max-w-sm px-4 py-4 text-ink">{{ person.cycle || 'ยังไม่กำหนดรุ่น' }}</td>
                 <td v-if="personType === 'student'" class="whitespace-nowrap px-4 py-4 text-ink">{{ person.section || 'ยังไม่กำหนด' }}</td>
                 <td class="px-4 py-4"><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></td>
                 <td class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
@@ -220,7 +269,7 @@ const savePermissions = () => {
         </div>
 
         <div class="flex flex-col gap-3 border-t border-divider px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div class="flex items-center gap-3"><p class="whitespace-nowrap text-muted">แสดง {{ resultStart }}–{{ resultEnd }} จาก {{ filteredPeople.length }} รายการ</p><div class="w-20 shrink-0"><UiSelect :key="`page-size-${personType}`" v-model="pageSize" :options="pageSizeOptions" :placeholder="pageSize" label="จำนวนรายการต่อหน้า" :label-visible="false" /></div></div>
+          <div class="flex items-center gap-3"><p class="whitespace-nowrap text-muted">แสดง {{ resultStart }}–{{ resultEnd }} จาก {{ total }} รายการ</p><div class="w-20 shrink-0"><UiSelect :key="`page-size-${personType}`" v-model="pageSize" :options="pageSizeOptions" :placeholder="pageSize" label="จำนวนรายการต่อหน้า" :label-visible="false" /></div></div>
           <nav class="flex items-center gap-2" aria-label="การแบ่งหน้าตาราง"><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === 1" aria-label="หน้าก่อนหน้า" @click="currentPage--"><ChevronLeft :size="18" aria-hidden="true" /></button><span class="min-w-20 text-center font-semibold text-ink">หน้า {{ currentPage }} / {{ pageCount }}</span><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === pageCount" aria-label="หน้าถัดไป" @click="currentPage++"><ChevronRight :size="18" aria-hidden="true" /></button></nav>
         </div>
       </template>
@@ -228,7 +277,7 @@ const savePermissions = () => {
     <UiDialog v-model:open="permissionsDialogOpen" :title="`กำหนดสิทธิ์การใช้งาน · ${editingLecturer ? getPersonFullName(editingLecturer) : ''}`" description="เลือกว่าบัญชีนี้สามารถเห็นและใช้งานฟีเจอร์ตรวจคำร้องและหนังสือขออนุญาตได้หรือไม่">
       <label class="flex cursor-pointer items-start gap-3 rounded-control border border-divider bg-surface/35 p-4 hover:bg-surface"><UiCheckbox v-model="permissionDraft" label="สิทธิ์การตรวจคำร้องและหนังสือขออนุญาต" /><span><span class="block font-medium text-ink">ตรวจคำร้องและหนังสือขออนุญาต</span><span class="mt-1 block text-xs text-muted">เข้าถึงเมนูและใช้งานฟีเจอร์ที่เกี่ยวข้อง</span></span></label>
       <template #cancel><UiButton variant="ghost">ยกเลิก</UiButton></template>
-      <template #confirm><UiButton @click="savePermissions">บันทึกสิทธิ์</UiButton></template>
+      <template #confirm><UiButton :loading="isSavingPermission" @click="savePermissions">บันทึกสิทธิ์</UiButton></template>
     </UiDialog>
   </div>
 </template>
