@@ -126,7 +126,8 @@ const changeStatus = async (status: 'ACTIVE' | 'SUSPENDED' | 'TERMINATED', title
   }
   catch (error) {
     console.error(error)
-    showToast({ title: 'เปลี่ยนสถานะไม่สำเร็จ', description: error instanceof PeopleActionError ? error.message : 'กรุณาลองอีกครั้ง' })
+    if (error instanceof PeopleActionError && error.fieldErrors.reason) statusReasonError.value = error.fieldErrors.reason
+    else showToast({ title: 'เปลี่ยนสถานะไม่สำเร็จ', description: error instanceof PeopleActionError ? error.message : 'กรุณาลองอีกครั้ง' })
   }
   finally {
     pendingAction.value = null
@@ -161,7 +162,9 @@ const confirmPasswordReset = async () => {
   }
   catch (error) {
     console.error(error)
-    temporaryPasswordError.value = error instanceof PeopleActionError ? error.message : 'รีเซ็ตรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง'
+    temporaryPasswordError.value = error instanceof PeopleActionError
+      ? error.fieldErrors.newPassword ?? error.message
+      : 'รีเซ็ตรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง'
   }
   finally {
     pendingAction.value = null
