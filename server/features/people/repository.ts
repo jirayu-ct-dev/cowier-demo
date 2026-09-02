@@ -15,6 +15,26 @@ export const personSelect = {
   canReviewPlacements: true,
   createdAt: true,
   updatedAt: true,
+  cycleEnrollments: {
+    where: { enrollmentStatus: 'ACTIVE' },
+    orderBy: { joinedAt: 'desc' },
+    take: 1,
+    select: {
+      cycle: { select: { label: true } },
+      placementRequests: {
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        select: {
+          requestNo: true,
+          positionTitle: true,
+          status: true,
+          submittedAt: true,
+          createdAt: true,
+          companySite: { select: { company: { select: { legalName: true } } } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserSelect
 
 export type PersonRecord = Prisma.UserGetPayload<{ select: typeof personSelect }>
@@ -37,17 +57,36 @@ export class PrismaPeopleRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async list(query: PeopleListQuery) {
+    const applicationStatuses = query.applicationStatus === 'in-progress'
+      ? ['SUBMITTED', 'WAITING_RESPONSE', 'WAITING_REVIEW'] as const
+      : query.applicationStatus && query.applicationStatus !== 'not-submitted'
+        ? [query.applicationStatus.replace('-', '_').toUpperCase() as 'RETURNED' | 'CONFIRMED' | 'CANCELLED']
+        : undefined
     const where: Prisma.UserWhereInput = {
       role: roleMap[query.role],
       recordStatus: query.recordStatus ? recordStatusMap[query.recordStatus] : undefined,
       status: query.accountStatus ? accountStatusMap[query.accountStatus] : undefined,
       cohortYear: query.role === 'student' ? query.cohortYear : undefined,
       section: query.role === 'student' ? query.section : undefined,
+      cycleEnrollments: query.role === 'student' && (query.applicationStatus || query.semester)
+        ? {
+            some: {
+              enrollmentStatus: 'ACTIVE',
+              cycle: query.semester ? { termLabel: query.semester } : undefined,
+              placementRequests: !query.applicationStatus
+                ? undefined
+                : query.applicationStatus === 'not-submitted'
+                ? { none: {} }
+                : { some: { status: { in: applicationStatuses } } },
+            },
+          }
+        : undefined,
       OR: query.search
         ? [
             { username: { contains: query.search } },
             { firstName: { contains: query.search } },
             { lastName: { contains: query.search } },
+            { cycleEnrollments: { some: { placementRequests: { some: { companySite: { company: { legalName: { contains: query.search } } } } } } } },
           ]
         : undefined,
     }

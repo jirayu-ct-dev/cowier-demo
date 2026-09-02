@@ -15,6 +15,14 @@ export interface PeopleRecord {
   cohortYear: number | null
   section: string | null
   canReviewPlacements: boolean
+  cycle: string | null
+  applications: Array<{
+    id: string
+    company: string
+    position: string
+    appliedAt: string
+    status: 'submitted' | 'returned' | 'batched' | 'waiting-response' | 'waiting-review' | 'confirmed' | 'not-accepted' | 'cancelled'
+  }>
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +34,8 @@ export interface PeopleListQuery {
   accountStatus?: PeopleAccountStatus
   cohortYear?: number
   section?: string
+  applicationStatus?: 'not-submitted' | 'in-progress' | 'returned' | 'confirmed' | 'cancelled'
+  semester?: string
   sort?: PeopleSort
   page?: number
   pageSize?: number

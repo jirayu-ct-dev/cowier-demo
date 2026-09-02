@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, RotateCcw, Search, X } from '@lucide/vue'
-import { getPageCount, paginateItems } from '~/utils/table'
+import type { PersonPrefix, PersonRecord, StudentSection } from '~/composables/usePeopleDirectory'
+import type { PeopleListQuery, PeopleRecord } from '~/composables/usePeopleApi'
 
 definePageMeta({ title: 'ข้อมูลนักศึกษา', middleware: 'lecturer' })
 useHead({ title: 'ข้อมูลนักศึกษา' })
 
 const { scenario } = useScenario()
-const { people, getStudentApplicationHistory } = usePeopleDirectory()
+const { list } = usePeopleApi()
 const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
 const search = ref('')
 const applicationStatus = ref('all')
 const pageSize = ref('10')
 const currentPage = ref(1)
-const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 const statusOptions = [
   { value: 'all', label: 'ทุกสถานะคำร้อง' },
   { value: 'not-submitted', label: 'ยังไม่ส่งคำร้อง' },
@@ -23,37 +23,40 @@ const statusOptions = [
 ]
 const pageSizeOptions = ['10', '20', '50', '100'].map(value => ({ value, label: value }))
 
-const filteredStudents = computed(() => {
-  if (scenario.value.viewState === 'empty') return []
-  const keyword = search.value.trim().toLocaleLowerCase('th')
-  return people.value
-    .filter(person => person.type === 'student')
-    .filter(person => studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
-    .filter(person => studentSemester.value === 'all' || getStudentSemester(person.cycle) === studentSemester.value)
-    .filter(person => studentSection.value === 'all' || person.section === studentSection.value)
-    .filter((person) => {
-      const history = getStudentApplicationHistory(person.id)
-      const searchable = [person.id, person.prefix, person.firstName, person.lastName, ...history.map(item => item.company)]
-      const matchesSearch = !keyword || searchable.some(value => value.toLocaleLowerCase('th').includes(keyword))
-      const latestStatus = history[0]?.status
-      const matchesStatus = applicationStatus.value === 'all'
-        || (applicationStatus.value === 'not-submitted' && !latestStatus)
-        || latestStatus === applicationStatus.value
-        || (applicationStatus.value === 'in-progress' && ['submitted', 'waiting-response', 'waiting-review'].includes(latestStatus || ''))
-      return matchesSearch && matchesStatus
-    })
-    .sort((a, b) => `${a.firstName}${a.lastName}`.localeCompare(`${b.firstName}${b.lastName}`, 'th'))
-})
 const pageSizeNumber = computed(() => Number(pageSize.value))
-const pageCount = computed(() => getPageCount(filteredStudents.value.length, pageSizeNumber.value))
-const paginatedStudents = computed(() => paginateItems(filteredStudents.value, currentPage.value, pageSizeNumber.value))
-const resultStart = computed(() => filteredStudents.value.length ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
-const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredStudents.value.length))
+const query = computed<PeopleListQuery>(() => ({
+  role: 'student', search: search.value.trim() || undefined,
+  cohortYear: studentCohort.value === 'all' ? undefined : Number(studentCohort.value),
+  section: studentSection.value === 'all' ? undefined : studentSection.value,
+  semester: studentSemester.value === 'all' ? undefined : studentSemester.value,
+  applicationStatus: applicationStatus.value === 'all' ? undefined : applicationStatus.value as PeopleListQuery['applicationStatus'],
+  page: currentPage.value, pageSize: pageSizeNumber.value, sort: 'name-asc',
+}))
+const { data: peopleResponse, error: peopleError, status: peopleStatus, refresh } = list(query)
+const toPersonRecord = (person: PeopleRecord): PersonRecord => ({
+  id: person.username, type: 'student', prefix: person.namePrefix as PersonPrefix, firstName: person.firstName, lastName: person.lastName,
+  recordStatus: person.recordStatus, accountStatus: person.accountStatus, cycle: person.cycle ?? (person.cohortYear ? `รุ่นปี ${person.cohortYear}` : undefined), section: person.section as StudentSection | undefined, activities: [],
+})
+const paginatedStudents = computed(() => (peopleResponse.value?.data.items ?? []).map(toPersonRecord))
+const getStudentApplicationHistory = (username: string) => peopleResponse.value?.data.items.find(item => item.username === username)?.applications ?? []
+const total = computed(() => peopleResponse.value?.meta.total ?? 0)
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSizeNumber.value)))
+const resultStart = computed(() => total.value ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
+const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, total.value))
+const effectiveViewState = computed(() => scenario.value.forceError || peopleError.value ? 'error' : peopleStatus.value === 'pending' ? 'loading' : 'data')
 const hasFilters = computed(() => Boolean(search.value) || applicationStatus.value !== 'all')
-watch([search, applicationStatus, pageSize, studentCohort, studentSection, studentSemester], () => { currentPage.value = 1 })
+let refreshTimer: ReturnType<typeof setTimeout> | undefined
+watch([search, applicationStatus, pageSize, studentCohort, studentSection, studentSemester], () => {
+  clearTimeout(refreshTimer)
+  if (currentPage.value !== 1) { currentPage.value = 1; return }
+  refreshTimer = setTimeout(() => void refresh(), search.value ? 300 : 0)
+})
+watch(currentPage, () => void refresh())
+watch(pageCount, count => { if (currentPage.value > count) currentPage.value = count })
+onBeforeUnmount(() => clearTimeout(refreshTimer))
 const clearFilters = () => { search.value = ''; applicationStatus.value = 'all' }
 const resetTable = () => { clearFilters(); pageSize.value = '10'; currentPage.value = 1 }
-const retry = () => { scenario.value.forceError = false; scenario.value.viewState = 'data' }
+const retry = async () => { scenario.value.forceError = false; await refresh() }
 </script>
 
 <template>
@@ -73,7 +76,7 @@ const retry = () => { scenario.value.forceError = false; scenario.value.viewStat
       <template v-else>
         <div class="hidden overflow-x-auto md:block"><table class="w-full min-w-[920px] text-left text-sm"><caption class="sr-only">ข้อมูลนักศึกษาสำหรับอาจารย์</caption><thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th class="px-6 py-3">นักศึกษา</th><th class="px-4 py-3">หมู่เรียน</th><th class="px-4 py-3">คำร้องล่าสุด / สถานประกอบการ</th><th class="px-4 py-3">สถานะล่าสุด</th><th class="w-28 px-4 py-3"><span class="sr-only">ดูข้อมูล</span></th></tr></thead><tbody class="divide-y divide-divider"><tr v-for="student in paginatedStudents" :key="student.id" class="hover:bg-surface/70"><td class="px-6 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(student) }}</p><p class="mt-1 text-xs text-muted">{{ student.id }}</p></td><td class="whitespace-nowrap px-4 py-4 text-ink">{{ student.section || 'ยังไม่กำหนด' }}</td><td class="max-w-md px-4 py-4"><template v-if="getStudentApplicationHistory(student.id)[0]"><p class="font-medium text-ink">{{ getStudentApplicationHistory(student.id)[0]?.company }}</p><p class="mt-1 text-xs text-muted">{{ getStudentApplicationHistory(student.id)[0]?.id }} · {{ getStudentApplicationHistory(student.id)[0]?.position }}</p></template><p v-else class="text-muted">ยังไม่มีประวัติคำร้อง</p></td><td class="px-4 py-4"><UiBadge v-if="getStudentApplicationHistory(student.id)[0]" :tone="studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].tone">{{ studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].label }}</UiBadge><UiBadge v-else tone="neutral">ยังไม่มีคำร้อง</UiBadge></td><td class="px-4 py-4 text-right"><NuxtLink :to="`/lecturer/students/${student.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-xs font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(student)}`">ดูข้อมูล</NuxtLink></td></tr></tbody></table></div>
         <div class="divide-y divide-divider md:hidden"><article v-for="student in paginatedStudents" :key="student.id" class="p-5"><div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(student) }}</h3><p class="mt-1 text-xs text-muted">{{ student.id }} · {{ student.section || 'ยังไม่กำหนดหมู่' }}</p></div><UiBadge v-if="getStudentApplicationHistory(student.id)[0]" :tone="studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].tone">{{ studentApplicationStatusMeta[getStudentApplicationHistory(student.id)[0]!.status].label }}</UiBadge></div><p class="mt-4 text-sm text-muted">{{ getStudentApplicationHistory(student.id)[0]?.company || 'ยังไม่มีประวัติคำร้อง' }}</p><div class="mt-4 flex justify-end border-t border-divider pt-3"><UiButton size="sm" variant="secondary" @click="navigateTo(`/lecturer/students/${student.id}`)">ดูข้อมูล</UiButton></div></article></div>
-        <div class="flex flex-col gap-3 border-t border-divider px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6"><div class="flex items-center gap-3"><p class="whitespace-nowrap text-muted">แสดง {{ resultStart }}–{{ resultEnd }} จาก {{ filteredStudents.length }} รายการ</p><div class="w-20 shrink-0"><UiSelect v-model="pageSize" :options="pageSizeOptions" :placeholder="pageSize" label="จำนวนรายการต่อหน้า" :label-visible="false" /></div></div><nav class="flex items-center gap-2" aria-label="การแบ่งหน้าตาราง"><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === 1" aria-label="หน้าก่อนหน้า" @click="currentPage--"><ChevronLeft :size="18" aria-hidden="true" /></button><span class="min-w-20 text-center font-semibold text-ink">หน้า {{ currentPage }} / {{ pageCount }}</span><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === pageCount" aria-label="หน้าถัดไป" @click="currentPage++"><ChevronRight :size="18" aria-hidden="true" /></button></nav></div>
+        <div class="flex flex-col gap-3 border-t border-divider px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6"><div class="flex items-center gap-3"><p class="whitespace-nowrap text-muted">แสดง {{ resultStart }}–{{ resultEnd }} จาก {{ total }} รายการ</p><div class="w-20 shrink-0"><UiSelect v-model="pageSize" :options="pageSizeOptions" :placeholder="pageSize" label="จำนวนรายการต่อหน้า" :label-visible="false" /></div></div><nav class="flex items-center gap-2" aria-label="การแบ่งหน้าตาราง"><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === 1" aria-label="หน้าก่อนหน้า" @click="currentPage--"><ChevronLeft :size="18" aria-hidden="true" /></button><span class="min-w-20 text-center font-semibold text-ink">หน้า {{ currentPage }} / {{ pageCount }}</span><button type="button" class="inline-grid size-10 place-items-center rounded-control border border-divider text-muted hover:bg-surface disabled:opacity-45" :disabled="currentPage === pageCount" aria-label="หน้าถัดไป" @click="currentPage++"><ChevronRight :size="18" aria-hidden="true" /></button></nav></div>
       </template>
     </UiCard>
   </div>

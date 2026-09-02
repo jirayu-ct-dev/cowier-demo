@@ -20,6 +20,8 @@ export const peopleListQuerySchema = z.object({
   accountStatus: z.enum(peopleAccountStatuses).optional(),
   cohortYear: z.coerce.number().int().min(2500).max(3000).optional(),
   section: sectionSchema.optional(),
+  applicationStatus: z.enum(['not-submitted', 'in-progress', 'returned', 'confirmed', 'cancelled']).optional(),
+  semester: z.string().trim().min(1).max(100).optional(),
   sort: z.enum(['name-asc', 'name-desc', 'username-asc', 'username-desc']).default('name-asc'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),

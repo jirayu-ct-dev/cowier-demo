@@ -1,37 +1,46 @@
 <script setup lang="ts">
 import { ArrowLeft, Pencil, Save } from '@lucide/vue'
 import { z } from 'zod'
+import type { PersonPrefix, PersonRecord, StudentSection } from '~/composables/usePeopleDirectory'
+import { PeopleActionError } from '~/composables/usePeopleApi'
 
 definePageMeta({ title: 'รายละเอียดนักศึกษา', middleware: 'lecturer' })
 useHead({ title: 'รายละเอียดนักศึกษา' })
 
 const route = useRoute()
 const { showToast } = useToast()
-const { findPerson, getStudentApplicationHistory, updatePerson } = usePeopleDirectory()
-const student = computed(() => findPerson('student', String(route.params.id)))
-if (!student.value) throw createError({ statusCode: 404, statusMessage: 'ไม่พบข้อมูลนักศึกษา' })
-const applications = computed(() => getStudentApplicationHistory(String(route.params.id)))
+const { get, update } = usePeopleApi()
+const studentId = computed(() => String(route.params.id))
+const { data: studentResponse, error: studentError, status: studentStatus, refresh } = get(studentId)
+const apiStudent = computed(() => studentResponse.value?.data.person)
+const student = computed<PersonRecord | null>(() => apiStudent.value ? {
+  id: apiStudent.value.username, type: 'student', prefix: apiStudent.value.namePrefix as PersonPrefix, firstName: apiStudent.value.firstName, lastName: apiStudent.value.lastName,
+  recordStatus: apiStudent.value.recordStatus, accountStatus: apiStudent.value.accountStatus, cycle: apiStudent.value.cycle ?? (apiStudent.value.cohortYear ? `รุ่นปี ${apiStudent.value.cohortYear}` : undefined), section: apiStudent.value.section as StudentSection | undefined, activities: [],
+} : null)
+const applications = computed(() => apiStudent.value?.applications ?? [])
 const isEditing = ref(false)
 const isSaving = ref(false)
-const form = reactive({ prefix: 'นาย', firstName: '', lastName: '' })
-const errors = reactive<{ prefix?: string, firstName?: string, lastName?: string }>({})
-const schema = z.object({ prefix: z.enum(personPrefixValues, { error: 'กรุณาเลือกคำนำหน้า' }), firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ').max(100), lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล').max(100) })
-const startEditing = () => { if (!student.value) return; form.prefix = student.value.prefix; form.firstName = student.value.firstName; form.lastName = student.value.lastName; errors.prefix = undefined; errors.firstName = undefined; errors.lastName = undefined; isEditing.value = true }
+const form = reactive({ firstName: '', lastName: '' })
+const errors = reactive<{ firstName?: string, lastName?: string }>({})
+const schema = z.object({ firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ').max(100), lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล').max(100) })
+const startEditing = () => { if (!student.value) return; form.firstName = student.value.firstName; form.lastName = student.value.lastName; errors.firstName = undefined; errors.lastName = undefined; isEditing.value = true }
 const save = async () => {
-  errors.prefix = undefined; errors.firstName = undefined; errors.lastName = undefined
+  errors.firstName = undefined; errors.lastName = undefined
   const result = schema.safeParse(form)
   if (!result.success) { result.error.issues.forEach(issue => { errors[issue.path[0] as keyof typeof errors] = issue.message }); return }
   if (!student.value) return
   isSaving.value = true
   try {
-    updatePerson(student.value, { id: student.value.id, cycle: student.value.cycle, ...result.data })
+    await update(apiStudent.value!.id, result.data)
+    await refresh()
     isEditing.value = false
     showToast({ title: 'แก้ไขชื่อ–นามสกุลแล้ว', description: 'ระบบบันทึกผู้ดำเนินการ ค่าเดิม และค่าใหม่ในประวัติ' })
-  } catch {
-    showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
+  } catch (error) {
+    console.error(error)
+    showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: error instanceof PeopleActionError ? error.message : 'กรุณาลองอีกครั้ง' })
   } finally { isSaving.value = false }
 }
-const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${date}T00:00:00+07:00`))
+const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(date))
 </script>
 
 <template>

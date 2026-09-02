@@ -21,6 +21,9 @@ const statusMap = {
   FIRST_LOGIN: 'first-login', ACTIVE: 'active', SUSPENDED: 'suspended', TERMINATED: 'terminated',
 } as const
 const recordStatusMap = { ACTIVE: 'active', INACTIVE: 'inactive' } as const
+const placementStatusMap = {
+  DRAFT: 'submitted', SUBMITTED: 'submitted', RETURNED: 'returned', BATCHED: 'batched', WAITING_RESPONSE: 'waiting-response', WAITING_REVIEW: 'waiting-review', CONFIRMED: 'confirmed', NOT_ACCEPTED: 'not-accepted', CANCELLED: 'cancelled',
+} as const
 
 export const toPublicPerson = (person: PersonRecord) => ({
   id: person.id,
@@ -34,6 +37,14 @@ export const toPublicPerson = (person: PersonRecord) => ({
   cohortYear: person.cohortYear,
   section: person.section,
   canReviewPlacements: person.role === 'LECTURER' && person.canReviewPlacements,
+  cycle: person.cycleEnrollments[0]?.cycle.label ?? null,
+  applications: (person.cycleEnrollments[0]?.placementRequests ?? []).map(request => ({
+    id: request.requestNo,
+    company: request.companySite.company.legalName,
+    position: request.positionTitle,
+    appliedAt: (request.submittedAt ?? request.createdAt).toISOString(),
+    status: placementStatusMap[request.status],
+  })),
   createdAt: person.createdAt,
   updatedAt: person.updatedAt,
 })
