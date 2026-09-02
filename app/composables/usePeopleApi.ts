@@ -69,6 +69,17 @@ export interface TemporaryCredential {
   temporaryPassword: string
 }
 
+export interface PeopleExportRecord {
+  username: string
+  namePrefix: string
+  firstName: string
+  lastName: string
+  cohortYear: number | null
+  section: string | null
+  company: string | null
+  position: string | null
+}
+
 interface ApiErrorPayload {
   error?: {
     code?: string
@@ -193,5 +204,9 @@ export const usePeopleApi = () => {
     }
   }
 
-  return { list, get, create, update, updateAccountStatus, resetPassword, previewImport, commitImport }
+  const exportPeopleData = async (role: PeopleRole) => $fetch<{ data: { people: PeopleExportRecord[] } }>('/api/people/export', {
+    query: { role },
+  })
+
+  return { list, get, create, update, updateAccountStatus, resetPassword, previewImport, commitImport, exportPeopleData }
 }

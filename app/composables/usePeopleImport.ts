@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { getStudentCohortYear } from './useStudentCohortContext'
 import { getStudentPlacementPosition, personPrefixOptions, personPrefixValues } from './usePeopleDirectory'
 import type { PersonPrefix, PersonRecord, PersonType } from './usePeopleDirectory'
-import type { TemporaryCredential } from './usePeopleApi'
+import type { PeopleExportRecord, TemporaryCredential } from './usePeopleApi'
 
 export type PeopleFileFormat = 'csv' | 'xlsx'
 export type ImportRowStatus = 'new' | 'update' | 'invalid'
@@ -103,6 +103,25 @@ export const toPeopleWorksheetRows = (people: PersonRecord[], type: PersonType) 
       return lecturerRow
     })
 }
+
+export const toPeopleExportWorksheetRows = (people: PeopleExportRecord[], type: PersonType) => people.map<Record<string, string | number>>((person) => {
+  const identity: Record<string, string | number> = {
+    รหัส: person.username,
+    คำนำหน้าชื่อ: person.namePrefix,
+    ชื่อ: person.firstName,
+    นามสกุล: person.lastName,
+  }
+  if (type === 'student') {
+    return {
+      ...identity,
+      รุ่น: person.cohortYear ?? '',
+      หมู่เรียน: person.section ?? '',
+      สถานประกอบการ: person.company ?? '',
+      ตำแหน่งที่ฝึก: person.position ?? '',
+    }
+  }
+  return identity
+})
 
 export const usePeopleImport = () => {
   const parseFile = async (file: File, type: PersonType, existingIds: Set<string>): Promise<PeopleImportRow[]> => {
@@ -205,5 +224,9 @@ export const usePeopleImport = () => {
     })), 'temporary-passwords', 'xlsx')
   }
 
-  return { parseFile, downloadTemplate, exportPeople, downloadInvalidRows, downloadTemporaryCredentials }
+  const exportPeopleRecords = async (people: PeopleExportRecord[], type: PersonType, format: PeopleFileFormat) => {
+    await downloadWorkbook(toPeopleExportWorksheetRows(people, type), `${type === 'student' ? 'students' : 'lecturers'}-export`, format)
+  }
+
+  return { parseFile, downloadTemplate, exportPeople, exportPeopleRecords, downloadInvalidRows, downloadTemporaryCredentials }
 }

@@ -25,6 +25,8 @@ export const peopleListQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 })
 
+export const peopleExportQuerySchema = z.object({ role: z.enum(peopleRoles) })
+
 const sharedPersonFields = {
   username: usernameSchema,
   namePrefix: z.string().trim().min(1).max(50),
@@ -124,6 +126,7 @@ export const peopleImportSchema = z.object({
 })
 
 export type PeopleListQuery = z.infer<typeof peopleListQuerySchema>
+export type PeopleExportQuery = z.infer<typeof peopleExportQuerySchema>
 export type PersonCreateInput = z.infer<typeof personCreateSchema>
 export type PersonUpdateInput = z.infer<typeof personUpdateSchema>
 export type LecturerStudentUpdateInput = z.infer<typeof lecturerStudentUpdateSchema>

@@ -197,4 +197,49 @@ export class PrismaPeopleRepository {
       return { created, updated, createdUsernames }
     })
   }
+
+  exportPeople(role: 'student' | 'lecturer', actorUserId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const people = await tx.user.findMany({
+        where: { role: roleMap[role] },
+        select: {
+          username: true,
+          namePrefix: true,
+          firstName: true,
+          lastName: true,
+          cohortYear: true,
+          section: true,
+          cycleEnrollments: {
+            where: { enrollmentStatus: 'ACTIVE' },
+            orderBy: { joinedAt: 'desc' },
+            take: 1,
+            select: {
+              placementRequests: {
+                where: { status: 'CONFIRMED' },
+                orderBy: { confirmedAt: 'desc' },
+                take: 1,
+                select: {
+                  positionTitle: true,
+                  confirmedPosition: true,
+                  companySite: { select: { company: { select: { legalName: true } } } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { username: 'asc' }],
+      })
+      await tx.auditLog.create({
+        data: {
+          actorAccountId: actorUserId,
+          action: 'PEOPLE_EXPORT',
+          entityType: 'User',
+          entityId: actorUserId,
+          afterData: toAuditJson({ role, total: people.length }),
+        },
+        select: { id: true },
+      })
+      return people
+    })
+  }
 }

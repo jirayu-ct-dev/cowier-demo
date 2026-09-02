@@ -29,6 +29,7 @@ const createRepository = () => ({
   create: vi.fn(),
   update: vi.fn(),
   importPeople: vi.fn(),
+  exportPeople: vi.fn(),
 })
 
 describe('people service', () => {
@@ -133,5 +134,17 @@ describe('people service', () => {
       expect.objectContaining({ username: 'NEW', passwordHash: 'hashed-password' }),
       expect.not.objectContaining({ passwordHash: expect.anything() }),
     ], 'staff-id')
+  })
+
+  it('exports confirmed company and position without account secrets', async () => {
+    const repository = createRepository()
+    repository.exportPeople.mockResolvedValue([{
+      username: '66123456701', namePrefix: 'นาย', firstName: 'ทดสอบ', lastName: 'ระบบ', cohortYear: 2566, section: 'หมู่ 1',
+      cycleEnrollments: [{ placementRequests: [{ positionTitle: 'Developer', confirmedPosition: 'Software Engineer', companySite: { company: { legalName: 'บริษัท ทดสอบ จำกัด' } } }] }],
+    }])
+    const service = createPeopleService(repository as never)
+    const result = await service.export(staff as never, { role: 'student' })
+    expect(result).toEqual([expect.objectContaining({ username: '66123456701', company: 'บริษัท ทดสอบ จำกัด', position: 'Software Engineer' })])
+    expect(result[0]).not.toHaveProperty('passwordHash')
   })
 })

@@ -1,6 +1,6 @@
 import { File } from 'node:buffer'
 import { describe, expect, it } from 'vitest'
-import { toPeopleWorksheetRows, usePeopleImport } from './usePeopleImport'
+import { toPeopleExportWorksheetRows, toPeopleWorksheetRows, usePeopleImport } from './usePeopleImport'
 import type { PersonRecord } from './usePeopleDirectory'
 
 describe('usePeopleImport', () => {
@@ -68,5 +68,13 @@ describe('usePeopleImport', () => {
       ชื่อ: 'สมชาย',
       นามสกุล: 'ใจมั่น',
     }])
+  })
+
+  it('ส่งออกข้อมูลสถานประกอบการที่ยืนยันจาก API', () => {
+    expect(toPeopleExportWorksheetRows([{
+      username: '66123456701', namePrefix: 'นาย', firstName: 'ทดสอบ', lastName: 'ระบบ', cohortYear: 2566, section: 'หมู่ 1', company: 'บริษัท ทดสอบ จำกัด', position: 'Software Engineer',
+    }], 'student')[0]).toMatchObject({
+      รหัส: '66123456701', รุ่น: 2566, สถานประกอบการ: 'บริษัท ทดสอบ จำกัด', ตำแหน่งที่ฝึก: 'Software Engineer',
+    })
   })
 })

@@ -9,9 +9,9 @@ definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff'
 const route = useRoute()
 const { scenario } = useScenario()
 const { showToast } = useToast()
-const { exportPeople } = usePeopleImport()
+const { exportPeopleRecords } = usePeopleImport()
 const { studentCohort, studentSection } = useStudentCohortContext()
-const { list, update } = usePeopleApi()
+const { list, update, exportPeopleData } = usePeopleApi()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
@@ -53,8 +53,8 @@ const exportFormatOptions = [
   { value: 'csv', label: 'CSV (.csv)' },
 ]
 const exportDescription = computed(() => personType.value === 'student'
-  ? 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ นามสกุล รุ่น และหมู่เรียน ตามตัวกรองปัจจุบัน'
-  : 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ และนามสกุล')
+  ? 'ส่งออกนักศึกษาทั้งหมด พร้อมรุ่น หมู่เรียน สถานประกอบการที่ยืนยัน และตำแหน่งที่ฝึก โดยไม่จำกัดตามตัวกรองในตาราง'
+  : 'ส่งออกอาจารย์ทั้งหมด โดยไม่จำกัดตามตัวกรองในตาราง')
 
 const pageSizeNumber = computed(() => Number(pageSize.value))
 const query = computed<PeopleListQuery>(() => ({
@@ -122,27 +122,13 @@ const retry = async () => {
   scenario.value.forceError = false
   await refresh()
 }
-const fetchAllPeople = async () => {
-  const firstPage = await $fetch<{ data: { items: PeopleRecord[] }, meta: { total: number } }>('/api/people', {
-    query: { ...query.value, page: 1, pageSize: 100 },
-  })
-  const items = [...firstPage.data.items]
-  const remainingPages = Math.ceil(firstPage.meta.total / 100)
-  for (let page = 2; page <= remainingPages; page++) {
-    const response = await $fetch<{ data: { items: PeopleRecord[] } }>('/api/people', {
-      query: { ...query.value, page, pageSize: 100 },
-    })
-    items.push(...response.data.items)
-  }
-  return items.map(toPersonRecord)
-}
 const handleExport = async () => {
   if (isExporting.value) return
   isExporting.value = true
   try {
-    const people = await fetchAllPeople()
-    await exportPeople(people, personType.value, exportFormat.value)
-    showToast({ title: `ส่งออก${context.value.title}แล้ว`, description: `${people.length} รายการ · ${exportFormat.value.toUpperCase()}` })
+    const response = await exportPeopleData(personType.value)
+    await exportPeopleRecords(response.data.people, personType.value, exportFormat.value)
+    showToast({ title: `ส่งออก${context.value.title}แล้ว`, description: `${response.data.people.length} รายการ · ${exportFormat.value.toUpperCase()}` })
   }
   catch (error) {
     console.error(error)

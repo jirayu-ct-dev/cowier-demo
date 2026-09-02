@@ -6,13 +6,14 @@ import type { PreparedImportRow, PrismaPeopleRepository, PersonRecord } from './
 import type {
   LecturerStudentUpdateInput,
   PeopleImportInput,
+  PeopleExportQuery,
   PeopleListQuery,
   PersonCreateInput,
   PersonUpdateInput,
 } from './schema'
 
 type PeopleRepository = Pick<PrismaPeopleRepository,
-  'list' | 'findById' | 'findIdByUsername' | 'findManyByUsernames' | 'create' | 'update' | 'importPeople'
+  'list' | 'findById' | 'findIdByUsername' | 'findManyByUsernames' | 'create' | 'update' | 'importPeople' | 'exportPeople'
 >
 
 const roleMap = { STAFF: 'staff', LECTURER: 'lecturer', STUDENT: 'student' } as const
@@ -132,6 +133,24 @@ export const createPeopleService = (
         updated: result.updated,
         credentials: credentials.filter(credential => createdUsernames.has(credential.username)),
       }
+    },
+
+    async export(actor: AuthUserRecord, query: PeopleExportQuery) {
+      if (actor.role !== 'STAFF') throw apiErrors.forbidden()
+      const people = await repository.exportPeople(query.role, actor.id)
+      return people.map((person) => {
+        const placement = person.cycleEnrollments[0]?.placementRequests[0]
+        return {
+          username: person.username,
+          namePrefix: person.namePrefix,
+          firstName: person.firstName,
+          lastName: person.lastName,
+          cohortYear: person.cohortYear,
+          section: person.section,
+          company: placement?.companySite.company.legalName ?? null,
+          position: placement?.confirmedPosition ?? placement?.positionTitle ?? null,
+        }
+      })
     },
   }
 }
