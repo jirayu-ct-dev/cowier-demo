@@ -3,7 +3,7 @@ import { ArrowLeft, Save } from '@lucide/vue'
 import { z } from 'zod'
 import type { PersonInput, PersonType } from '~/composables/usePeopleDirectory'
 
-definePageMeta({ title: 'เพิ่มข้อมูลบุคคล', middleware: 'staff-prototype' })
+definePageMeta({ title: 'เพิ่มข้อมูลบุคคล', middleware: 'staff' })
 
 const route = useRoute()
 const { createPerson } = usePeopleDirectory()

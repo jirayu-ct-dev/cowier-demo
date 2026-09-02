@@ -1,7 +1,7 @@
 # ==============================================================================
 # Stage 1: Build & Compile
 # ==============================================================================
-FROM node:22-alpine AS builder
+FROM node:22-alpine AS dependencies
 
 WORKDIR /app
 
@@ -21,6 +21,21 @@ RUN pnpm install --frozen-lockfile
 # Generate Prisma Client
 RUN pnpm exec prisma generate
 
+# ==============================================================================
+# Stage 2: Run database migrations once before the app starts
+# ==============================================================================
+FROM dependencies AS migration
+
+COPY server/core/auth/password.ts ./server/core/auth/password.ts
+COPY server/core/database/client.ts ./server/core/database/client.ts
+
+CMD ["pnpm", "run", "db:migrate:deploy"]
+
+# ==============================================================================
+# Stage 3: Build application
+# ==============================================================================
+FROM dependencies AS builder
+
 # Copy application source
 COPY . .
 
@@ -28,7 +43,7 @@ COPY . .
 RUN pnpm run build
 
 # ==============================================================================
-# Stage 2: Production Runtime
+# Stage 4: Production Runtime
 # ==============================================================================
 FROM node:22-alpine AS runner
 
@@ -51,7 +66,7 @@ EXPOSE 3000
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
+  CMD curl -f http://localhost:3000/api/health || exit 1
 
 # Start Nitro Server
 CMD ["node", ".output/server/index.mjs"]

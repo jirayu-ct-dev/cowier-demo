@@ -5,7 +5,7 @@ import { getPageCount, paginateItems } from '~/utils/table'
 
 definePageMeta({
   title: 'การสมัครสหกิจของนักศึกษา',
-  middleware: 'applications-prototype',
+  middleware: 'application-access',
   alias: ['/staff/applications'],
 })
 useHead({ title: 'การสมัครสหกิจของนักศึกษา' })

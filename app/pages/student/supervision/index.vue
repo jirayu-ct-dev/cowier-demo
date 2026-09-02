@@ -3,7 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search, UsersRound,
 import { getPageCount, paginateItems } from '~/utils/table'
 import type { SupervisionAppointment, SupervisionAppointmentStatus } from '~/composables/useSupervisionAppointments'
 
-definePageMeta({ title: 'ตารางนิเทศของฉัน', middleware: 'student-prototype' })
+definePageMeta({ title: 'ตารางนิเทศของฉัน', middleware: 'student' })
 useHead({ title: 'ตารางนิเทศของฉัน' })
 
 const currentStudentId = '66123456701'

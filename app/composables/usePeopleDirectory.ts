@@ -37,7 +37,7 @@ export interface PersonInput {
   section?: StudentSection
 }
 
-export type StudentApplicationStatus = 'submitted' | 'returned' | 'letter-issued' | 'confirmed' | 'cancelled'
+export type StudentApplicationStatus = 'submitted' | 'returned' | 'batched' | 'waiting-response' | 'waiting-review' | 'confirmed' | 'not-accepted' | 'cancelled'
 
 export interface StudentApplicationHistory {
   id: string
@@ -210,7 +210,7 @@ const applicationHistory: Record<string, StudentApplicationHistory[]> = {
     { id: 'REQ-2569-0098', company: 'บริษัท ดิจิทัลโฟลว์ จำกัด', position: 'UX/UI Intern', appliedAt: '2026-07-30', status: 'cancelled' },
   ],
   '66123456702': [
-    { id: 'REQ-2569-0151', company: 'บริษัท อีสานดิจิทัล จำกัด', position: 'Software Tester', appliedAt: '2026-08-20', status: 'letter-issued' },
+    { id: 'REQ-2569-0151', company: 'บริษัท อีสานดิจิทัล จำกัด', position: 'Software Tester', appliedAt: '2026-08-20', status: 'waiting-response' },
   ],
   '65123456719': [
     { id: 'REQ-2568-0064', company: 'บริษัท โคราชซอฟต์ จำกัด', position: 'Backend Developer', appliedAt: '2025-06-12', status: 'confirmed' },
@@ -252,8 +252,11 @@ export const recordStatusMeta: Record<PersonRecordStatus, { label: string, tone:
 export const studentApplicationStatusMeta: Record<StudentApplicationStatus, { label: string, tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info' }> = {
   submitted: { label: 'รอตรวจคำร้อง', tone: 'warning' },
   returned: { label: 'ส่งกลับแก้ไข', tone: 'danger' },
-  'letter-issued': { label: 'ออกหนังสือแล้ว', tone: 'info' },
+  batched: { label: 'รวมในชุดหนังสือแล้ว', tone: 'info' },
+  'waiting-response': { label: 'รอหนังสือตอบกลับ', tone: 'warning' },
+  'waiting-review': { label: 'รอตรวจผล', tone: 'info' },
   confirmed: { label: 'ยืนยันสถานประกอบการแล้ว', tone: 'success' },
+  'not-accepted': { label: 'ไม่ได้รับการตอบรับ', tone: 'danger' },
   cancelled: { label: 'ยกเลิกแล้ว', tone: 'neutral' },
 }
 

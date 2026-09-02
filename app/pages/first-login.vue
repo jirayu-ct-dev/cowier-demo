@@ -5,7 +5,7 @@ import { z } from 'zod'
 definePageMeta({ layout: 'auth', middleware: 'first-login' })
 useHead({ title: 'ตั้งรหัสผ่านใหม่' })
 
-const { currentAccount, completeFirstLogin } = useAuthPrototype()
+const { currentAccount, completeFirstLogin } = useAuth()
 const { showToast } = useToast()
 const newPassword = ref('')
 const confirmPassword = ref('')
@@ -32,12 +32,17 @@ const submitPassword = async () => {
 
   isSubmitting.value = true
   try {
-    await completeFirstLogin(parsed.data.newPassword)
+    await completeFirstLogin(parsed.data.newPassword, parsed.data.confirmPassword)
     showToast({ title: 'ตั้งรหัสผ่านใหม่แล้ว', description: 'เข้าสู่ระบบสำเร็จและพร้อมใช้งานตามสิทธิ์ของคุณ' })
     await navigateTo('/')
   }
-  catch {
-    submitError.value = 'ไม่สามารถตั้งรหัสผ่านได้ กรุณากลับไปเข้าสู่ระบบใหม่อีกครั้ง'
+  catch (error) {
+    const authError = error as { fieldErrors?: Record<string, string> }
+    fieldErrors.newPassword = authError.fieldErrors?.newPassword ?? ''
+    fieldErrors.confirmPassword = authError.fieldErrors?.confirmPassword ?? ''
+    if (!fieldErrors.newPassword && !fieldErrors.confirmPassword) {
+      submitError.value = 'ไม่สามารถตั้งรหัสผ่านได้ กรุณากลับไปเข้าสู่ระบบใหม่อีกครั้ง'
+    }
   }
   finally {
     isSubmitting.value = false

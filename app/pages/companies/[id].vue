@@ -3,7 +3,7 @@ import { ArrowLeft, Building2, Pencil, RotateCcw, Search, Trash2, UserRoundCheck
 import { z } from 'zod'
 import type { CompanyInput, SupervisionPlacement } from '~/composables/useSupervisionGroups'
 
-definePageMeta({ title: 'รายละเอียดสถานประกอบการ', middleware: 'company-prototype', alias: ['/staff/companies/:id', '/lecturer/companies/:id'] })
+definePageMeta({ title: 'รายละเอียดสถานประกอบการ', middleware: 'company-access', alias: ['/staff/companies/:id', '/lecturer/companies/:id'] })
 
 const route = useRoute()
 const { scenario } = useScenario()

@@ -1,10 +1,10 @@
 # 🎓 CWIE BRU — Co-op Supervision System
 
 > **ระบบบริหารจัดการและนิเทศงานสหกิจศึกษา (Cooperative Education Management & Supervision System)**  
-> ระบบสำหรับบริหารจัดการและติดตามการฝึกงานสหกิจศึกษาของนักศึกษา ตั้งแต่การเลือกสถานประกอบการ การจัดสรรอาจารย์นิเทศ การวางแผนตารางนิเทศ การบันทึกผลและประเมินผล ไปจนถึงการคำนวณค่าใช้จ่ายในการนิเทศ
+> ระบบสำหรับบริหารจัดการและติดตามการฝึกงานสหกิจศึกษาของนักศึกษา ตั้งแต่การเลือกสถานประกอบการ การจัดสรรอาจารย์นิเทศ การวางแผนตารางนิเทศ ไปจนถึงการบันทึกผลและประเมินผล
 
-> **สถานะปัจจุบัน:** เริ่มพัฒนาเฉพาะ UI ด้วย Mock Data ก่อน โดยยังไม่เชื่อม Backend
-> หรือฐานข้อมูล ดูแนวทางที่ [`dosc/architecture.md`](./dosc/architecture.md)
+> **สถานะปัจจุบัน:** Database foundation และ Authentication/Session/RBAC พร้อมใช้งานแล้ว
+> ส่วน Feature API อื่นกำลังพัฒนาแบบทีละ Checkpoint ดูสถานะที่ [`dosc/backend-plan.md`](./dosc/backend-plan.md)
 
 ---
 
@@ -16,16 +16,14 @@
 - **จัดการข้อมูล Master Data:** เพิ่ม ลบ แก้ไข และสืบค้นข้อมูลนักศึกษา อาจารย์ และสถานประกอบการ
 - **นำเข้าและส่งออกข้อมูล:** นำเข้า-ส่งออกข้อมูลนักศึกษาด้วยไฟล์ CSV และ Excel (`.xlsx`) พร้อมระบบตรวจสอบความถูกต้อง
 - **จัดการรอบสหกิจศึกษา:** จัดการข้อมูลปีการศึกษา ภาคเรียน และเปิด-ปิดสถานะรอบสหกิจ
-- **จัดสรรพื้นที่และความรับผิดชอบ:** กำหนดพื้นที่รับผิดชอบให้อาจารย์ตามภูมิภาค จังหวัด หรือสถานประกอบการ
-- **วางแผนและจัดตารางนิเทศ:** คัดกรองนักศึกษาเพื่อสร้างและแก้ไขตารางนิเทศ (แบ่งเป็นการนิเทศครั้งที่ 1 และ 2)
-- **ระบบตรวจสอบเวลาชนกัน (Conflict Detection):** ตรวจสอบตารางเวลาที่ซ้ำหรือชนกันของอาจารย์ นักศึกษา และสถานประกอบการ
-- **คำนวณค่าใช้จ่าย:** บันทึกค่าเดินทาง ค่าที่พัก ค่าเบี้ยเลี้ยง/อาหาร และคำนวณสรุปยอดรวมค่าใช้จ่าย
+- **จัดกลุ่มนิเทศ:** กำหนดอาจารย์และสถานประกอบการ แยกการนิเทศครั้งที่ 1 และ 2
+- **ติดตามการนิเทศ:** ดูตารางและความครบถ้วนของผลกับแบบประเมินแบบอ่านอย่างเดียว
 
 ### 2. 👨‍🏫 ส่วนสำหรับอาจารย์นิเทศ (Lecturer / Supervisor)
 - **เข้าสู่ระบบ / ยืนยันตัวตน:** ระบบเข้าสู่ระบบตามสิทธิ์อาจารย์
 - **ดูตารางนิเทศ:** ดูตารางนิเทศที่ตนเองได้รับมอบหมาย แยกตามครั้งที่ 1 และ 2
 - **ดูข้อมูลนักศึกษาและสถานประกอบการ:** ค้นหาและดูรายละเอียดนักศึกษาและสถานประกอบการที่ได้รับมอบหมาย
-- **อัปเดตสถานะการนิเทศ:** บันทึกสถานะ (จัดตารางแล้ว, นิเทศเสร็จแล้ว, เลื่อน, ยกเลิก)
+- **ดำเนินการนิเทศ:** บันทึกตารางและผู้เข้าร่วม ยืนยันนิเทศเสร็จแล้ว และบันทึกผล
 - **บันทึกผลและข้อเสนอแนะ:** บันทึกผลการนิเทศ ความก้าวหน้า และข้อเสนอแนะ
 - **ประเมินผล:** ประเมินสมรรถนะนักศึกษา และประเมินสถานประกอบการหลังการนิเทศ
 
@@ -46,9 +44,9 @@
 | **Icons** | [Lucide Icons](https://lucide.dev/) (`@lucide/vue`) |
 | **Date & Time** | [date-fns](https://date-fns.org/) |
 | **Schema Validation** | [Zod](https://zod.dev/) |
-| **Database & ORM (ระยะ Backend)** | [MySQL 8.4 LTS](https://dev.mysql.com/doc/refman/8.4/en/) + [Prisma ORM](https://www.prisma.io/) |
+| **Database & ORM** | [MySQL 8.4 LTS](https://dev.mysql.com/doc/refman/8.4/en/) + [Prisma ORM](https://www.prisma.io/) |
 | **Authentication** | [nuxt-auth-utils](https://github.com/atinux/nuxt-auth-utils) (Session-based RBAC) |
-| **Data Processing** | [exceljs](https://github.com/exceljs/exceljs) + [papaparse](https://www.papaparse.com/) |
+| **Data Processing** | `read-excel-file` + `write-excel-file` และ CSV utilities |
 | **DevOps & Deploy** | Docker (Multi-stage build) + Docker Compose |
 
 ---
@@ -67,16 +65,20 @@ ciwie-comsci/
 │   └── app.vue                   # Root Application Component
 ├── server/
 │   ├── api/                      # Nitro API Endpoints
-│   ├── middleware/               # Server-side Auth & RBAC Middleware
-│   └── utils/                    # Server Utilities
+│   ├── core/                     # Database, API errors, validation และ audit
+│   └── middleware/               # Server-side Auth & RBAC Middleware
 ├── prisma/
-│   └── schema.prisma             # Deferred until the Backend phase
+│   ├── migrations/               # Prisma migration history
+│   ├── seed.ts                   # Seed จังหวัด รอบสหกิจ และ Staff จาก environment
+│   └── schema.prisma             # MySQL data model จำนวน 25 models
 ├── dosc/
 │   ├── requirement.md            # Requirement Documentation
-│   ├── architecture.md           # UI-first Architecture
+│   ├── architecture.md           # Modular-monolith Architecture
+│   ├── database-design.md        # Database source-of-truth guide
+│   ├── backend-plan.md           # Backend checkpoints และ API contract
 │   └── ui-plan.md                # UI Checkpoints and Acceptance Plan
 ├── Dockerfile                    # Multi-stage Production Dockerfile
-├── docker-compose.yml            # Legacy Backend scaffold; migrate as one unit later
+├── docker-compose.yml            # MySQL → one-shot migration → Nuxt app
 ├── nuxt.config.ts                # Nuxt Configuration
 ├── package.json
 └── AGENTS.md                     # Coding Guidelines for AI & Developers
@@ -88,8 +90,8 @@ ciwie-comsci/
 
 ### ความต้องการของระบบ (Prerequisites)
 - **Node.js**: `v20` หรือ `v22+`
-- **Package Manager**: `pnpm` (แนะนำเวอร์ชัน 10 ขึ้นไป)
-- ระยะ UI ยังไม่ต้องติดตั้งหรือเปิด Database
+- **Package Manager**: `pnpm` 11 (Docker image ใช้ 11.18.0)
+- **Docker Desktop** หรือ MySQL 8.4 สำหรับงาน Backend
 
 ### 1. โคลนโปรเจกต์และติดตั้ง Dependencies
 ```bash
@@ -104,18 +106,31 @@ pnpm dev
 ```
 เปิดเบราว์เซอร์และเข้าไปที่ `http://localhost:3000`
 
-ระยะ UI ยังไม่เปิดใช้ Session, Prisma หรือเครื่องมือนำเข้าไฟล์ใน runtime
-Dependency เหล่านี้จะติดตั้งและตั้งค่าพร้อมกันเมื่อเริ่ม Checkpoint ที่เกี่ยวข้อง
+ก่อนรัน Backend แบบ local ให้คัดลอก `.env.example` เป็น `.env`, ตั้งค่า `DATABASE_URL`
+กับ `NUXT_SESSION_PASSWORD` ที่สุ่มและยาวอย่างน้อย 32 ตัว แล้วรัน migration และ seed
+ตามคำสั่งด้านล่าง
 
 ---
 
 ## 🐳 Docker และฐานข้อมูล
 
-ระยะ UI ให้รันด้วย `pnpm dev` เป็นหลัก ส่วน Docker Compose เดิมยังเป็น Backend scaffold
-ของ PostgreSQL และไม่ใช่สถาปัตยกรรมเป้าหมาย ห้ามนำไปใช้เป็นฐานสำหรับงานใหม่
+Docker Compose เริ่มบริการตามลำดับ MySQL healthy → migration สำเร็จ → Nuxt app
 
-เมื่อเริ่ม Backend จะเปลี่ยน Prisma provider, connection string, Docker Compose และ
-migration เป็น MySQL 8.4 LTS พร้อมกันตามแผนใน `dosc/architecture.md`
+```bash
+# เริ่มฐานข้อมูล, apply migration และเปิด app
+docker compose up -d
+
+# Seed ข้อมูลตั้งต้น (ตั้งค่า SEED_STAFF_* ใน .env ก่อนหากต้องการสร้าง Staff)
+docker compose --profile tools run --rm seed
+
+# ตรวจสถานะและ log
+docker compose ps -a
+docker compose logs migration app
+```
+
+ค่าเริ่มต้นคือ app ที่ `http://localhost:3000` และ MySQL ที่ `localhost:3306`.
+ห้ามใช้รหัสผ่านตัวอย่างจาก repository ใน production และให้ตั้ง
+`NUXT_SESSION_COOKIE_SECURE=true` เมื่อเปิดระบบผ่าน HTTPS
 
 ---
 
@@ -134,7 +149,19 @@ pnpm build
 # พรีวิว Production Build
 pnpm preview
 
-# Prisma validation/migration จะเริ่มใช้ในระยะ Backend
+# ตรวจคุณภาพ
+pnpm test
+pnpm test:integration
+pnpm typecheck
+pnpm lint
+pnpm prisma validate
+
+# Prisma database workflow
+pnpm db:generate
+pnpm db:migrate
+pnpm db:migrate:deploy
+pnpm db:seed
+pnpm db:reset
 ```
 
 ---

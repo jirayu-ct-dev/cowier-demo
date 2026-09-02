@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 
-definePageMeta({ title: "ดำเนินการคำร้อง", middleware: "lecturer-prototype" });
+definePageMeta({ title: "ดำเนินการคำร้อง", middleware: "lecturer" });
 
 type FormErrorKey = "requestIds" | "letterDate" | "fileName";
 
@@ -92,10 +92,11 @@ const letterForm = reactive<LetterForm>({
 const statusMeta = {
   submitted: { label: "รอตรวจคำร้อง", tone: "warning" },
   returned: { label: "ส่งกลับแก้ไข", tone: "danger" },
-  waiting_response: { label: "รอเอกสารตอบกลับ", tone: "warning" },
-  response_uploaded: { label: "รอตรวจผล", tone: "info" },
+  batched: { label: "รวมในชุดหนังสือแล้ว", tone: "info" },
+  "waiting-response": { label: "รอเอกสารตอบกลับ", tone: "warning" },
+  "waiting-review": { label: "รอตรวจผล", tone: "info" },
   confirmed: { label: "ยืนยันสถานประกอบการ", tone: "success" },
-  not_accepted: { label: "ไม่ได้รับการตอบรับ", tone: "danger" },
+  "not-accepted": { label: "ไม่ได้รับการตอบรับ", tone: "danger" },
   cancelled: { label: "ยกเลิก", tone: "neutral" },
 } as const;
 const companyStatusMeta = {
@@ -109,7 +110,7 @@ const documentStatusMeta = {
 } as const;
 const resultOptions = [
   { value: "confirmed", label: "ยืนยันสถานประกอบการ" },
-  { value: "not_accepted", label: "ไม่ได้รับการตอบรับ" },
+  { value: "not-accepted", label: "ไม่ได้รับการตอบรับ" },
 ];
 const steps = ["ตรวจคำร้อง", "ออกหนังสือ", "รอเอกสารตอบกลับ", "ยืนยันผล"];
 const currentStep = computed(() => {
@@ -119,7 +120,8 @@ const currentStep = computed(() => {
     request.value.status === "returned"
   )
     return 1;
-  if (request.value.status === "waiting_response") return 3;
+  if (request.value.status === "batched") return 2;
+  if (request.value.status === "waiting-response") return 3;
   return 4;
 });
 const relatedRequests = computed<PlacementReviewRequest[]>(() => {
@@ -288,7 +290,7 @@ const confirmResults = () => {
   try {
     confirmBatchResults(
       batch.value.id,
-      resultChoices.value as Record<string, "confirmed" | "not_accepted">,
+      resultChoices.value as Record<string, "confirmed" | "not-accepted">,
     );
     showToast({ title: "ยืนยันผลรายบุคคลแล้ว", description: batch.value.id });
     recordEvent(`ยืนยันผลคำร้อง: ${batch.value.id}`);
@@ -741,7 +743,7 @@ watch(responseReason, () => {
         </div>
       </template>
 
-      <template v-else-if="request.status === 'waiting_response' && batch">
+      <template v-else-if="request.status === 'waiting-response' && batch">
         <div class="space-y-6">
           <UiAlert tone="info" title="กำลังรอเอกสารตอบกลับ"
               >นักศึกษาในชุดสามารถดาวน์โหลดหนังสือและอัปโหลด PDF
@@ -750,7 +752,7 @@ watch(responseReason, () => {
         </div>
       </template>
 
-      <template v-else-if="request.status === 'response_uploaded' && batch">
+      <template v-else-if="request.status === 'waiting-review' && batch">
         <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div class="space-y-6">
             <UiCard

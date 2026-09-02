@@ -11,11 +11,11 @@ const props = defineProps<{
 }>()
 
 const steps = [
-  'ยื่นคำร้องขอเอกสาร',
-  'รอรับเอกสาร',
-  'ยื่นหนังสือให้สถานประกอบการ',
-  'รอหนังสือตอบรับ',
-  'ส่งหนังสือตอบรับให้เจ้าหน้าที่',
+  'สร้างคำร้อง',
+  'รอตรวจและจัดชุด',
+  'ออกหนังสือแล้ว',
+  'รอหนังสือตอบกลับ',
+  'รออาจารย์ตรวจผล',
   'ยืนยันสถานที่ฝึกงานแล้ว',
 ] as const
 
@@ -24,8 +24,10 @@ const statusStep: Record<PlacementStatus, number> = {
   submitted: 1,
   returned: 1,
   batched: 1,
-  'letter-issued': 2,
+  'waiting-response': 3,
+  'waiting-review': 4,
   confirmed: 5,
+  'not-accepted': 4,
   cancelled: 0,
 }
 const currentStep = computed(() => props.status ? statusStep[props.status] : 0)

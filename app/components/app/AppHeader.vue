@@ -14,18 +14,23 @@ const emit = defineEmits<{ openNavigation: [] }>()
 const route = useRoute()
 const { scenario } = useScenario()
 const { roleNotifications, unreadCount, markAllAsRead, openNotification } = useNotifications()
-const { logout } = useAuthPrototype()
+const { currentAccount, logout } = useAuth()
 
 const handleLogout = async () => {
-  await logout()
-  await navigateTo('/login')
+  try {
+    await logout()
+  }
+  finally {
+    await navigateTo('/login')
+  }
 }
 
 const roleLabel = computed(() => ({
   staff: 'เจ้าหน้าที่',
   lecturer: 'อาจารย์นิเทศ',
   student: 'นักศึกษา',
-}[scenario.value.role]))
+}[currentAccount.value?.role ?? scenario.value.role]))
+const accountName = computed(() => currentAccount.value?.name ?? scenario.value.userName)
 const pageTitle = computed(() => {
   const path = route.path
   if (/^\/(staff|lecturer)\/companies\/new$/.test(path)) return 'เพิ่มสถานประกอบการ'
@@ -106,9 +111,9 @@ const pageTitle = computed(() => {
 
       <DropdownMenuRoot>
         <DropdownMenuTrigger class="flex min-h-12 items-center gap-2.5 rounded-control border border-divider bg-canvas px-3 text-left hover:bg-surface">
-          <span class="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-ink">{{ scenario.userName.slice(0, 1) }}</span>
+          <span class="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-ink">{{ accountName.slice(0, 1) }}</span>
           <span class="hidden min-w-0 sm:block">
-            <span class="block max-w-40 truncate text-sm font-semibold text-ink">{{ scenario.userName }}</span>
+            <span class="block max-w-40 truncate text-sm font-semibold text-ink">{{ accountName }}</span>
             <span class="block text-xs text-muted">{{ roleLabel }}</span>
           </span>
           <ChevronDown class="hidden size-4 text-muted sm:block" aria-hidden="true" />
@@ -116,8 +121,8 @@ const pageTitle = computed(() => {
         <DropdownMenuPortal>
           <DropdownMenuContent :side-offset="8" align="end" class="z-50 min-w-64 rounded-panel border border-divider bg-canvas p-2 shadow-xl">
             <DropdownMenuLabel class="px-3 py-2 outline-none">
-              <span class="block text-sm font-semibold text-ink">{{ scenario.userName }}</span>
-              <span class="mt-0.5 block text-xs font-normal text-muted">{{ roleLabel }} · ข้อมูลจำลอง</span>
+              <span class="block text-sm font-semibold text-ink">{{ accountName }}</span>
+              <span class="mt-0.5 block text-xs font-normal text-muted">{{ roleLabel }}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator class="my-1 h-px bg-divider" />
             <DropdownMenuItem class="flex cursor-pointer items-center gap-2 rounded-control px-3 py-2.5 text-sm text-ink outline-none data-[highlighted]:bg-surface" @select="navigateTo('/account/password')">

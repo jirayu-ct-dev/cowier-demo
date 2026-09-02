@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ClipboardCheck, RotateCcw, Search, X } from 
 import type { SupervisionAppointment } from '~/composables/useSupervisionAppointments'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'การประเมิน', middleware: 'lecturer-prototype' })
+definePageMeta({ title: 'การประเมิน', middleware: 'lecturer' })
 useHead({ title: 'การประเมิน' })
 
 const { scenario } = useScenario()

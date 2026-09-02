@@ -2,7 +2,7 @@
 import { ArrowDown, ArrowUp, Building2, ChevronLeft, ChevronRight, FilePlus2, RotateCcw, Search, X } from '@lucide/vue'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'คำร้องของฉัน', middleware: 'student-prototype' })
+definePageMeta({ title: 'คำร้องของฉัน', middleware: 'student' })
 useHead({ title: 'คำร้องของฉัน' })
 
 const { scenario } = useScenario()
@@ -40,7 +40,7 @@ const filteredRequests = computed(() => {
         .some(value => value?.toLocaleLowerCase('th').includes(keyword))
       const matchesStatus = status.value === 'all'
         || (status.value === 'editable' && ['draft', 'submitted', 'returned'].includes(request.status))
-        || (status.value === 'waiting' && ['batched', 'letter-issued'].includes(request.status))
+        || (status.value === 'waiting' && ['batched', 'waiting-response', 'waiting-review'].includes(request.status))
         || (status.value === 'cancelled' && request.status === 'cancelled')
       return matchesSearch && matchesStatus
     })

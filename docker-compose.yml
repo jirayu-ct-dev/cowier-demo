@@ -13,12 +13,10 @@ services:
       MYSQL_USER: ${MYSQL_USER:-ciwie}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ciwie}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ciwie_root}
-      MYSQL_TEST_DATABASE: ${MYSQL_TEST_DATABASE:-ciwie_test}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
       interval: 10s
@@ -29,24 +27,45 @@ services:
       - ciwie-comsci-network
 
   # ==============================================================================
-  # One-shot migration service
-  # ============================================================================
-  migrate:
+  # Apply pending migrations once; the app starts only after this exits successfully.
+  # ==============================================================================
+  migration:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder
+      target: migration
+    container_name: ciwie-comsci-migration
     restart: "no"
     environment:
       DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
-    command: ["pnpm", "run", "db:migrate:deploy"]
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - ciwie-comsci-network
 
-  # ============================================================================
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migration
+    profiles: ["tools"]
+    restart: "no"
+    command: ["pnpm", "run", "db:seed"]
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
+      SEED_STAFF_USERNAME: ${SEED_STAFF_USERNAME:-}
+      SEED_STAFF_PASSWORD: ${SEED_STAFF_PASSWORD:-}
+      SEED_STAFF_NAME_PREFIX: ${SEED_STAFF_NAME_PREFIX:-}
+      SEED_STAFF_FIRST_NAME: ${SEED_STAFF_FIRST_NAME:-}
+      SEED_STAFF_LAST_NAME: ${SEED_STAFF_LAST_NAME:-}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - ciwie-comsci-network
+
+  # ==============================================================================
   # Nuxt 4 Application Service
   # ==============================================================================
   app:
@@ -61,10 +80,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: mysql://${MYSQL_USER:-ciwie}:${MYSQL_PASSWORD:-ciwie}@mysql:3306/${MYSQL_DATABASE:-ciwie_db}
       NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:-change_this_to_at_least_32_characters_long_secret_key}
+      NUXT_SESSION_COOKIE_SECURE: ${NUXT_SESSION_COOKIE_SECURE:-false}
       PORT: 3000
       HOST: 0.0.0.0
     depends_on:
-      migrate:
+      migration:
         condition: service_completed_successfully
     networks:
       - ciwie-comsci-network

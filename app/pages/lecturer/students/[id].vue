@@ -2,7 +2,7 @@
 import { ArrowLeft, Pencil, Save } from '@lucide/vue'
 import { z } from 'zod'
 
-definePageMeta({ title: 'รายละเอียดนักศึกษา', middleware: 'lecturer-prototype' })
+definePageMeta({ title: 'รายละเอียดนักศึกษา', middleware: 'lecturer' })
 useHead({ title: 'รายละเอียดนักศึกษา' })
 
 const route = useRoute()

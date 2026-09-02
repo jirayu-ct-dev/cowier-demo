@@ -2,9 +2,10 @@
 import { ArrowDown, ArrowLeft, ArrowUp, Building2, Check, ChevronLeft, ChevronRight, CirclePlus, FileCheck2, RotateCcw, Save, Search, X } from '@lucide/vue'
 import { format } from 'date-fns'
 import { z } from 'zod'
+import { provinceSeeds } from '~~/shared/constants/provinces'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'แจ้งข้อมูลที่ฝึกงาน', middleware: 'student-prototype' })
+definePageMeta({ title: 'แจ้งข้อมูลที่ฝึกงาน', middleware: 'student' })
 useHead({ title: 'แจ้งข้อมูลที่ฝึกงาน' })
 
 const route = useRoute()
@@ -66,8 +67,7 @@ const companySchema = z.object({
   address: z.string().trim().min(10, 'กรุณาระบุที่อยู่ให้ครบถ้วน'),
   province: z.string().min(1, 'กรุณาเลือกจังหวัด'),
 })
-const provinceOptions = ['กรุงเทพมหานคร', 'บุรีรัมย์', 'นครราชสีมา', 'ขอนแก่น', 'เชียงใหม่', 'ชลบุรี', 'สงขลา', 'สุพรรณบุรี']
-  .map(value => ({ value, label: value }))
+const provinceOptions = provinceSeeds.map(province => ({ value: province.nameTh, label: province.nameTh }))
 const companyStatusOptions = [
   { value: 'all', label: 'ทุกสถานะ' },
   { value: 'active', label: companyStatusMeta.active.label },

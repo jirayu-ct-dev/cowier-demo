@@ -1,5 +1,5 @@
 export default defineNuxtRouteMiddleware((to) => {
-  const { currentAccount } = useAuthPrototype()
+  const { currentAccount } = useAuth()
   const requiredRole = to.path.startsWith('/staff/companies')
     ? 'staff'
     : to.path.startsWith('/lecturer/companies')
@@ -10,3 +10,4 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo({ path: '/forbidden', query: { from: to.fullPath } })
   }
 })
+
