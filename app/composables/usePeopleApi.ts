@@ -54,6 +54,8 @@ export interface PeopleUpdateInput {
   canReviewPlacements?: boolean
 }
 
+export type ManagedAccountStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED'
+
 interface ApiErrorPayload {
   error?: {
     code?: string
@@ -130,5 +132,29 @@ export const usePeopleApi = () => {
     }
   }
 
-  return { list, get, create, update }
+  const updateAccountStatus = async (id: string, status: ManagedAccountStatus, reason?: string) => {
+    try {
+      return await $fetch<{ data: { user: unknown } }>(`/api/staff/users/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        body: { status, reason },
+      })
+    }
+    catch (error) {
+      throw toPeopleActionError(error)
+    }
+  }
+
+  const resetPassword = async (id: string, newPassword: string) => {
+    try {
+      return await $fetch<{ data: { user: unknown } }>(`/api/staff/users/${encodeURIComponent(id)}/reset-password`, {
+        method: 'POST',
+        body: { newPassword, confirmPassword: newPassword },
+      })
+    }
+    catch (error) {
+      throw toPeopleActionError(error)
+    }
+  }
+
+  return { list, get, create, update, updateAccountStatus, resetPassword }
 }
