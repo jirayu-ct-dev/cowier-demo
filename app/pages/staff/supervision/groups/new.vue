@@ -35,7 +35,7 @@ const selectedStudentCount = computed(() => selectedCompanies.value.reduce((tota
 
 const schema = z.object({
   name: z.string().trim().min(1, 'กรุณากรอกชื่อกลุ่ม'),
-  lecturerIds: z.array(z.string()).min(1, 'กรุณาเลือกอาจารย์อย่างน้อย 1 คน'),
+  lecturerIds: z.array(z.string()),
   companyIds: z.array(z.string()).min(1, 'กรุณาเลือกสถานประกอบการอย่างน้อย 1 แห่ง'),
 })
 
@@ -107,7 +107,7 @@ const submit = async () => {
           <ArrowLeft :size="17" aria-hidden="true" />กลับไปหน้าจัดกลุ่มอาจารย์
         </button>
         <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">สร้างกลุ่มอาจารย์นิเทศ</h2>
-        <p class="mt-1 text-sm leading-6 text-muted">เลือกอาจารย์ที่อยู่กลุ่มเดียวกัน แล้วกำหนดสถานประกอบการที่กลุ่มนี้รับผิดชอบ</p>
+        <p class="mt-1 text-sm leading-6 text-muted">เลือกสถานประกอบการเพื่อสร้างกลุ่มด้วยตนเอง โดยเพิ่มอาจารย์ตอนนี้หรือภายหลังได้</p>
       </div>
       <UiButton type="submit" :icon="Save" :loading="isSaving">บันทึกกลุ่ม</UiButton>
     </div>
@@ -124,7 +124,7 @@ const submit = async () => {
           <div class="mt-5"><UiInput v-model="name" label="ชื่อกลุ่มอาจารย์" placeholder="เช่น กลุ่มอาจารย์ 2" :error="errors.name" required /></div>
 
           <fieldset class="mt-5">
-            <legend class="text-sm font-semibold text-ink">อาจารย์ในกลุ่ม <span class="text-danger" aria-hidden="true">*</span></legend>
+            <legend class="text-sm font-semibold text-ink">อาจารย์ในกลุ่ม (เพิ่มภายหลังได้)</legend>
             <p class="mt-1 text-xs text-muted">แสดงเฉพาะอาจารย์ที่ยังไม่อยู่ในกลุ่มอื่นของการนิเทศครั้งนี้</p>
             <template v-if="lecturerCandidates.length">
               <div class="mt-3 hidden overflow-hidden rounded-control border border-divider md:block">

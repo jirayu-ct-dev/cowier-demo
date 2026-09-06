@@ -81,7 +81,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
 <template>
   <div>
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">จัดกลุ่มอาจารย์นิเทศ</h2><p class="mt-1 text-sm leading-6 text-muted">จัดอาจารย์ให้อยู่เป็นกลุ่ม แล้วมอบหมายสถานประกอบการที่แต่ละกลุ่มรับผิดชอบ</p></div>
+      <div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">จัดกลุ่มนิเทศ</h2><p class="mt-1 text-sm leading-6 text-muted">จัดกลุ่มสถานประกอบการตามพิกัด และกำหนดอาจารย์ผู้รับผิดชอบให้แต่ละกลุ่ม</p></div>
       <UiButton :icon="Plus" @click="startCreateGroup">สร้างกลุ่มอาจารย์</UiButton>
     </div>
 
@@ -95,6 +95,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
       <UiCard><p class="text-sm text-muted">นักศึกษา</p><p class="mt-2 text-3xl font-bold text-ink">{{ cycleStudentCount }}</p><p class="mt-1 text-xs text-muted">คน</p></UiCard>
     </div>
 
+    <SupervisionGroupingAssistant :cycle-id="cycleId" :round="round" :disabled="effectiveViewState !== 'data'" />
     <UiTabs :tabs="supervisionTabs" default-value="groups" label="ข้อมูลการจัดกลุ่มนิเทศ" variant="plain">
       <template #groups>
         <UiCard :padded="false">
@@ -110,7 +111,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
                 <tbody class="divide-y divide-divider">
                   <tr v-for="group in currentGroups" :key="group.id" class="hover:bg-surface/70">
                     <td class="px-5 py-4 align-top"><p class="font-semibold text-ink">{{ group.name }}</p><p class="mt-0.5 text-xs text-muted">{{ group.id }}</p></td>
-                    <td class="px-4 py-4 align-top"><div class="space-y-1.5"><p v-for="id in group.lecturerIds" :key="id" class="text-sm text-ink">{{ lecturerName(id) }}</p></div></td>
+                    <td class="px-4 py-4 align-top"><p v-if="!group.lecturerIds.length" class="text-sm text-muted">รอเพิ่มอาจารย์</p><div class="space-y-1.5"><p v-for="id in group.lecturerIds" :key="id" class="text-sm text-ink">{{ lecturerName(id) }}</p></div></td>
                     <td class="px-4 py-4 align-top">
                       <ul class="space-y-1.5">
                         <li v-for="company in getGroupCompanies(group)" :key="company.id" class="flex min-w-0 items-start gap-2">
@@ -127,7 +128,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
             <div class="divide-y divide-divider md:hidden">
               <article v-for="group in currentGroups" :key="group.id" class="p-5">
                 <div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ group.name }}</h4><p class="mt-1 text-xs text-muted">{{ group.id }}</p></div><UiButton class="shrink-0" size="sm" variant="secondary" @click="openGroupDialog(group)">ดูข้อมูล</UiButton></div>
-                <div class="mt-3 space-y-1.5"><p v-for="id in group.lecturerIds" :key="id" class="text-sm text-ink">{{ lecturerName(id) }}</p></div>
+                <div class="mt-3 space-y-1.5"><p v-if="!group.lecturerIds.length" class="text-sm text-muted">รอเพิ่มอาจารย์</p><p v-for="id in group.lecturerIds" :key="id" class="text-sm text-ink">{{ lecturerName(id) }}</p></div>
                 <div class="mt-3 border-t border-divider pt-3"><p class="text-xs font-semibold text-muted">สถานประกอบการที่รับผิดชอบ</p><ul class="mt-2 space-y-2"><li v-for="company in getGroupCompanies(group)" :key="company.id" class="flex min-w-0 items-start gap-2"><p class="min-w-0 flex-1 text-sm leading-5 text-ink">{{ company.name }} <span class="whitespace-nowrap text-muted">· {{ company.province }}</span></p><UiBadge tone="info" class="shrink-0">{{ company.studentCount }} คน</UiBadge></li></ul></div>
               </article>
             </div>
@@ -184,6 +185,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
       :description="selectedGroup ? `${selectedCycleLabel} · นิเทศครั้งที่ ${selectedGroup.round} · ${selectedGroup.id}` : undefined"
     >
       <template v-if="selectedGroup">
+        <GroupLecturerEditor :key="selectedGroup.id" :group="selectedGroup" />
         <div class="grid gap-3 sm:grid-cols-3">
           <div class="rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">อาจารย์ในกลุ่ม</p><p class="mt-1 text-xl font-bold text-ink">{{ selectedGroup.lecturerIds.length }} คน</p></div>
           <div class="rounded-control border border-divider bg-surface p-4"><p class="text-xs font-medium text-muted">สถานประกอบการ</p><p class="mt-1 text-xl font-bold text-ink">{{ selectedGroupCompanies.length }} แห่ง</p></div>

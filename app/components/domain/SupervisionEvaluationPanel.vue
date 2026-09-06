@@ -17,6 +17,8 @@ interface Props {
   currentLecturerId: string
   lecturerName: (id: string) => string
   canManage: boolean
+  companyOnly?: boolean
+  allowCompanyEvaluation?: boolean
 }
 
 const props = defineProps<Props>()
@@ -81,26 +83,27 @@ const companyForm = reactive({
 const evaluatorLecturerIds = computed(() => props.appointment.result.actualLecturerIds.length
   ? props.appointment.result.actualLecturerIds
   : props.appointment.lecturerIds)
-const isParticipant = computed(() => evaluatorLecturerIds.value.includes(props.currentLecturerId))
-const companyEvaluatorId = computed(() => evaluatorLecturerIds.value[0] ?? '')
-const isCompanyEvaluator = computed(() => companyEvaluatorId.value === props.currentLecturerId)
+const companyEvaluation = computed(() => getCompanyEvaluation(props.appointment.id))
+const isParticipant = computed(() => props.allowCompanyEvaluation || evaluatorLecturerIds.value.includes(props.currentLecturerId))
+const companyEvaluatorId = computed(() => companyEvaluation.value?.evaluatorId
+  ?? (props.allowCompanyEvaluation ? props.currentLecturerId : evaluatorLecturerIds.value[0] ?? ''))
+const isCompanyEvaluator = computed(() => Boolean(props.allowCompanyEvaluation || companyEvaluatorId.value === props.currentLecturerId))
 const selectedStudent = computed(() => props.students.find(student => student.studentId === selectedStudentId.value) ?? null)
 const selectedStudentEvaluation = computed(() => selectedStudentId.value
   ? getStudentEvaluation(props.appointment.id, selectedStudentId.value, props.currentLecturerId)
   : null)
-const companyEvaluation = computed(() => getCompanyEvaluation(props.appointment.id))
 const currentStudentSubmitted = computed(() => props.students.filter(student => getStudentEvaluation(
   props.appointment.id,
   student.studentId,
   props.currentLecturerId,
 )?.status === 'submitted').length)
-const currentRequiredCount = computed(() => props.students.length + (isCompanyEvaluator.value ? 1 : 0))
-const currentSubmittedCount = computed(() => currentStudentSubmitted.value + (isCompanyEvaluator.value && companyEvaluation.value?.status === 'submitted' ? 1 : 0))
-const totalRequiredCount = computed(() => evaluatorLecturerIds.value.length * props.students.length + 1)
-const totalSubmittedCount = computed(() => studentEvaluations.value.filter(evaluation => evaluation.appointmentId === props.appointment.id
+const currentRequiredCount = computed(() => props.companyOnly ? 1 : props.students.length + (isCompanyEvaluator.value ? 1 : 0))
+const currentSubmittedCount = computed(() => (props.companyOnly ? 0 : currentStudentSubmitted.value) + (isCompanyEvaluator.value && companyEvaluation.value?.status === 'submitted' ? 1 : 0))
+const totalRequiredCount = computed(() => props.companyOnly ? 1 : evaluatorLecturerIds.value.length * props.students.length + 1)
+const totalSubmittedCount = computed(() => (props.companyOnly ? 0 : studentEvaluations.value.filter(evaluation => evaluation.appointmentId === props.appointment.id
   && evaluatorLecturerIds.value.includes(evaluation.lecturerId)
   && props.students.some(student => student.studentId === evaluation.studentId)
-  && evaluation.status === 'submitted').length + (companyEvaluations.value.some(evaluation => evaluation.appointmentId === props.appointment.id && evaluation.status === 'submitted') ? 1 : 0))
+  && evaluation.status === 'submitted').length) + (companyEvaluations.value.some(evaluation => evaluation.appointmentId === props.appointment.id && evaluation.status === 'submitted') ? 1 : 0))
 const evaluationComplete = computed(() => totalSubmittedCount.value === totalRequiredCount.value)
 const selectedStudentLocked = computed(() => selectedStudentEvaluation.value?.status === 'submitted')
 const companyLocked = computed(() => companyEvaluation.value?.status === 'submitted')
@@ -204,7 +207,7 @@ const setCompanyDialogOpen = (open: boolean) => {
 const submitAllEvaluations = async () => {
   if (isSaving.value || !props.canManage) return
   saveAllError.value = ''
-  const pendingStudents = props.students.filter(student => getStudentEvaluation(
+  const pendingStudents = (props.companyOnly ? [] : props.students).filter(student => getStudentEvaluation(
     props.appointment.id,
     student.studentId,
     props.currentLecturerId,
@@ -235,7 +238,10 @@ const submitAllEvaluations = async () => {
     if (parsedCompany?.success) submitCompanyEvaluation(props.appointment.id, props.currentLecturerId, parsedCompany.data)
     stagedStudentEvaluations.value = {}
     stagedCompanyEvaluation.value = null
-    showToast({ title: 'บันทึกแบบประเมินทั้งหมดแล้ว', description: 'แบบประเมินนักศึกษาและสถานประกอบการถูกบันทึกเรียบร้อยแล้ว' })
+    showToast({
+      title: props.companyOnly ? 'บันทึกแบบประเมินสถานประกอบการแล้ว' : 'บันทึกแบบประเมินทั้งหมดแล้ว',
+      description: props.companyOnly ? 'คะแนนและความคิดเห็นถูกบันทึกเรียบร้อยแล้ว' : 'แบบประเมินนักศึกษาและสถานประกอบการถูกบันทึกเรียบร้อยแล้ว',
+    })
   } catch {
     showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง' })
   } finally {
@@ -250,7 +256,7 @@ const submitAllEvaluations = async () => {
     <div class="border-b border-divider p-5 sm:p-6">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 class="text-lg font-bold text-ink">แบบประเมิน</h3>
+          <h3 class="text-lg font-bold text-ink">{{ companyOnly ? 'แบบประเมินสถานประกอบการ' : 'แบบประเมิน' }}</h3>
         </div>
         <UiBadge :tone="evaluationComplete ? 'success' : totalSubmittedCount ? 'warning' : 'neutral'">
           {{ evaluationComplete ? 'ประเมินครบถ้วน' : totalSubmittedCount ? 'กำลังประเมิน' : 'ยังไม่เริ่มประเมิน' }}
@@ -259,7 +265,7 @@ const submitAllEvaluations = async () => {
 
       <div class="mt-5 grid gap-3 sm:grid-cols-2">
         <div class="rounded-control border border-divider bg-surface p-4">
-          <p class="text-xs font-medium text-muted">งานประเมินของคุณ</p>
+          <p class="text-xs font-medium text-muted">{{ companyOnly ? 'สถานะการประเมิน' : 'งานประเมินของคุณ' }}</p>
           <p class="mt-1 text-xl font-bold text-ink">{{ currentSubmittedCount }} / {{ currentRequiredCount }}</p>
         </div>
         <div class="rounded-control border border-divider bg-surface p-4">
@@ -290,7 +296,7 @@ const submitAllEvaluations = async () => {
         <UiAlert v-if="!isCompanyEvaluator && companyEvaluation?.status !== 'submitted'" class="mt-4" tone="info" title="ไม่ต้องกรอกแบบประเมินซ้ำ">รออาจารย์ผู้รับผิดชอบจัดทำแบบประเมินสถานประกอบการร่วม</UiAlert>
       </section>
 
-      <section id="student-evaluation-panel" class="border-t border-divider p-5 sm:p-6" aria-labelledby="student-evaluation-heading">
+      <section v-if="!companyOnly" id="student-evaluation-panel" class="border-t border-divider p-5 sm:p-6" aria-labelledby="student-evaluation-heading">
         <div class="flex items-start justify-between gap-3">
           <h4 id="student-evaluation-heading" class="font-bold text-ink">ประเมินนักศึกษารายบุคคล</h4>
           <UiBadge tone="info">{{ currentStudentSubmitted }} / {{ students.length }} คน</UiBadge>
@@ -318,7 +324,7 @@ const submitAllEvaluations = async () => {
     <div v-if="canManage" class="mt-6 border-t border-divider pt-6">
       <form class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end" @submit.prevent="submitAllEvaluations">
         <p v-if="saveAllError" class="text-sm font-medium text-danger sm:mr-auto">{{ saveAllError }}</p>
-        <UiButton type="submit" :icon="Save" :loading="isSaving">บันทึกแบบประเมินทั้งหมด</UiButton>
+        <UiButton type="submit" :icon="Save" :loading="isSaving">{{ companyOnly ? 'บันทึกแบบประเมินสถานประกอบการ' : 'บันทึกแบบประเมินทั้งหมด' }}</UiButton>
       </form>
     </div>
 

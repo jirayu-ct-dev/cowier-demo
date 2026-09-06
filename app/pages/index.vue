@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, RotateCcw, Search, Users, X } from '@lucide/vue'
+import { ArrowDown, ArrowRight, ArrowUp, BriefcaseBusiness, Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, GraduationCap, RotateCcw, Search, Users, UsersRound, X } from '@lucide/vue'
 import type { Component } from 'vue'
 import { getPageCount, paginateItems } from '~/utils/table'
+import { summarizeStudentPlacements } from '~/utils/studentPlacementSummary'
 
 definePageMeta({ title: 'หน้าหลัก' })
 useHead({ title: 'หน้าหลัก' })
@@ -9,6 +10,10 @@ useHead({ title: 'หน้าหลัก' })
 const { scenario } = useScenario()
 const { cycles, selectedCycle } = useCoopCycles()
 const { activeRequest, findCompany } = useStudentPlacements()
+const { canAccess } = useLecturerPermissions()
+const { people } = usePeopleDirectory()
+const { requests: placementPreviewRequests } = usePlacementRequestPreview()
+const { groups, getUnassignedCompanies } = useSupervisionGroups()
 const roleLabel = computed(() => ({ staff: 'เจ้าหน้าที่', lecturer: 'อาจารย์', student: 'นักศึกษา' }[scenario.value.role]))
 
 type DashboardTone = 'neutral' | 'warning' | 'info' | 'success' | 'danger'
@@ -21,53 +26,76 @@ interface DashboardData {
   recentItems: Array<{ id: string, primary: string, secondary: string, status: string, tone: DashboardTone }>
 }
 
+interface QuickAction {
+  label: string
+  description: string
+  to: string
+  icon: Component
+  primary?: boolean
+}
+
+const quickActions = computed<QuickAction[]>(() => ({
+  staff: [
+    { label: 'ตรวจสถานะนักศึกษา', description: 'ค้นหาและจัดการข้อมูลในรอบปัจจุบัน', to: '/staff/master-data/students', icon: GraduationCap },
+    { label: 'ตรวจการสมัครสหกิจ', description: 'ดูสถานะการสมัครของนักศึกษา', to: '/staff/applications', icon: BriefcaseBusiness },
+    { label: 'จัดกลุ่มนิเทศ', description: 'มอบหมายอาจารย์และสถานประกอบการ', to: '/staff/supervision/groups', icon: UsersRound },
+    { label: 'ดูตารางนิเทศ', description: 'ตรวจตารางครั้งที่ 1 และครั้งที่ 2', to: '/staff/supervision', icon: CalendarDays },
+  ],
+  lecturer: [
+    ...(canAccess() ? [{ label: 'ตรวจคำร้องและผลตอบกลับ', description: 'ตรวจข้อมูลโดยเจ้าหน้าที่เป็นผู้ออกหนังสือ', to: '/lecturer/placements', icon: ClipboardCheck, primary: true }] : []),
+    { label: 'ดูตารางนิเทศ', description: 'เปิดนัดหมายที่รับผิดชอบ', to: '/lecturer/supervision', icon: CalendarDays, primary: !canAccess() },
+    { label: 'ประเมินผลการนิเทศ', description: 'ทำงานประเมินที่ยังค้างอยู่', to: '/lecturer/evaluations', icon: ClipboardList },
+    { label: 'ค้นหานักศึกษา', description: 'ดูข้อมูลและประวัติคำร้อง', to: '/lecturer/students', icon: GraduationCap },
+  ],
+  student: [
+    {
+      label: activeRequest.value ? 'เปิดคำร้องปัจจุบัน' : 'แจ้งข้อมูลที่ฝึกงาน',
+      description: activeRequest.value ? 'ดูสถานะและขั้นตอนถัดไปของคำร้อง' : 'เริ่มส่งข้อมูลสถานประกอบการ',
+      to: activeRequest.value ? `/student/placements/${activeRequest.value.id}` : '/student/placements/new',
+      icon: ClipboardList,
+      primary: true,
+    },
+    { label: 'ติดตามการสมัคร', description: 'ดูสถานะการติดต่อสถานประกอบการ', to: '/student/applications', icon: BriefcaseBusiness },
+    { label: 'ดูตารางนิเทศ', description: 'ตรวจวัน เวลา และอาจารย์นิเทศ', to: '/student/supervision', icon: CalendarDays },
+  ],
+}[scenario.value.role]))
+
 const currentCycleDashboard: { staff: DashboardData, lecturer: DashboardData, student: DashboardData } = {
   staff: {
     summary: [
-      { label: 'นักศึกษาในรอบ', value: '248', hint: 'ยืนยันสถานประกอบการแล้ว 201 คน', icon: Users },
-      { label: 'ยืนยันสถานประกอบการแล้ว', value: '201', hint: 'คิดเป็น 81% ของนักศึกษาในรอบ', icon: Building2 },
-      { label: 'รอมอบหมายกลุ่มนิเทศ', value: '6', hint: 'สถานประกอบการที่ยังไม่มีกลุ่มอาจารย์รับผิดชอบ', icon: ClipboardCheck },
-      { label: 'กลุ่มอาจารย์นิเทศ', value: '18', hint: 'ครอบคลุม 74 สถานประกอบการ', icon: CalendarDays },
+      { label: 'นักศึกษาในรอบ', value: '0', hint: 'ยังไม่มีนักศึกษาในรอบ', icon: Users },
+      { label: 'ยืนยันสถานประกอบการแล้ว', value: '0', hint: 'ยังไม่มีการยืนยันสถานประกอบการ', icon: Building2 },
+      { label: 'รอมอบหมายกลุ่มนิเทศ', value: '0', hint: 'ไม่มีสถานประกอบการรอมอบหมายกลุ่มอาจารย์', icon: ClipboardCheck },
+      { label: 'กลุ่มอาจารย์นิเทศ', value: '0', hint: 'ยังไม่มีกลุ่มอาจารย์นิเทศ', icon: CalendarDays },
     ],
     recentTitle: 'สถานะนักศึกษาในรอบ',
     primaryLabel: 'นักศึกษา',
     secondaryLabel: 'สถานประกอบการ',
-    recentItems: [
-      { id: 'STU-66010041', primary: 'นายธนกฤต พูนทรัพย์', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'ยังไม่เริ่มปฏิบัติงาน', tone: 'warning' },
-      { id: 'STU-66010040', primary: 'นางสาวปภาวดี นาคแก้ว', secondary: 'บริษัท ไอทีโซลูชัน จำกัด', status: 'กำลังปฏิบัติงาน', tone: 'info' },
-      { id: 'STU-66010039', primary: 'นายณัฐวุฒิ ทองดี', secondary: 'โรงพยาบาลบุรีรัมย์', status: 'ปฏิบัติงานเสร็จแล้ว', tone: 'success' },
-    ],
+    recentItems: [],
   },
   lecturer: {
     summary: [
-      { label: 'คำร้องรอตรวจ', value: '12', hint: 'อาจารย์ทุกคนสามารถเปิดตรวจได้', icon: ClipboardCheck },
-      { label: 'หนังสือตอบกลับรอตรวจ', value: '5', hint: 'รอยืนยันผลรายบุคคล', icon: Building2 },
-      { label: 'รายการนิเทศที่รับผิดชอบ', value: '6', hint: 'ครั้งที่ 1 จำนวน 4 รายการ', icon: CalendarDays },
-      { label: 'งานประเมินค้าง', value: '4', hint: 'จากนักศึกษาที่นิเทศเสร็จแล้ว', icon: Users },
+      { label: 'คำร้องรอตรวจ', value: '0', hint: 'ยังไม่มีคำร้องรอตรวจ', icon: ClipboardCheck },
+      { label: 'หนังสือตอบกลับรอตรวจ', value: '0', hint: 'ยังไม่มีเอกสารตอบกลับ', icon: Building2 },
+      { label: 'รายการนิเทศที่รับผิดชอบ', value: '0', hint: 'ยังไม่มีการมอบหมาย', icon: CalendarDays },
+      { label: 'งานประเมินค้าง', value: '0', hint: 'ยังไม่มีงานประเมิน', icon: Users },
     ],
     recentTitle: 'งานที่ต้องดำเนินการ',
     primaryLabel: 'นักศึกษา / สถานประกอบการ',
     secondaryLabel: 'รายละเอียดงาน',
-    recentItems: [
-      { id: 'REQ-0269-041', primary: 'นายธนกฤต พูนทรัพย์', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'รอตรวจคำร้อง', tone: 'warning' },
-      { id: 'REQ-0269-037', primary: 'นางสาวปภาวดี นาคแก้ว', secondary: 'บริษัท ไอทีโซลูชัน จำกัด', status: 'รอตรวจหนังสือตอบกลับ', tone: 'info' },
-      { id: 'SUP-0269-014', primary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', secondary: '2 ก.ย. 2569 · ช่วงเช้า', status: 'รอการนิเทศ', tone: 'info' },
-    ],
+    recentItems: [],
   },
   student: {
     summary: [
-      { label: 'สถานะคำร้อง', value: 'ยืนยันแล้ว', hint: 'หนังสือตอบกลับได้รับการตรวจแล้ว', icon: ClipboardCheck },
-      { label: 'สถานที่ฝึกงาน', value: 'ยืนยันแล้ว', hint: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', icon: Building2 },
-      { label: 'สถานะการปฏิบัติงาน', value: 'ยังไม่เริ่ม', hint: 'เปลี่ยนโดยเจ้าหน้าที่และไม่เปลี่ยนตามวันที่อัตโนมัติ', icon: Users },
+      { label: 'สถานะคำร้อง', value: 'ยังไม่มี', hint: 'ยังไม่ได้ส่งคำร้องสถานประกอบการ', icon: ClipboardCheck },
+      { label: 'สถานที่ฝึกงาน', value: 'ยังไม่มี', hint: 'ยังไม่ได้ยืนยันสถานประกอบการ', icon: Building2 },
+      { label: 'สถานะการปฏิบัติงาน', value: 'ยังไม่มี', hint: 'จะแสดงเมื่อมีข้อมูลการปฏิบัติงาน', icon: Users },
       { label: 'นัดนิเทศถัดไป', value: 'ยังไม่มี', hint: 'จะแสดงเมื่ออาจารย์เผยแพร่ตารางนิเทศ', icon: CalendarDays },
     ],
     recentTitle: 'ความคืบหน้าของฉัน',
     primaryLabel: 'รายการ',
     secondaryLabel: 'รายละเอียด',
-    recentItems: [
-      { id: 'REQ-0269-018', primary: 'คำร้องสถานประกอบการ', secondary: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด', status: 'ยืนยันแล้ว', tone: 'success' },
-      { id: 'WORK-0269-018', primary: 'การปฏิบัติงาน', secondary: 'รอถึงช่วงฝึกงานและการอัปเดตสถานะจากเจ้าหน้าที่', status: 'ยังไม่เริ่มปฏิบัติงาน', tone: 'warning' },
-    ],
+    recentItems: [],
   },
 }
 
@@ -98,15 +126,47 @@ const dashboardByCycle: Record<string, { staff: DashboardData, lecturer: Dashboa
 }
 
 const canSelectDashboardCycle = computed(() => scenario.value.role === 'staff' || scenario.value.role === 'lecturer')
-const dashboardCycleId = ref(selectedCycle.value.id)
-const cycleOptions = cycles.map(cycle => ({ value: cycle.id, label: `${cycle.label} · ${cycle.cohort}` }))
+const dashboardCycles = cycles.filter(cycle => cycle.id !== 'CYCLE-2569-SUMMER')
+const dashboardCycleId = ref(dashboardCycles.find(cycle => cycle.id === selectedCycle.value.id)?.id ?? dashboardCycles[0]!.id)
+const cycleOptions = dashboardCycles.map(cycle => ({ value: cycle.id, label: `${cycle.label} · ${cycle.cohort}` }))
 const dashboardCycle = computed(() => canSelectDashboardCycle.value
-  ? cycles.find(cycle => cycle.id === dashboardCycleId.value) ?? selectedCycle.value
+  ? dashboardCycles.find(cycle => cycle.id === dashboardCycleId.value) ?? dashboardCycles[0]!
   : selectedCycle.value)
 const dashboard = computed<DashboardData>(() => {
   if (scenario.value.role === 'student') return currentCycleDashboard.student
+  if (scenario.value.role === 'staff') return staffDashboard.value
   return dashboardByCycle[dashboardCycle.value.id]?.[scenario.value.role] ?? emptyLecturerDashboard
 })
+const staffPlacementSummary = computed(() => summarizeStudentPlacements(
+  people.value.filter(person => person.type === 'student' && person.recordStatus === 'active' && person.cycle === dashboardCycle.value.label),
+  placementPreviewRequests.value,
+  dashboardCycle.value.id,
+))
+const staffRecentItems = computed<DashboardData['recentItems']>(() => people.value
+  .filter(person => person.type === 'student' && person.recordStatus === 'active' && person.cycle === dashboardCycle.value.label)
+  .map((person) => {
+    const request = placementPreviewRequests.value.find(item => item.cycleId === dashboardCycle.value.id && item.application.studentId === person.id)
+    const confirmed = Boolean(person.company?.trim()) || request?.status === 'confirmed'
+    return {
+      id: person.id,
+      primary: getPersonFullName(person),
+      secondary: person.company || request?.application.companyName || 'ยังไม่ระบุสถานประกอบการ',
+      status: confirmed ? 'ยืนยันสถานประกอบการ' : request ? 'ยังไม่ยืนยันสถานประกอบการ' : 'ยังไม่ดำเนินการ',
+      tone: confirmed ? 'success' : request ? 'warning' : 'neutral',
+    }
+  }))
+const staffDashboard = computed<DashboardData>(() => ({
+  summary: [
+    { label: 'นักศึกษาในรอบ', value: String(staffPlacementSummary.value.total), hint: 'นักศึกษาที่ใช้งานอยู่ในรอบที่เลือก', icon: Users },
+    { label: 'ยืนยันสถานประกอบการแล้ว', value: String(staffPlacementSummary.value.confirmed), hint: 'พร้อมเข้าสู่ขั้นตอนจัดกลุ่มนิเทศ', icon: Building2 },
+    { label: 'รอมอบหมายกลุ่มนิเทศ', value: String(getUnassignedCompanies(dashboardCycle.value.id, 1).length), hint: 'สถานประกอบการที่ยังไม่อยู่ในกลุ่มนิเทศครั้งที่ 1', icon: ClipboardCheck },
+    { label: 'กลุ่มอาจารย์นิเทศ', value: String(groups.value.filter(group => group.cycleId === dashboardCycle.value.id).length), hint: 'รวมกลุ่มนิเทศครั้งที่ 1 และครั้งที่ 2', icon: CalendarDays },
+  ],
+  recentTitle: 'สถานะนักศึกษาในรอบ',
+  primaryLabel: 'นักศึกษา',
+  secondaryLabel: 'สถานประกอบการ',
+  recentItems: staffRecentItems.value,
+}))
 const summaryGridClass = 'xl:grid-cols-4'
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 const search = ref('')
@@ -221,17 +281,42 @@ onBeforeUnmount(() => {
       :request-id="activeRequest?.id"
       :company-name="activeRequest ? findCompany(activeRequest.companyId)?.name : undefined"
     />
-    <CycleContextPanel v-else class="mb-6" :cycle="dashboardCycle" />
+    <CycleContextPanel v-else-if="scenario.role === 'lecturer'" class="mb-6" :cycle="dashboardCycle" />
+
+    <section v-if="scenario.role !== 'staff'" class="mb-6" aria-labelledby="quick-actions-title">
+      <div class="mb-3">
+        <h3 id="quick-actions-title" class="text-lg font-bold text-ink">ดำเนินการต่อ</h3>
+        <p class="mt-1 text-sm text-muted">เปิดงานสำคัญได้ทันทีโดยไม่ต้องค้นหาในเมนู</p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <NuxtLink
+          v-for="action in quickActions"
+          :key="action.to"
+          :to="action.to"
+          class="group flex min-h-24 items-center gap-3 rounded-panel border p-4 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          :class="action.primary ? 'border-primary bg-warning-soft hover:bg-primary/20' : 'border-divider bg-canvas hover:bg-surface'"
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-control" :class="action.primary ? 'bg-primary text-ink' : 'bg-surface text-muted'">
+            <component :is="action.icon" :size="20" aria-hidden="true" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-semibold text-ink">{{ action.label }}</span>
+            <span class="mt-1 block text-xs leading-5 text-muted">{{ action.description }}</span>
+          </span>
+          <ArrowRight class="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </NuxtLink>
+      </div>
+    </section>
 
     <template v-if="effectiveViewState === 'loading'">
-      <div class="grid gap-4 sm:grid-cols-2" :class="summaryGridClass" aria-label="กำลังโหลดหน้าหลัก">
+      <div v-if="scenario.role !== 'staff'" class="grid gap-4 sm:grid-cols-2" :class="summaryGridClass" aria-label="กำลังโหลดหน้าหลัก">
         <UiCard v-for="index in dashboard.summary.length" :key="index">
           <UiSkeleton class="h-4 w-28" />
           <UiSkeleton class="mt-5 h-9 w-16" />
           <UiSkeleton class="mt-3 h-3 w-40" />
         </UiCard>
       </div>
-      <UiCard class="mt-6">
+      <UiCard :class="scenario.role !== 'staff' ? 'mt-6' : undefined">
         <UiSkeleton class="h-6 w-44" />
         <UiSkeleton v-for="index in 3" :key="index" class="mt-5 h-14 w-full" />
       </UiCard>
@@ -245,7 +330,7 @@ onBeforeUnmount(() => {
     <AppErrorState v-else-if="effectiveViewState === 'error'" @retry="retry" />
 
     <template v-else>
-      <div class="grid gap-4 sm:grid-cols-2" :class="summaryGridClass">
+      <div v-if="scenario.role !== 'staff'" class="grid gap-4 sm:grid-cols-2" :class="summaryGridClass">
         <UiCard v-for="item in summary" :key="item.label">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -257,6 +342,39 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <p class="mt-4 text-xs leading-5 text-muted">{{ item.hint }}</p>
+        </UiCard>
+      </div>
+
+      <div v-if="scenario.role === 'staff'" class="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.55fr)]">
+        <StudentPlacementDonut
+          class="h-full"
+          :summary="staffPlacementSummary"
+          :cycle-label="dashboardCycle.label"
+        />
+
+        <UiCard class="h-full" aria-labelledby="staff-quick-actions-title">
+          <div>
+            <h3 id="staff-quick-actions-title" class="text-lg font-bold text-ink">ดำเนินการต่อ</h3>
+            <p class="mt-1 text-sm text-muted">ทางลัดสำหรับงานหลักของเจ้าหน้าที่</p>
+          </div>
+          <nav class="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-1" aria-label="ทางลัดงานเจ้าหน้าที่">
+            <NuxtLink
+              v-for="action in quickActions"
+              :key="action.to"
+              :to="action.to"
+              class="group flex min-h-16 items-center gap-3 rounded-control border p-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              :class="action.primary ? 'border-primary bg-warning-soft hover:bg-primary/20' : 'border-divider bg-canvas hover:bg-surface'"
+            >
+              <span class="grid size-9 shrink-0 place-items-center rounded-control" :class="action.primary ? 'bg-primary text-ink' : 'bg-surface text-muted'">
+                <component :is="action.icon" :size="18" aria-hidden="true" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-ink">{{ action.label }}</span>
+                <span class="mt-0.5 block text-xs leading-5 text-muted">{{ action.description }}</span>
+              </span>
+              <ArrowRight class="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </NuxtLink>
+          </nav>
         </UiCard>
       </div>
 
@@ -279,7 +397,7 @@ onBeforeUnmount(() => {
               </span>
             </label>
             <div class="flex flex-wrap items-center justify-end gap-2 lg:ml-auto lg:flex-nowrap">
-              <div class="w-full sm:w-48">
+              <div class="w-full" :class="scenario.role === 'staff' ? 'sm:w-max sm:shrink-0 sm:whitespace-nowrap' : 'sm:w-48'">
                 <UiSelect v-model="status" :options="statusOptions" label="กรองตามสถานะ" :label-visible="false" />
               </div>
               <button type="button" class="inline-grid size-11 shrink-0 place-items-center rounded-control border border-divider bg-canvas text-ink transition-colors hover:bg-surface" aria-label="รีเซ็ตตาราง" title="รีเซ็ตตาราง" @click="resetTable">
@@ -288,7 +406,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div v-if="hasActiveFilters" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <div v-if="scenario.role !== 'staff' && hasActiveFilters" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <span class="text-muted">ตัวกรองที่ใช้:</span>
             <span v-if="search" class="inline-flex min-h-8 items-center rounded-full bg-surface px-3 text-ink">คำค้น “{{ search }}”</span>
             <span v-if="status !== 'all'" class="inline-flex min-h-8 items-center rounded-full bg-surface px-3 text-ink">{{ activeStatusLabel }}</span>
@@ -307,8 +425,11 @@ onBeforeUnmount(() => {
 
         <template v-else>
           <div class="hidden overflow-x-auto md:block">
-            <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+            <table class="w-full min-w-[760px] border-collapse text-left text-sm" :class="scenario.role === 'staff' ? 'table-fixed [&_td]:[overflow-wrap:anywhere]' : undefined">
               <caption class="sr-only">{{ dashboard.recentTitle }}</caption>
+              <colgroup v-if="scenario.role === 'staff'">
+                <col v-for="column in 4" :key="column" class="w-1/4">
+              </colgroup>
               <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
                 <tr>
                   <th scope="col" class="px-6 py-3" :aria-sort="sortDirection === 'asc' ? 'ascending' : 'descending'">

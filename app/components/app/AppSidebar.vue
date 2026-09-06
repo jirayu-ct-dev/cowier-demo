@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Component } from "vue";
 import {
   Blocks,
   BriefcaseBusiness,
@@ -9,7 +10,6 @@ import {
   FileCheck2,
   GraduationCap,
   LayoutDashboard,
-  PlusCircle,
   Presentation,
   UsersRound,
 } from "@lucide/vue";
@@ -18,140 +18,87 @@ const emit = defineEmits<{ navigate: [] }>();
 const route = useRoute();
 const { scenario } = useScenario();
 const { canAccess } = useLecturerPermissions();
-const { activeRequest } = useStudentPlacements();
-const studentPlacementActionTarget = computed(() =>
-  activeRequest.value
-    ? `/student/placements/${activeRequest.value.id}`
-    : "/student/placements/new",
-);
-const navigation = computed(() => [
-  { label: "หน้าหลัก", to: "/", icon: LayoutDashboard, exact: true },
-  { label: "ปฏิทินงาน", to: "/calendar", icon: CalendarDays, exact: true },
+
+interface NavigationItem {
+  label: string;
+  to: string;
+  icon: Component;
+  exact: boolean;
+}
+
+interface NavigationGroup {
+  label: string;
+  items: NavigationItem[];
+}
+
+const navigationGroups = computed<NavigationGroup[]>(() => [
+  {
+    label: "ภาพรวม",
+    items: [
+      { label: "หน้าหลัก", to: "/", icon: LayoutDashboard, exact: true },
+      { label: "ปฏิทินงาน", to: "/calendar", icon: CalendarDays, exact: true },
+    ],
+  },
   ...(scenario.value.role === "staff" || route.path.startsWith("/staff")
     ? [
         {
-          label: "ข้อมูลนักศึกษา",
-          to: "/staff/master-data/students",
-          icon: GraduationCap,
-          exact: false,
+          label: "ข้อมูลและคำร้อง",
+          items: [
+            { label: "ข้อมูลนักศึกษา", to: "/staff/master-data/students", icon: GraduationCap, exact: false },
+            { label: "อาจารย์", to: "/staff/master-data/lecturers", icon: Presentation, exact: false },
+            { label: "สถานประกอบการ", to: "/staff/companies", icon: Building2, exact: false },
+            { label: "การสมัครสหกิจ", to: "/staff/applications", icon: BriefcaseBusiness, exact: false },
+            { label: "คำร้องและหนังสือ", to: "/staff/requests", icon: FileCheck2, exact: false },
+          ],
         },
         {
-          label: "ข้อมูลอาจารย์",
-          to: "/staff/master-data/lecturers",
-          icon: Presentation,
-          exact: false,
-        },
-        {
-          label: "การสมัครสหกิจของนักศึกษา",
-          to: "/staff/applications",
-          icon: BriefcaseBusiness,
-          exact: false,
-        },
-        {
-          label: "ข้อมูลสถานประกอบการ",
-          to: "/staff/companies",
-          icon: Building2,
-          exact: false,
-        },
-        {
-          label: "จัดกลุ่มอาจารย์นิเทศ",
-          to: "/staff/supervision/groups",
-          icon: UsersRound,
-          exact: false,
-        },
-        {
-          label: "ตารางนิเทศ",
-          to: "/staff/supervision",
-          icon: CalendarDays,
-          exact: true,
+          label: "การนิเทศ",
+          items: [
+            { label: "จัดกลุ่มอาจารย์", to: "/staff/supervision/groups", icon: UsersRound, exact: false },
+            { label: "ตารางนิเทศ", to: "/staff/supervision", icon: CalendarDays, exact: true },
+          ],
         },
       ]
     : []),
   ...(scenario.value.role === "student" || route.path.startsWith("/student")
     ? [
         {
-          label: "ติดตามการสมัครสหกิจ",
-          to: "/student/applications",
-          icon: BriefcaseBusiness,
-          exact: false,
-        },
-        {
-          label: "คำร้องของฉัน",
-          to: "/student/placements",
-          icon: ClipboardList,
-          exact: false,
-        },
-        {
-          label: activeRequest.value
-            ? "ข้อมูลที่ฝึกงานปัจจุบัน"
-            : "แจ้งข้อมูลที่ฝึกงาน",
-          to: studentPlacementActionTarget.value,
-          icon: activeRequest.value ? FileCheck2 : PlusCircle,
-          exact: true,
-        },
-        {
-          label: "ตารางนิเทศของฉัน",
-          to: "/student/supervision",
-          icon: CalendarDays,
-          exact: false,
+          label: "การฝึกงานของฉัน",
+          items: [
+            { label: "สมัครและยืนยันที่ฝึกงาน", to: "/student/applications", icon: BriefcaseBusiness, exact: false },
+            { label: "คำร้องขอหนังสือ (ระบบเดิม)", to: "/student/placements", icon: ClipboardList, exact: false },
+            { label: "ตารางนิเทศ", to: "/student/supervision", icon: CalendarDays, exact: false },
+          ],
         },
       ]
     : []),
   ...(scenario.value.role === "lecturer" || route.path.startsWith("/lecturer")
     ? [
         {
-          label: "ตารางนิเทศ",
-          to: "/lecturer/supervision",
-          icon: CalendarDays,
-          exact: false,
+          label: "งานที่ต้องดำเนินการ",
+          items: [
+            ...(canAccess() ? [{ label: "ตรวจคำร้องและผลตอบกลับ", to: "/lecturer/placements", icon: FileCheck2, exact: false }] : []),
+            { label: "ตารางนิเทศ", to: "/lecturer/supervision", icon: CalendarDays, exact: false },
+            { label: "ประเมินผล", to: "/lecturer/evaluations", icon: ClipboardCheck, exact: false },
+          ],
         },
         {
-          label: "การสมัครสหกิจของนักศึกษา",
-          to: "/lecturer/applications",
-          icon: BriefcaseBusiness,
-          exact: false,
-        },
-        {
-          label: "ข้อมูลนักศึกษา",
-          to: "/lecturer/students",
-          icon: GraduationCap,
-          exact: false,
-        },
-        {
-          label: "ข้อมูลสถานประกอบการ",
-          to: "/lecturer/companies",
-          icon: Building2,
-          exact: false,
-        },
-        ...(canAccess() ? [{
-          label: "ตรวจคำร้องและหนังสือ",
-          to: "/lecturer/placements",
-          icon: FileCheck2,
-          exact: false,
-        }] : []),
-        {
-          label: "ประเมินนิเทศสหกิจ",
-          to: "/lecturer/evaluations",
-          icon: ClipboardCheck,
-          exact: false,
+          label: "ข้อมูลประกอบงาน",
+          items: [
+            { label: "การสมัครสหกิจ", to: "/lecturer/applications", icon: BriefcaseBusiness, exact: false },
+            { label: "นักศึกษา", to: "/lecturer/students", icon: GraduationCap, exact: false },
+            { label: "สถานประกอบการ", to: "/lecturer/companies", icon: Building2, exact: false },
+          ],
         },
       ]
     : []),
   ...(import.meta.dev
-    ? [{ label: "Design System", to: "/dev/ui", icon: Blocks, exact: true }]
+    ? [{ label: "สำหรับนักพัฒนา", items: [{ label: "Design System", to: "/dev/ui", icon: Blocks, exact: true }] }]
     : []),
 ]);
 
 const isActive = (to: string, exact: boolean) => {
   if (exact) return route.path === to;
-  if (to === "/student/placements") {
-    if (activeRequest.value && route.path === studentPlacementActionTarget.value)
-      return false;
-    return (
-      route.path === to ||
-      (route.path.startsWith(`${to}/`) && route.path !== `${to}/new`)
-    );
-  }
   return route.path.startsWith(to);
 };
 </script>
@@ -162,10 +109,15 @@ const isActive = (to: string, exact: boolean) => {
       <AppBrandLogo class="h-auto w-full max-w-56 object-left" />
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto p-3" aria-label="เมนูหลัก">
-      <NuxtLink
-        v-for="item in navigation"
-        :key="item.to"
+    <nav class="flex-1 space-y-5 overflow-y-auto p-3" aria-label="เมนูหลัก">
+      <section v-for="group in navigationGroups" :key="group.label" :aria-labelledby="`nav-${group.label}`">
+        <h2 :id="`nav-${group.label}`" class="mb-1 px-3 text-[11px] font-semibold tracking-wide text-white/45 uppercase">
+          {{ group.label }}
+        </h2>
+        <div class="space-y-1">
+          <NuxtLink
+            v-for="item in group.items"
+            :key="item.to"
         :to="item.to"
         active-class=""
         exact-active-class=""
@@ -177,10 +129,12 @@ const isActive = (to: string, exact: boolean) => {
         "
         :aria-current="isActive(item.to, item.exact) ? 'page' : undefined"
         @click="emit('navigate')"
-      >
-        <component :is="item.icon" :size="18" aria-hidden="true" />
-        <span class="whitespace-pre-line leading-5">{{ item.label }}</span>
-      </NuxtLink>
+          >
+            <component :is="item.icon" :size="18" aria-hidden="true" />
+            <span class="leading-5">{{ item.label }}</span>
+          </NuxtLink>
+        </div>
+      </section>
     </nav>
 
     <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">

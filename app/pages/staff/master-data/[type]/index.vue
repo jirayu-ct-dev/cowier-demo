@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Settings2, Upload, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Settings2, Upload } from '@lucide/vue'
 import type { PeopleFileFormat } from '~/composables/usePeopleImport'
 import type { PersonRecord, PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
+import { hasConfirmedPlacement as hasPlacement } from '~/utils/studentPlacementStatus'
 
 definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff-prototype' })
 
@@ -11,7 +12,7 @@ const { scenario } = useScenario()
 const { showToast } = useToast()
 const { people } = usePeopleDirectory()
 const { exportPeople } = usePeopleImport()
-const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
+const { studentCohort, studentCohortOptions, studentSection, studentSectionOptions, studentSemester, ensureAvailableStudentFilters } = useStudentCohortContext()
 const { getPermissions, setPermission } = useLecturerPermissions()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
@@ -26,6 +27,9 @@ useHead({ title: () => context.value.title })
 const search = ref('')
 const recordStatus = ref('all')
 const accountStatus = ref('all')
+const placementStatus = ref('all')
+const placementStatusOptions = [{ value: 'all', label: 'ทุกสถานะที่ฝึกงาน' }, { value: 'placed', label: 'ได้ที่ฝึกงานแล้ว' }, { value: 'unplaced', label: 'ยังไม่ได้ที่ฝึกงาน' }]
+const academicYearOptions = computed(() => studentCohortOptions.value.map(option => option.value === 'all' ? { ...option, label: 'ปีการศึกษา' } : option))
 const sortDirection = ref<'asc' | 'desc'>('asc')
 const pageSize = ref('10')
 const currentPage = ref(1)
@@ -67,8 +71,9 @@ const filteredPeople = computed(() => {
     .filter(person => personType.value !== 'student' || studentSection.value === 'all' || person.section === studentSection.value)
     .filter(person => !keyword || [person.id, person.prefix, person.firstName, person.lastName, person.company]
       .some(value => value?.toLocaleLowerCase('th').includes(keyword)))
-    .filter(person => recordStatus.value === 'all' || person.recordStatus === recordStatus.value)
-    .filter(person => accountStatus.value === 'all' || person.accountStatus === accountStatus.value)
+    .filter(person => personType.value === 'student' || recordStatus.value === 'all' || person.recordStatus === recordStatus.value)
+    .filter(person => personType.value === 'student' || accountStatus.value === 'all' || person.accountStatus === accountStatus.value)
+    .filter(person => personType.value !== 'student' || placementStatus.value === 'all' || hasPlacement(person) === (placementStatus.value === 'placed'))
     .sort((a, b) => {
       const comparison = `${a.firstName}${a.lastName}`.localeCompare(`${b.firstName}${b.lastName}`, 'th')
       return sortDirection.value === 'asc' ? comparison : -comparison
@@ -79,15 +84,26 @@ const pageCount = computed(() => getPageCount(filteredPeople.value.length, pageS
 const paginatedPeople = computed(() => paginateItems(filteredPeople.value, currentPage.value, pageSizeNumber.value))
 const resultStart = computed(() => filteredPeople.value.length ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
 const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, filteredPeople.value.length))
-const hasFilters = computed(() => Boolean(search.value) || recordStatus.value !== 'all' || accountStatus.value !== 'all')
+const hasFilters = computed(() => Boolean(search.value) || (personType.value === 'lecturer' && (recordStatus.value !== 'all' || accountStatus.value !== 'all')) || (personType.value === 'student' && (placementStatus.value !== 'all' || studentSection.value !== 'all' || studentCohort.value !== 'all')))
 
-watch([search, recordStatus, accountStatus, pageSize, personType, studentCohort, studentSection, studentSemester], () => { currentPage.value = 1 })
+watch([search, recordStatus, accountStatus, placementStatus, sortDirection, pageSize, personType, studentCohort, studentSection, studentSemester], () => { currentPage.value = 1 })
 watch(pageCount, count => { if (currentPage.value > count) currentPage.value = count })
+watchEffect(() => {
+  if (personType.value !== 'student') return
+  studentSemester.value = 'all'
+  ensureAvailableStudentFilters()
+})
 
 const clearFilters = () => {
   search.value = ''
   recordStatus.value = 'all'
   accountStatus.value = 'all'
+  placementStatus.value = 'all'
+  if (personType.value === 'student') {
+    studentSection.value = 'all'
+    studentCohort.value = 'all'
+    studentSemester.value = 'all'
+  }
 }
 const resetTable = () => {
   clearFilters()
@@ -156,18 +172,14 @@ const savePermissions = () => {
               <input v-model="search" type="search" class="min-h-11 w-full rounded-control border border-divider bg-canvas pr-3 pl-10 font-normal placeholder:text-gray-400" :placeholder="`ค้นหา${context.idLabel} ชื่อ หรือนามสกุล`">
             </span>
           </label>
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center xl:ml-auto">
-            <div class="w-full sm:w-52"><UiSelect :key="`record-${personType}`" v-model="recordStatus" :options="recordStatusOptions" :placeholder="recordStatusOptions.find(item => item.value === recordStatus)?.label" label="กรองสถานะข้อมูล" :label-visible="false" /></div>
-            <div class="w-full sm:w-56"><UiSelect :key="`account-${personType}`" v-model="accountStatus" :options="accountStatusOptions" :placeholder="accountStatusOptions.find(item => item.value === accountStatus)?.label" label="กรองสถานะบัญชี" :label-visible="false" /></div>
+          <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end xl:ml-auto">
+            <div v-if="personType === 'student'" class="w-full sm:w-52"><UiSelect v-model="placementStatus" :options="placementStatusOptions" label="กรองสถานะที่ฝึกงาน" :label-visible="false" /></div>
+            <div v-if="personType === 'student'" class="w-full sm:w-40"><UiSelect v-model="studentSection" :options="studentSectionOptions" label="กรองตามหมู่เรียน" :label-visible="false" /></div>
+            <div v-if="personType === 'student'" class="w-full sm:w-44"><UiSelect v-model="studentCohort" :options="academicYearOptions" label="กรองตามปีการศึกษา" :label-visible="false" /></div>
+            <div v-if="personType === 'lecturer'" class="w-full sm:w-52"><UiSelect :key="`record-${personType}`" v-model="recordStatus" :options="recordStatusOptions" :placeholder="recordStatusOptions.find(item => item.value === recordStatus)?.label" label="กรองสถานะข้อมูล" :label-visible="false" /></div>
+            <div v-if="personType === 'lecturer'" class="w-full sm:w-56"><UiSelect :key="`account-${personType}`" v-model="accountStatus" :options="accountStatusOptions" :placeholder="accountStatusOptions.find(item => item.value === accountStatus)?.label" label="กรองสถานะบัญชี" :label-visible="false" /></div>
             <button type="button" class="inline-grid size-11 shrink-0 place-items-center rounded-control border border-divider bg-canvas text-ink transition-colors hover:bg-surface" aria-label="รีเซ็ตตาราง" title="รีเซ็ตตาราง" @click="resetTable"><RotateCcw :size="18" aria-hidden="true" /></button>
           </div>
-        </div>
-        <div v-if="hasFilters" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span class="text-muted">ตัวกรองที่ใช้:</span>
-          <span v-if="search" class="inline-flex min-h-8 items-center rounded-full bg-surface px-3 text-ink">คำค้น “{{ search }}”</span>
-          <span v-if="recordStatus !== 'all'" class="inline-flex min-h-8 items-center rounded-full bg-surface px-3 text-ink">{{ recordStatusOptions.find(item => item.value === recordStatus)?.label }}</span>
-          <span v-if="accountStatus !== 'all'" class="inline-flex min-h-8 items-center rounded-full bg-surface px-3 text-ink">{{ accountStatusOptions.find(item => item.value === accountStatus)?.label }}</span>
-          <button type="button" class="inline-flex min-h-8 items-center gap-1 rounded-control px-2 font-semibold text-warning hover:bg-warning-soft" @click="clearFilters"><X :size="15" aria-hidden="true" />ล้างทั้งหมด</button>
         </div>
       </div>
 
@@ -176,15 +188,18 @@ const savePermissions = () => {
       </div>
       <div v-else-if="effectiveViewState === 'error'" class="p-5 sm:p-6"><AppErrorState :title="`โหลด${context.title}ไม่สำเร็จ`" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองดึงข้อมูลอีกครั้ง" @retry="retry" /></div>
       <div v-else-if="!paginatedPeople.length" class="p-5 sm:p-6">
-        <AppEmptyState :title="hasFilters ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : personType === 'student' ? 'ไม่พบนักศึกษาในรุ่นและภาคเรียนที่เลือก' : `ยังไม่มี${context.title}`" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : personType === 'student' ? 'ลองเปลี่ยนรุ่นนักศึกษาหรือภาคเรียนจากแถบบริบทด้านบน' : `เพิ่ม${context.singular}คนแรกเพื่อสร้างข้อมูลและบัญชีผู้ใช้`">
+        <AppEmptyState :title="hasFilters ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : `ยังไม่มี${context.title}`" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : `เพิ่ม${context.singular}คนแรกเพื่อสร้างข้อมูลและบัญชีผู้ใช้`">
           <UiButton v-if="hasFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
           <UiButton v-else :icon="Plus" @click="navigateTo(`/staff/master-data/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
         </AppEmptyState>
       </div>
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[900px] border-collapse text-left text-sm">
+          <table class="w-full min-w-[1050px] border-collapse text-left text-sm" :class="personType === 'student' ? 'table-fixed [&_td]:[overflow-wrap:anywhere]' : undefined">
             <caption class="sr-only">{{ context.title }}</caption>
+            <colgroup v-if="personType === 'student'">
+              <col v-for="column in 6" :key="column" class="w-1/6">
+            </colgroup>
             <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
               <tr>
                 <th scope="col" class="px-6 py-3">{{ context.idLabel }}</th>
@@ -193,20 +208,24 @@ const savePermissions = () => {
                 </th>
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">รอบ / สถานประกอบการ</th>
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">หมู่เรียน</th>
-                <th scope="col" class="px-4 py-3">สถานะข้อมูล</th>
-                <th scope="col" class="px-4 py-3">สถานะบัญชี</th>
-                <th scope="col" class="w-28 px-4 py-3"><span class="sr-only">ดูข้อมูล</span></th>
+                <th scope="col" class="px-4 py-3">{{ personType === 'student' ? 'สถานะ' : 'สถานะข้อมูล' }}</th>
+                <th v-if="personType === 'lecturer'" scope="col" class="px-4 py-3">สถานะบัญชี</th>
+                <th scope="col" class="px-4 py-3">ดำเนินการ</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
               <tr v-for="person in paginatedPeople" :key="person.id" class="transition-colors hover:bg-surface/70">
                 <td class="whitespace-nowrap px-6 py-4 font-semibold text-ink">{{ person.id }}</td>
                 <td class="px-4 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(person) }}</p><p class="mt-1 text-xs text-muted">ชื่อผู้ใช้: {{ person.id }}</p></td>
-                <td v-if="personType === 'student'" class="max-w-sm px-4 py-4"><p class="text-ink">{{ person.cycle || 'ยังไม่กำหนดรอบ' }}</p><p class="mt-1 truncate text-xs text-muted">{{ person.company || 'ยังไม่มีสถานประกอบการที่ยืนยัน' }}</p></td>
+                <td v-if="personType === 'student'" class="max-w-sm px-4 py-4"><p class="text-ink">{{ person.cycle || 'ยังไม่กำหนดรอบ' }}</p><p class="mt-1 truncate text-xs text-muted">{{ person.company || 'ยังไม่มีสถานประกอบการที่ยืนยัน' }}</p><UiBadge class="mt-2" :tone="hasPlacement(person) ? 'success' : 'warning'">{{ hasPlacement(person) ? 'ได้ที่ฝึกงานแล้ว' : 'ยังไม่ได้ที่ฝึกงาน' }}</UiBadge></td>
                 <td v-if="personType === 'student'" class="whitespace-nowrap px-4 py-4 text-ink">{{ person.section || 'ยังไม่กำหนด' }}</td>
-                <td class="px-4 py-4"><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4 text-right"><div class="flex justify-end gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :icon="Settings2" class="whitespace-nowrap" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
+                <td class="px-4 py-4">
+                  <div>
+                    <UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge>
+                  </div>
+                </td>
+                <td v-if="personType === 'lecturer'" class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
+                <td class="px-4 py-4"><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :icon="Settings2" class="whitespace-nowrap" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
               </tr>
             </tbody>
           </table>
@@ -214,8 +233,9 @@ const savePermissions = () => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
-            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">สถานะบัญชี</p><div class="mt-1"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" class="whitespace-nowrap" :icon="Settings2" aria-label="กำหนดสิทธิ์" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><UiButton size="sm" variant="secondary" class="whitespace-nowrap" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div></div>
+            <div v-if="personType === 'student'" class="mb-3"><UiBadge :tone="hasPlacement(person) ? 'success' : 'warning'">{{ hasPlacement(person) ? 'ได้ที่ฝึกงานแล้ว' : 'ยังไม่ได้ที่ฝึกงาน' }}</UiBadge><p v-if="person.company" class="mt-1 text-xs text-muted">{{ person.company }}</p></div>
+            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge v-if="personType === 'lecturer'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
+            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">{{ personType === 'student' ? 'สถานะ' : 'สถานะบัญชี' }}</p><div class="mt-1 flex flex-wrap gap-2"><UiBadge v-if="personType === 'student'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge><UiBadge v-else :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" class="whitespace-nowrap" :icon="Settings2" aria-label="กำหนดสิทธิ์" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><UiButton size="sm" variant="secondary" class="whitespace-nowrap" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div></div>
           </article>
         </div>
 

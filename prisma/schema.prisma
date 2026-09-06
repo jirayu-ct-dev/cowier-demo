@@ -79,6 +79,8 @@ enum TrackedApplicationStatus {
   WAITING_INTERVIEW
   ACCEPTED
   REJECTED
+  COMPLETED
+  CANCELLED
 }
 
 enum PlacementRequestStatus {
@@ -380,6 +382,8 @@ model CompanySite {
   companyId    String       @db.VarChar(30)
   branchName   String       @default("สำนักงานใหญ่") @db.VarChar(150)
   address      String       @db.Text
+  latitude     Decimal?     @db.Decimal(10, 7)
+  longitude    Decimal?     @db.Decimal(10, 7)
   provinceId   Int
   postalCode   String?      @db.VarChar(10)
   contactName  String?      @db.VarChar(150)
@@ -412,6 +416,9 @@ model StudentApplication {
   enrollmentId        String                   @db.VarChar(30)
   companySiteId       String?                  @db.VarChar(30)
   companyNameSnapshot String                   @db.VarChar(255)
+  companyLocation     String?                  @db.VarChar(500)
+  latitude            Decimal?                 @db.Decimal(10, 7)
+  longitude           Decimal?                 @db.Decimal(10, 7)
   provinceSnapshot    String                   @db.VarChar(100)
   positionTitle       String                   @db.VarChar(150)
   appliedDate         DateTime                 @db.Date

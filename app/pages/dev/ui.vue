@@ -8,6 +8,8 @@ useHead({ title: 'Design System' })
 if (!import.meta.dev) throw createError({ statusCode: 404, statusMessage: 'Page not found' })
 
 const form = reactive({ companyName: '', province: '', positionDetails: '', accepted: false })
+const locationExample = reactive<{ latitude: number | null, longitude: number | null }>({ latitude: null, longitude: null })
+const groupingDistanceExample = ref('100')
 const formErrors = reactive<Partial<Record<keyof typeof form, string>>>({})
 const { showToast } = useToast()
 const { recordEvent } = useScenario()
@@ -275,6 +277,20 @@ onBeforeUnmount(() => {
         </div>
         <div class="lg:col-span-2"><UiButton type="submit">ตรวจสอบฟอร์ม</UiButton></div>
       </form>
+    </UiCard>
+
+    <UiCard>
+      <h3 class="text-lg font-bold text-ink">การเลือกพิกัด</h3>
+      <div class="mt-4 max-w-2xl space-y-4">
+        <AppLocationPicker :latitude="locationExample.latitude" :longitude="locationExample.longitude" @change="Object.assign(locationExample, $event)" />
+      </div>
+    </UiCard>
+
+    <UiCard>
+      <h3 class="text-lg font-bold text-ink">ตัวอย่างตรวจกลุ่มเสนอ ก่อนเพิ่มอาจารย์</h3>
+      <p class="mt-2 text-sm text-muted">ใช้ control ตัวเลขและ card เดิม ระบุว่าเป็นระยะเส้นตรง แสดงสถานะรอเพิ่มอาจารย์โดยไม่ใช้สีเพียงอย่างเดียว</p>
+      <div class="mt-4 max-w-md"><UiInput v-model="groupingDistanceExample" type="number" label="ระยะสูงสุดระหว่างสถานประกอบการ (กม.)" help="ตัวอย่างรูปแบบเท่านั้น ไม่บันทึกกลุ่มจริง" /></div>
+      <section class="mt-4 rounded-control border border-divider p-4"><h4 class="font-semibold text-ink">กลุ่มเสนอ 1 · 2 แห่ง</h4><ul class="mt-2 space-y-1 text-sm text-muted"><li>สถานประกอบการตัวอย่าง ก</li><li>สถานประกอบการตัวอย่าง ข</li></ul><p class="mt-3 text-xs text-muted">ยังไม่กำหนดอาจารย์</p></section>
     </UiCard>
 
     <UiCard>

@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 
-definePageMeta({ title: "ดำเนินการคำร้อง", middleware: "lecturer-prototype" });
+definePageMeta({ title: "ดำเนินการคำร้อง", middleware: "letter-workflow", alias: ['/staff/letters/:id'] });
 
 type FormErrorKey = "requestIds" | "letterDate" | "fileName";
 
@@ -47,6 +47,7 @@ const { scenario, recordEvent } = useScenario();
 const { showToast } = useToast();
 const {
   requests,
+  canIssueLetter,
   getBatch,
   getBatchRequests,
   getCompatibleRequests,
@@ -226,6 +227,7 @@ const sendBackRequest = () => {
   }
 };
 const submitLetter = async () => {
+  if (isSubmitting.value || !canIssueLetter.value) return;
   const result = publishSchema.safeParse(letterForm);
   if (!result.success) {
     setLetterValidation(result.error.issues);
@@ -331,7 +333,7 @@ watch(responseReason, () => {
     <button
       type="button"
       class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-surface hover:text-ink"
-      @click="navigateTo('/lecturer/placements')"
+      @click="navigateTo(canIssueLetter ? '/staff/letters' : '/lecturer/placements')"
     >
       <ArrowLeft :size="18" />กลับไปรายการคำร้อง
     </button>
@@ -340,7 +342,7 @@ watch(responseReason, () => {
       v-if="!request"
       title="ไม่พบคำร้อง"
       description="คำร้องนี้อาจถูกย้ายหรือไม่มีอยู่ในข้อมูลตัวอย่าง"
-      ><UiButton variant="secondary" @click="navigateTo('/lecturer/placements')"
+      ><UiButton variant="secondary" @click="navigateTo(canIssueLetter ? '/staff/letters' : '/lecturer/placements')"
         >กลับไปรายการ</UiButton
       ></AppEmptyState
     >
@@ -661,7 +663,8 @@ watch(responseReason, () => {
 
       <template v-if="request.status === 'submitted'">
         <div class="space-y-6">
-          <UiCard class="min-w-0 self-start">
+          <UiAlert v-if="!canIssueLetter" tone="info" title="รอเจ้าหน้าที่ออกหนังสือ">เฉพาะเจ้าหน้าที่เท่านั้นที่จัดชุดและเผยแพร่หนังสือขอความอนุเคราะห์ได้</UiAlert>
+          <UiCard v-if="canIssueLetter" class="min-w-0 self-start">
               <h3 class="text-lg font-bold text-ink">แนบหนังสือและยืนยันคำร้อง</h3>
               <p class="mt-1 text-sm leading-6 text-muted">
                 เมื่อเผยแพร่ PDF คำร้องที่เลือกจะได้รับการยืนยันและเข้าสู่ขั้นรอเอกสารตอบกลับ
@@ -732,6 +735,7 @@ watch(responseReason, () => {
               >ส่งกลับแก้ไข</UiButton
             >
             <UiButton
+              v-if="canIssueLetter"
               :icon="FileCheck2"
               :loading="isSubmitting"
               @click="submitLetter"

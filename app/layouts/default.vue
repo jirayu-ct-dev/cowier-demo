@@ -7,7 +7,6 @@ const isDevelopment = import.meta.dev
 const hasDashboardToolbar = computed(() => route.path.startsWith('/staff/supervision/groups')
   || route.path === '/staff/supervision'
   || route.path.startsWith('/staff/applications')
-  || route.path === '/staff/master-data/students'
   || route.path === '/staff/companies'
   || route.path.startsWith('/lecturer/placements')
   || route.path.startsWith('/lecturer/evaluations')
@@ -22,6 +21,9 @@ watch(() => route.fullPath, () => {
 
 <template>
   <div class="min-h-dvh bg-surface">
+    <a href="#main-content" class="sr-only z-[60] rounded-control bg-primary px-4 py-3 font-semibold text-ink focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
+      ข้ามไปยังเนื้อหาหลัก
+    </a>
     <div class="fixed inset-y-0 left-0 z-40 hidden lg:block"><AppSidebar /></div>
 
     <DialogRoot v-model:open="mobileNavigationOpen">

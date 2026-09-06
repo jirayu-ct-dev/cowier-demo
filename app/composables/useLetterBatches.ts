@@ -229,7 +229,7 @@ const batchesSeed: LetterBatch[] = [
         version: 1,
         fileName: "หนังสือขอฝึกงาน-LB-001.pdf",
         uploadedAt: "2026-08-25T10:30:00+07:00",
-        uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
+        uploadedBy: "นางสาวพิมพ์ชนก ใจดี (เจ้าหน้าที่)",
         status: "active",
       },
     ],
@@ -248,7 +248,7 @@ const batchesSeed: LetterBatch[] = [
         version: 1,
         fileName: "หนังสือขอฝึกงาน-LB-002.pdf",
         uploadedAt: "2026-08-20T09:15:00+07:00",
-        uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
+        uploadedBy: "นางสาวพิมพ์ชนก ใจดี (เจ้าหน้าที่)",
         status: "active",
       },
     ],
@@ -277,6 +277,8 @@ const compatibilityKey = (request: PlacementReviewRequest) =>
   ].join("|");
 
 export const useLetterBatches = () => {
+  const { currentAccount } = useAuthPrototype();
+  const canIssueLetter = computed(() => currentAccount.value?.role === "staff");
   const requests = useState<PlacementReviewRequest[]>(
     "lecturer-placement-review-workflow-v2",
     () => structuredClone(requestsSeed),
@@ -310,6 +312,7 @@ export const useLetterBatches = () => {
   };
 
   const saveLetterBatch = (payload: SaveLetterBatchPayload) => {
+    if (!canIssueLetter.value) throw new Error("เฉพาะเจ้าหน้าที่เท่านั้นที่ออกหนังสือขอความอนุเคราะห์ได้");
     const selected = requests.value.filter((request) =>
       payload.requestIds.includes(request.id),
     );
@@ -339,7 +342,7 @@ export const useLetterBatches = () => {
           version: 1,
           fileName: payload.fileName,
           uploadedAt: now,
-          uploadedBy: "อาจารย์ผู้ตรวจคำร้อง",
+          uploadedBy: currentAccount.value!.name,
           status: "active",
         },
       ],
@@ -391,6 +394,7 @@ export const useLetterBatches = () => {
   };
 
   return {
+    canIssueLetter,
     requests,
     batches,
     getBatch,

@@ -28,10 +28,11 @@ const showsLecturerSupervisionBack = computed(() => /^\/lecturer\/supervision\/[
 const showsStudentCohort = computed(() => route.path.startsWith('/lecturer/students')
   || route.path.startsWith('/lecturer/applications')
   || route.path.startsWith('/staff/applications')
-  || route.path === '/staff/master-data/students'
   || route.path === '/staff/companies')
+const showsStudentSemester = computed(() => showsStudentCohort.value && route.path !== '/staff/master-data/students')
+const showsStudentSection = computed(() => showsStudentCohort.value && route.path !== '/staff/master-data/students')
 const toolbarGridClass = computed(() => showsStudentCohort.value
-    ? 'sm:grid-cols-[11rem_9rem_12rem]'
+    ? showsStudentSemester.value ? 'sm:grid-cols-[11rem_9rem_12rem]' : 'sm:grid-cols-[11rem]'
   : showsSupervisionRound.value
     ? 'sm:grid-cols-[17rem_12rem]'
   : 'sm:w-[17rem]')
@@ -42,7 +43,6 @@ const contextLabel = computed(() => {
   if (route.path.startsWith('/staff/applications')) return 'บริบทการสมัครสหกิจ'
   if (route.path.startsWith('/lecturer/evaluations')) return 'บริบทการประเมิน'
   if (route.path.startsWith('/lecturer/supervision')) return 'บริบทตารางนิเทศ'
-  if (route.path.startsWith('/staff/master-data/students')) return 'บริบทข้อมูลนักศึกษา'
   if (route.path === '/staff/companies') return 'บริบทสถานประกอบการ'
   if (route.path === '/staff/supervision') return 'บริบทตารางนิเทศ'
   return 'บริบทการจัดกลุ่มนิเทศ'
@@ -62,7 +62,7 @@ watchEffect(() => {
         <div class="min-w-0">
           <p class="text-xs font-medium text-muted">{{ contextLabel }}</p>
           <p class="truncate text-sm font-semibold text-ink">
-            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }} · {{ selectedStudentSectionLabel }} · {{ selectedStudentSemesterLabel }}</template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template></template>
+            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }}<template v-if="showsStudentSection"> · {{ selectedStudentSectionLabel }}</template><template v-if="showsStudentSemester"> · {{ selectedStudentSemesterLabel }}</template></template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template></template>
           </p>
         </div>
       </div>
@@ -86,7 +86,7 @@ watchEffect(() => {
           :label-visible="false"
         />
         <UiSelect
-          v-if="showsStudentCohort"
+          v-if="showsStudentSection"
           v-model="studentSection"
           :options="studentSectionOptions"
           :placeholder="selectedStudentSectionLabel"
@@ -94,7 +94,7 @@ watchEffect(() => {
           :label-visible="false"
         />
         <UiSelect
-          v-if="showsStudentCohort"
+          v-if="showsStudentSemester"
           v-model="studentSemester"
           :options="studentSemesterOptions"
           :placeholder="selectedStudentSemesterLabel"

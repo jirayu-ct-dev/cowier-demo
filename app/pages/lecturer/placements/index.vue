@@ -13,14 +13,14 @@ import {
 import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 import { getPageCount, paginateItems } from "~/utils/table";
 
-definePageMeta({ title: "ตรวจคำร้อง", middleware: "lecturer-prototype" });
-useHead({ title: "ตรวจคำร้องและหนังสือขออนุญาต" });
+definePageMeta({ title: "ตรวจคำร้อง", middleware: "letter-workflow", alias: ['/staff/letters'] });
+useHead({ title: "ตรวจคำร้องและผลตอบกลับ" });
 
 type ViewState = "data" | "loading" | "empty" | "error";
 type SortKey = "studentName" | "submittedAt";
 
 const { scenario } = useScenario();
-const { requests } = useLetterBatches();
+const { requests, canIssueLetter } = useLetterBatches();
 const { cycleId } = useSupervisionContext();
 const search = ref("");
 const status = ref("all");
@@ -128,7 +128,7 @@ const toggleSort = (key: SortKey) => {
   }
   page.value = 1;
 };
-const openRequest = (id: string) => navigateTo(`/lecturer/placements/${id}`);
+const openRequest = (id: string) => navigateTo(`${canIssueLetter.value ? '/staff/letters' : '/lecturer/placements'}/${id}`);
 const requestActionLabel = (request: PlacementReviewRequest) => {
   if (request.status === "submitted") return "ตรวจคำร้อง";
   if (request.status === "returned") return "ติดตามการแก้ไข";
@@ -149,10 +149,10 @@ watch(pageCount, (count) => {
   <div>
     <header class="mb-6">
       <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-        ตรวจคำร้องและหนังสือขออนุญาต
+        ตรวจคำร้องและผลตอบกลับ
       </h2>
       <p class="mt-1 text-sm leading-6 text-muted">
-        เลือกคำร้องเพื่อดำเนินการตรวจ จัดชุด ออกหนังสือ หรือตรวจผลตอบกลับ
+        {{ canIssueLetter ? 'จัดชุดและออกหนังสือขอความอนุเคราะห์จากคำร้องเดิม' : 'ตรวจคำร้องและผลตอบกลับ โดยเจ้าหน้าที่เป็นผู้ออกหนังสือเท่านั้น' }}
       </p>
     </header>
 

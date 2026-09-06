@@ -73,7 +73,31 @@ export const companyEvaluationCriteria: EvaluationCriterion[] = [
   { id: 'student_support', label: 'มีการดูแลและติดตามนักศึกษา' },
   { id: 'environment', label: 'สภาพแวดล้อมและความปลอดภัยเหมาะสม' },
   { id: 'resources', label: 'อุปกรณ์และทรัพยากรเพียงพอ' },
+  { id: 'allowance', label: 'สวัสดิการและเบี้ยเลี้ยงมีความเหมาะสม' },
+  { id: 'transportation', label: 'การเดินทางสะดวกและมีความปลอดภัย' },
+  { id: 'nearby_accommodation', label: 'มีที่พักที่เหมาะสมในบริเวณใกล้เคียง' },
   { id: 'coordination', label: 'การประสานงานกับมหาวิทยาลัย' },
+]
+
+const studentEvaluationSeed: StudentEvaluation[] = [
+  {
+    appointmentId: 'SA-006', studentId: '66123456701', lecturerId: 'L0012', status: 'submitted', submittedAt: '2026-08-20T17:00:00+07:00',
+    ratings: { responsibility: '5', ethics: '5', communication: '4', knowledge: '4', work_quality: '4', problem_solving: '4', safety: '5' },
+    strengths: 'รับผิดชอบงานและสื่อสารความคืบหน้าได้ดี', issues: 'ยังต้องฝึกจัดลำดับงานเร่งด่วน', suggestions: 'สรุปแผนงานรายสัปดาห์', followUp: 'ติดตามผลในการนิเทศครั้งถัดไป',
+  },
+  {
+    appointmentId: 'SA-006', studentId: '66123456702', lecturerId: 'L0012', status: 'draft', submittedAt: null,
+    ratings: { responsibility: '4', ethics: '4', communication: '4', knowledge: '3', work_quality: '4', problem_solving: '3', safety: '5' },
+    strengths: 'เรียนรู้เครื่องมือทดสอบได้รวดเร็ว', issues: '', suggestions: '', followUp: '',
+  },
+]
+
+const companyEvaluationSeed: CompanyEvaluation[] = [
+  {
+    appointmentId: 'SA-006', evaluatorId: 'L0012', status: 'submitted', submittedAt: '2026-08-20T17:10:00+07:00',
+    ratings: { field_relevance: '5', work_scope: '4', supervisor_readiness: '5', student_support: '4', environment: '5', resources: '4', allowance: '3', transportation: '4', nearby_accommodation: '4', coordination: '4' },
+    recommendation: 'recommended', observations: 'พี่เลี้ยงให้คำแนะนำสม่ำเสมอ', companyRequirements: 'ต้องการนักศึกษาด้านพัฒนาเว็บและทดสอบระบบ', issues: '', suggestions: 'ประสานหัวข้องานก่อนเริ่มรอบถัดไป',
+  },
 ]
 
 const hasCompleteRatings = (ratings: Record<string, EvaluationRating>, criteria: EvaluationCriterion[]) => criteria
@@ -86,9 +110,13 @@ export const calculateEvaluationAverage = (ratings: Record<string, EvaluationRat
 }
 
 export const useSupervisionEvaluations = () => {
-  const studentEvaluations = useState<StudentEvaluation[]>('supervision-student-evaluations-v1', () => [])
-  const companyEvaluations = useState<CompanyEvaluation[]>('supervision-company-evaluations-v1', () => [])
+  const studentEvaluations = useState<StudentEvaluation[]>('supervision-student-evaluations-v1', () => structuredClone(studentEvaluationSeed))
+  const companyEvaluations = useState<CompanyEvaluation[]>('supervision-company-evaluations-v1', () => structuredClone(companyEvaluationSeed))
   const { recordEvent } = useScenario()
+  const { currentAccount } = useAuthPrototype()
+  const requireCompanyEvaluator = () => {
+    if (!currentAccount.value || !['lecturer', 'staff'].includes(currentAccount.value.role)) throw new Error('ไม่มีสิทธิ์ประเมินสถานประกอบการ')
+  }
 
   const getStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string) => studentEvaluations.value
     .find(item => item.appointmentId === appointmentId && item.studentId === studentId && item.lecturerId === lecturerId) ?? null
@@ -123,6 +151,7 @@ export const useSupervisionEvaluations = () => {
     .find(item => item.appointmentId === appointmentId) ?? null
 
   const saveCompanyEvaluation = (appointmentId: string, evaluatorId: string, input: CompanyEvaluationInput) => {
+    requireCompanyEvaluator()
     const existing = getCompanyEvaluation(appointmentId)
     if (existing?.status === 'submitted') throw new Error('evaluation-locked')
     const evaluation: CompanyEvaluation = {
@@ -139,6 +168,7 @@ export const useSupervisionEvaluations = () => {
   }
 
   const submitCompanyEvaluation = (appointmentId: string, evaluatorId: string, input: CompanyEvaluationInput) => {
+    requireCompanyEvaluator()
     if (!hasCompleteRatings(input.ratings, companyEvaluationCriteria)) throw new Error('ratings-incomplete')
     if (!input.recommendation) throw new Error('recommendation-required')
     const evaluation = saveCompanyEvaluation(appointmentId, evaluatorId, input)

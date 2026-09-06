@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, RotateCcw, Search, Users, X } from '@lucide/vue'
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, RotateCcw, Search, Users, X } from '@lucide/vue'
 import type { SupervisionAppointment, SupervisionAppointmentStatus } from '~/composables/useSupervisionAppointments'
 import { getPageCount, paginateItems } from '~/utils/table'
 
@@ -7,11 +7,28 @@ definePageMeta({ title: 'ตารางนิเทศ', middleware: 'staff-pro
 useHead({ title: 'ตารางนิเทศ' })
 
 const { scenario } = useScenario()
+const { currentAccount } = useAuthPrototype()
 const { cycleId, round } = useSupervisionContext()
 const { appointments } = useSupervisionAppointments()
 const { groups, getCompanies } = useSupervisionGroups()
 const { people } = usePeopleDirectory()
 const { studentEvaluations, companyEvaluations } = useSupervisionEvaluations()
+const { exportEvaluations } = useEvaluationExport()
+const { showToast } = useToast()
+const exportFormat = ref('xlsx')
+const exporting = ref(false)
+const exportError = ref('')
+const handleExport = async () => {
+  if (exporting.value || effectiveViewState.value !== 'data') return
+  exporting.value = true
+  exportError.value = ''
+  try {
+    const count = await exportEvaluations(filteredAppointments.value, exportFormat.value)
+    showToast({ title: 'ส่งออกผลคะแนนแล้ว', description: `${count} แถวคะแนนรายเกณฑ์ · ${exportFormat.value.toUpperCase()}` })
+  }
+  catch (cause) { exportError.value = cause instanceof Error ? cause.message : 'ส่งออกไม่สำเร็จ กรุณาลองใหม่' }
+  finally { exporting.value = false }
+}
 
 const searchQuery = ref('')
 const statusFilter = ref<'all' | SupervisionAppointmentStatus>('all')
@@ -37,6 +54,10 @@ const groupFor = (groupId: string) => groups.value.find(group => group.id === gr
 const lecturerName = (lecturerId: string) => {
   const lecturer = people.value.find(person => person.type === 'lecturer' && person.id === lecturerId)
   return lecturer ? getPersonFullName(lecturer) : lecturerId
+}
+const evaluatorName = (evaluatorId: string) => {
+  if (currentAccount.value?.id === evaluatorId) return currentAccount.value.name
+  return lecturerName(evaluatorId)
 }
 const appointmentStudents = (appointment: SupervisionAppointment) => {
   const company = companyFor(appointment.companyId)
@@ -112,6 +133,15 @@ watch(pageCount, (count) => { if (currentPage.value > count) currentPage.value =
     <div class="mb-6">
       <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">ตารางนิเทศ</h2>
       <p class="mt-1 text-sm leading-6 text-muted">ติดตามรายการนิเทศของทุกกลุ่ม อาจารย์ผู้เข้าร่วม นักศึกษา และความคืบหน้าการประเมิน</p>
+      <div class="mt-3 flex justify-end">
+        <UiDialog :close-on-confirm="false" title="ส่งออกผลคะแนนประเมิน" description="ส่งออกแบบประเมินนักศึกษาและสถานประกอบการที่ส่งแล้ว ตามรอบ ครั้ง และตัวกรองปัจจุบันทั้งหมด ไม่จำกัดเฉพาะหน้าที่แสดง หนึ่งแถวต่อเกณฑ์ พร้อมคะแนนเฉลี่ยที่ไม่รวม N/A">
+          <template #trigger><UiButton variant="secondary" :icon="Download" :disabled="effectiveViewState !== 'data'">ส่งออกผลประเมิน</UiButton></template>
+          <UiSelect v-model="exportFormat" :options="[{ value: 'xlsx', label: 'Excel (.xlsx)' }, { value: 'csv', label: 'CSV (.csv)' }]" label="รูปแบบไฟล์" />
+          <p v-if="exportError" role="alert" class="mt-3 text-sm text-danger">{{ exportError }}</p>
+          <template #cancel><UiButton variant="ghost">ปิด</UiButton></template>
+          <template #confirm><UiButton :icon="Download" :loading="exporting" @click="handleExport">ดาวน์โหลดคะแนน</UiButton></template>
+        </UiDialog>
+      </div>
     </div>
 
     <div v-if="effectiveViewState === 'loading'" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="กำลังโหลดสรุปตารางนิเทศ">
@@ -189,6 +219,17 @@ watch(pageCount, (count) => { if (currentPage.value > count) currentPage.value =
         </div>
         <div><h3 class="text-sm font-bold text-ink">อาจารย์ผู้เข้าร่วม</h3><div class="mt-2 rounded-control border border-divider p-4"><p v-for="lecturerId in selectedAppointment.lecturerIds" :key="lecturerId" class="text-sm leading-7 text-ink">{{ lecturerName(lecturerId) }}</p><p v-if="!selectedAppointment.lecturerIds.length" class="text-sm text-muted">ยังไม่มีอาจารย์ผู้เข้าร่วม</p></div></div>
         <div><h3 class="text-sm font-bold text-ink">นักศึกษา</h3><div class="mt-2 overflow-hidden rounded-control border border-divider"><div v-for="(studentName, index) in appointmentStudents(selectedAppointment)" :key="selectedAppointment.studentIds[index]" class="flex items-center justify-between gap-4 border-b border-divider px-4 py-3 last:border-0"><p class="text-sm font-medium text-ink">{{ studentName }}</p><p class="text-xs text-muted">{{ selectedAppointment.studentIds[index] }}</p></div></div></div>
+        <UiAlert v-if="selectedAppointment.status !== 'completed'" tone="info" title="ยังไม่เปิดให้ประเมินสถานประกอบการ">สามารถประเมินได้หลังรายการนิเทศเสร็จแล้ว</UiAlert>
+        <SupervisionEvaluationPanel
+          v-else
+          :appointment="selectedAppointment"
+          :students="[]"
+          :current-lecturer-id="currentAccount?.id ?? 'staff'"
+          :lecturer-name="evaluatorName"
+          :can-manage="true"
+          company-only
+          allow-company-evaluation
+        />
       </div>
     </UiDialog>
   </div>

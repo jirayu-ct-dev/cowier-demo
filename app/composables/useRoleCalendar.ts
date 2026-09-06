@@ -48,7 +48,7 @@ const roleEventSeeds: RoleCalendarEvent[] = [
   },
   {
     id: 'CAL-LECTURER-001', title: 'ตรวจคำร้องและหนังสือที่รอดำเนินการ',
-    description: 'ตรวจรายละเอียดคำร้องและเตรียมหนังสือขออนุญาตฝึกสหกิจ',
+    description: 'ตรวจรายละเอียดคำร้องและส่งผลให้เจ้าหน้าที่ดำเนินการออกหนังสือ',
     date: '2026-09-01', type: 'document', roles: ['lecturer'], href: '/lecturer/placements', source: 'system',
   },
   {
@@ -58,7 +58,7 @@ const roleEventSeeds: RoleCalendarEvent[] = [
   },
   {
     id: 'CAL-STUDENT-001', title: 'ติดตามหนังสือขออนุญาตฝึกสหกิจ',
-    description: 'ตรวจสถานะเอกสารและดาวน์โหลดหนังสือเมื่ออาจารย์เผยแพร่แล้ว',
+    description: 'ตรวจสถานะเอกสารและดาวน์โหลดหนังสือเมื่อเจ้าหน้าที่เผยแพร่แล้ว',
     date: '2026-09-01', type: 'document', roles: ['student'], href: '/student/placements', source: 'system',
   },
   {

@@ -3,7 +3,7 @@ interface Props {
   modelValue?: string
   label: string
   name?: string
-  type?: 'text' | 'search' | 'email' | 'tel' | 'date' | 'password'
+  type?: 'text' | 'search' | 'email' | 'tel' | 'date' | 'password' | 'number'
   autocomplete?: string
   placeholder?: string
   help?: string

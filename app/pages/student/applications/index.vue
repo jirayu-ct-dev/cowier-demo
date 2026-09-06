@@ -2,14 +2,9 @@
 import {
   ArrowDown,
   ArrowUp,
-  Building2,
-  CalendarClock,
   ChevronLeft,
   ChevronRight,
-  CircleCheck,
-  CircleX,
-  Clock3,
-  MoreHorizontal,
+  MapPin,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,29 +14,32 @@ import {
   X,
 } from '@lucide/vue'
 import { format } from 'date-fns'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
-import { z } from 'zod'
+import { studentApplicationFormSchema as applicationSchema } from '#shared/student-applications'
 import type { StudentApplication, StudentApplicationFormValue, TrackedApplicationStatus } from '~/composables/useStudentApplications'
+import { createStudentApplicationSchema } from '~/composables/useStudentApplications'
 import { getPageCount, paginateItems } from '~/utils/table'
 
-definePageMeta({ title: 'ติดตามการสมัครสหกิจ', middleware: 'student-prototype' })
-useHead({ title: 'ติดตามการสมัครสหกิจ' })
+definePageMeta({ title: 'สมัครและยืนยันที่ฝึกงาน', middleware: 'student-prototype' })
+useHead({ title: 'สมัครและยืนยันที่ฝึกงาน' })
 
 const { scenario } = useScenario()
 const { showToast } = useToast()
+const { requests, selectAndSubmit } = usePlacementRequestPreview()
+const currentRequest = computed(() => requests.value.find(item => item.application.id === latestApplication.value?.id))
 const {
+  applications: applicationStore,
   currentStudentApplications: applications,
+  latestApplication,
+  canCreateApplication,
   addApplication,
   updateApplication,
   updateApplicationStatus,
   deleteApplication,
 } = useStudentApplications()
+
+const { data: fetchedApplications, status: fetchStatus, error: fetchError, refresh: refreshApplications } = await useFetch<StudentApplication[]>('/api/student/applications')
+watch(fetchedApplications, (items) => { if (items) applicationStore.value = items }, { immediate: true })
+const createDisabled = computed(() => !canCreateApplication.value || fetchStatus.value !== 'success')
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -52,13 +50,21 @@ const pageSize = ref('10')
 const applicationDialogOpen = ref(false)
 const statusDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const selectionDialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 const selectedId = ref<string | null>(null)
 const statusValue = ref<TrackedApplicationStatus>('submitted')
+const isSubmitting = ref(false)
+const isSavingStatus = ref(false)
 
 interface ApplicationFormErrors {
   companyName?: string
   position?: string
+  companyLocation?: string
+  recipientName?: string
+  letterAddress?: string
+  latitude?: string
+  longitude?: string
   province?: string
   appliedAt?: string
   status?: string
@@ -68,26 +74,28 @@ const today = format(new Date(), 'yyyy-MM-dd')
 const emptyForm = (): StudentApplicationFormValue => ({
   companyName: '',
   position: '',
+  companyLocation: '',
+  recipientName: '',
+  letterAddress: '',
+  latitude: null,
+  longitude: null,
   province: '',
   appliedAt: today,
   status: 'submitted',
 })
 const form = reactive<StudentApplicationFormValue>(emptyForm())
 const formErrors = reactive<ApplicationFormErrors>({})
-
-const applicationSchema = z.object({
-  companyName: z.string().trim().min(1, 'กรุณากรอกชื่อบริษัทหรือสถานประกอบการ'),
-  position: z.string().trim().min(1, 'กรุณากรอกตำแหน่งที่สมัคร'),
-  province: z.string().trim().min(1, 'กรุณาเลือกจังหวัด'),
-  appliedAt: z.string().min(1, 'กรุณาเลือกวันที่สมัคร'),
-  status: z.enum(['submitted', 'waiting-response', 'responded', 'waiting-interview', 'accepted', 'rejected']),
-})
+watch(() => form.companyName, () => { formErrors.companyName = undefined })
+watch(() => form.position, () => { formErrors.position = undefined })
+watch(() => form.companyLocation, () => { formErrors.companyLocation = undefined })
+watch(() => form.recipientName, () => { formErrors.recipientName = undefined })
+watch(() => form.letterAddress, () => { formErrors.letterAddress = undefined })
 
 const statusOptions = [
   { value: 'all', label: 'ทุกสถานะ' },
   ...trackedApplicationStatusOptions,
 ]
-const formStatusOptions = trackedApplicationStatusOptions
+const formStatusOptions = trackedApplicationStatusOptions.filter(option => option.value !== 'completed')
 const provinceOptions = computed(() => [
   { value: 'all', label: 'ทุกจังหวัด' },
   ...[...new Set(applications.value.map(application => application.province))]
@@ -110,19 +118,16 @@ const pageSizeOptions = [
   { value: '50', label: '50' },
 ]
 
-const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
+const effectiveViewState = computed(() => {
+  if (scenario.value.forceError || fetchError.value) return 'error'
+  if (fetchStatus.value === 'pending') return 'loading'
+  return scenario.value.viewState
+})
 const visibleSource = computed(() => scenario.value.viewState === 'empty' ? [] : applications.value)
-const summaryCards = computed(() => [
-  { label: 'สมัครทั้งหมด', value: visibleSource.value.length, icon: Building2, tone: 'bg-surface text-ink' },
-  { label: 'รอการตอบกลับ', value: visibleSource.value.filter(item => item.status === 'waiting-response').length, icon: Clock3, tone: 'bg-warning-soft text-warning' },
-  { label: 'รอสัมภาษณ์', value: visibleSource.value.filter(item => item.status === 'waiting-interview').length, icon: CalendarClock, tone: 'bg-interview-soft text-interview' },
-  { label: 'ผ่านการสมัคร', value: visibleSource.value.filter(item => item.status === 'accepted').length, icon: CircleCheck, tone: 'bg-success-soft text-success' },
-  { label: 'ปฏิเสธ', value: visibleSource.value.filter(item => item.status === 'rejected').length, icon: CircleX, tone: 'bg-danger-soft text-danger' },
-])
 const filteredApplications = computed(() => {
   const keyword = searchQuery.value.trim().toLocaleLowerCase('th')
   return visibleSource.value
-    .filter(application => !keyword || [application.companyName, application.position]
+    .filter(application => !keyword || [application.companyName, application.position, application.companyLocation, application.recipientName ?? '', application.letterAddress ?? '']
       .some(value => value.toLocaleLowerCase('th').includes(keyword)))
     .filter(application => statusFilter.value === 'all' || application.status === statusFilter.value)
     .filter(application => provinceFilter.value === 'all' || application.province === provinceFilter.value)
@@ -139,6 +144,21 @@ const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.val
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all' || provinceFilter.value !== 'all')
 const activeStatusLabel = computed(() => statusOptions.find(option => option.value === statusFilter.value)?.label)
 const selectedApplication = computed(() => applications.value.find(application => application.id === selectedId.value) ?? null)
+const applicationBlockReason = computed(() => {
+  if (!latestApplication.value || canCreateApplication.value) return ''
+  return latestApplication.value.status === 'completed'
+    ? 'คุณยืนยันเลือกที่ฝึกงานแล้ว หากต้องการเปลี่ยนสถานประกอบการ กรุณาติดต่อเจ้าหน้าที่'
+    : 'กรอกบริษัทใหม่ได้เมื่อบริษัทเดิมปฏิเสธเท่านั้น'
+})
+const currentMapUrl = computed(() => {
+  const item = latestApplication.value
+  return item?.latitude != null && item.longitude != null
+    ? `https://www.openstreetmap.org/?mlat=${item.latitude}&mlon=${item.longitude}#map=17/${item.latitude}/${item.longitude}`
+    : null
+})
+const mapUrl = (item: StudentApplication) => item.latitude != null && item.longitude != null
+  ? `https://www.openstreetmap.org/?mlat=${item.latitude}&mlon=${item.longitude}#map=17/${item.latitude}/${item.longitude}` : undefined
+const formatUpdatedAt = (value: string) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(value))
 
 watch([searchQuery, statusFilter, provinceFilter, pageSize], () => {
   currentPage.value = 1
@@ -151,22 +171,40 @@ const clearFormErrors = () => {
   Object.assign(formErrors, {
     companyName: undefined,
     position: undefined,
+    companyLocation: undefined,
+    recipientName: undefined,
+    letterAddress: undefined,
+    latitude: undefined,
+    longitude: undefined,
     province: undefined,
     appliedAt: undefined,
     status: undefined,
   })
 }
 const openAddDialog = () => {
+  if (createDisabled.value) {
+    showToast({ title: 'ยังกรอกบริษัทใหม่ไม่ได้', description: fetchStatus.value !== 'success' ? 'กรุณารอโหลดข้อมูล หรือลองโหลดอีกครั้ง' : applicationBlockReason.value })
+    return
+  }
   editingId.value = null
   Object.assign(form, emptyForm())
   clearFormErrors()
   applicationDialogOpen.value = true
 }
 const openEditDialog = (application: StudentApplication) => {
+  if (application.status === 'completed') {
+    showToast({ title: 'ยืนยันเลือกที่ฝึกงานแล้ว', description: 'หากต้องการแก้ไขข้อมูล กรุณาติดต่อเจ้าหน้าที่' })
+    return
+  }
   editingId.value = application.id
   Object.assign(form, {
     companyName: application.companyName,
     position: application.position,
+    companyLocation: application.companyLocation,
+    recipientName: application.recipientName ?? '',
+    letterAddress: application.letterAddress ?? application.companyLocation,
+    latitude: application.latitude ?? null,
+    longitude: application.longitude ?? null,
     province: application.province,
     appliedAt: application.appliedAt,
     status: application.status,
@@ -175,47 +213,72 @@ const openEditDialog = (application: StudentApplication) => {
   applicationDialogOpen.value = true
 }
 const openStatusDialog = (application: StudentApplication) => {
+  if (application.status === 'completed') {
+    showToast({ title: 'ยืนยันเลือกที่ฝึกงานแล้ว', description: 'หากต้องการเปลี่ยนสถานประกอบการ กรุณาติดต่อเจ้าหน้าที่' })
+    return
+  }
   selectedId.value = application.id
   statusValue.value = application.status
   statusDialogOpen.value = true
 }
 const openDeleteDialog = (application: StudentApplication) => {
+  if (application.status !== 'rejected') return
   selectedId.value = application.id
   deleteDialogOpen.value = true
 }
 
-const submitApplication = () => {
+const coordinatesValid = ref(true)
+const submitApplication = async () => {
+  if (isSubmitting.value || !coordinatesValid.value) return
   clearFormErrors()
-  const result = applicationSchema.safeParse(form)
+  const result = editingId.value ? applicationSchema.safeParse(form) : createStudentApplicationSchema.safeParse(form)
   if (!result.success) {
-    const errors = result.error.flatten().fieldErrors
+    const errors = result.error.flatten().fieldErrors as Partial<Record<keyof ApplicationFormErrors, string[]>>
     formErrors.companyName = errors.companyName?.[0]
     formErrors.position = errors.position?.[0]
+    formErrors.companyLocation = errors.companyLocation?.[0]
+    formErrors.recipientName = errors.recipientName?.[0]
+    formErrors.letterAddress = errors.letterAddress?.[0]
+    formErrors.latitude = errors.latitude?.[0]
+    formErrors.longitude = errors.longitude?.[0]
     formErrors.province = errors.province?.[0]
     formErrors.appliedAt = errors.appliedAt?.[0]
     formErrors.status = errors.status?.[0]
     return
   }
 
+  isSubmitting.value = true
   try {
     if (editingId.value) {
-      updateApplication(editingId.value, result.data)
+      await updateApplication(editingId.value, applicationSchema.parse(result.data))
       showToast({ title: 'แก้ไขข้อมูลการสมัครแล้ว', description: result.data.companyName })
     }
     else {
-      addApplication(result.data)
-      showToast({ title: 'เพิ่มการสมัครแล้ว', description: result.data.companyName })
+      await addApplication(createStudentApplicationSchema.parse(result.data))
+      showToast({ title: 'บันทึกข้อมูลแล้ว', description: `${result.data.companyName} · รอดำเนินการ` })
     }
     applicationDialogOpen.value = false
   }
-  catch {
-    showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
+  catch (error) {
+    const response = error as { statusCode?: number, data?: { data?: Partial<Record<keyof ApplicationFormErrors, string[]>> } }
+    const blocked = response.statusCode === 409 || (error instanceof Error && error.message === 'student-application-already-active')
+    if (response.statusCode === 400 && response.data?.data) {
+      for (const [field, messages] of Object.entries(response.data.data)) {
+        formErrors[field as keyof ApplicationFormErrors] = messages?.[0]
+      }
+    }
+    if (blocked) await refreshApplications()
+    showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: blocked ? 'มีบริษัทที่กำลังดำเนินการอยู่ กรุณาตรวจสอบรายการปัจจุบัน' : 'กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง' })
+  }
+  finally {
+    isSubmitting.value = false
   }
 }
-const submitStatus = () => {
-  if (!selectedApplication.value) return
+const submitStatus = async () => {
+  if (!selectedApplication.value || isSavingStatus.value) return
+  isSavingStatus.value = true
   try {
-    updateApplicationStatus(selectedApplication.value.id, statusValue.value)
+    await updateApplicationStatus(selectedApplication.value.id, statusValue.value)
     showToast({
       title: 'อัปเดตสถานะแล้ว',
       description: `${selectedApplication.value.companyName} · ${trackedApplicationStatusMeta[statusValue.value].label}`,
@@ -225,12 +288,38 @@ const submitStatus = () => {
   catch {
     showToast({ title: 'อัปเดตสถานะไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
   }
+  finally {
+    isSavingStatus.value = false
+  }
 }
-const confirmDelete = () => {
+const confirmSelection = async () => {
+  const application = latestApplication.value
+  if (!application || ['rejected', 'cancelled'].includes(application.status) || isSavingStatus.value || currentRequest.value) return
+  if (!applicationSchema.safeParse(application).success) {
+    selectionDialogOpen.value = false
+    openEditDialog(application)
+    showToast({ title: 'กรุณาตรวจสอบข้อมูลบริษัท ผู้รับหนังสือ และพิกัดให้ครบก่อนยืนยัน' })
+    return
+  }
+  isSavingStatus.value = true
+  try {
+    await selectAndSubmit(application, updateApplicationStatus)
+    selectionDialogOpen.value = false
+    showToast({ title: 'ยืนยันสถานประกอบการแล้ว', description: 'ข้อมูลถูกส่งเข้าคิวของเจ้าหน้าที่ทันที ขั้นตอนต่อไปคือรอเจ้าหน้าที่ออกหนังสือ' })
+  }
+  catch {
+    await refreshApplications()
+    showToast({ title: 'ดำเนินการยังไม่ครบ', description: 'กดลองอีกครั้งเพื่อทำต่อจากขั้นตอนที่บันทึกสำเร็จแล้ว' })
+  }
+  finally {
+    isSavingStatus.value = false
+  }
+}
+const confirmDelete = async () => {
   if (!selectedApplication.value) return
   const companyName = selectedApplication.value.companyName
   try {
-    deleteApplication(selectedApplication.value.id)
+    await deleteApplication(selectedApplication.value.id)
     showToast({ title: 'ลบรายการการสมัครแล้ว', description: companyName })
     selectedId.value = null
   }
@@ -249,9 +338,10 @@ const resetTable = () => {
   pageSize.value = '10'
   currentPage.value = 1
 }
-const retry = () => {
+const retry = async () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
+  await refreshApplications()
 }
 const toggleDateSort = () => {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -268,27 +358,77 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
   <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">ติดตามการสมัครสหกิจ</h2>
-        <p class="mt-1 text-sm leading-6 text-muted">ติดตามและอัปเดตสถานะบริษัทที่คุณยื่นสมัครฝึกสหกิจ</p>
+        <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">สมัครและยืนยันที่ฝึกงาน</h2>
       </div>
-      <UiButton class="shrink-0" :icon="Plus" @click="openAddDialog">เพิ่มการสมัคร</UiButton>
+      <div class="sm:max-w-md">
+        <UiButton class="w-full shrink-0 sm:w-auto" :icon="Plus" @click="openAddDialog">
+          กรอกข้อมูล
+        </UiButton>
+      </div>
     </div>
 
-    <div v-if="effectiveViewState === 'loading'" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="กำลังโหลดสรุปการสมัคร">
-      <UiCard v-for="item in 5" :key="item"><UiSkeleton class="h-20" /></UiCard>
-    </div>
-    <div v-else class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      <UiCard v-for="card in summaryCards" :key="card.label" class="flex items-center gap-4">
-        <span class="grid size-11 shrink-0 place-items-center rounded-control" :class="card.tone"><component :is="card.icon" :size="20" aria-hidden="true" /></span>
-        <div><p class="text-xs font-medium text-muted">{{ card.label }}</p><p class="mt-1 text-2xl font-bold text-ink">{{ card.value }}</p></div>
-      </UiCard>
-    </div>
+    <UiCard v-if="effectiveViewState === 'loading'" class="mb-6" aria-label="กำลังโหลดใบสมัครปัจจุบัน">
+      <UiSkeleton class="h-5 w-36" />
+      <UiSkeleton class="mt-4 h-8 w-64 max-w-full" />
+      <UiSkeleton class="mt-3 h-16 w-full" />
+    </UiCard>
+    <UiCard v-else-if="effectiveViewState !== 'error' && effectiveViewState !== 'empty' && latestApplication" class="mb-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <p class="text-xs font-medium text-muted">{{ canCreateApplication ? 'บริษัทล่าสุด' : 'บริษัทที่กำลังดำเนินการ' }}</p>
+          <h3 class="mt-1 break-words text-xl font-bold text-ink">{{ latestApplication.companyName }}</h3>
+          <p class="mt-1 text-sm text-ink">{{ latestApplication.position }}</p>
+        </div>
+        <UiBadge class="shrink-0 self-start" :tone="trackedApplicationStatusMeta[latestApplication.status].tone">
+          {{ trackedApplicationStatusMeta[latestApplication.status].label }}
+        </UiBadge>
+      </div>
+      <div class="mt-5 grid gap-6 border-t border-divider pt-5 lg:grid-cols-2">
+      <section class="min-w-0" aria-label="ข้อมูลสถานประกอบการ">
+      <h4 class="font-semibold text-ink">สถานประกอบการ</h4>
+      <dl class="mt-3 space-y-3 text-sm">
+        <div><dt class="text-xs text-muted">ที่อยู่บริษัท</dt><dd class="mt-1 whitespace-pre-line break-words leading-6 text-ink">{{ latestApplication.companyLocation }}</dd></div>
+        <div><dt class="text-xs text-muted">จังหวัด</dt><dd class="mt-1 text-ink">{{ latestApplication.province || 'ยังไม่ระบุ' }}</dd></div>
+        <div>
+          <dt class="sr-only">แผนที่บริษัท</dt>
+          <dd v-if="currentMapUrl" class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <a :href="currentMapUrl" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-2 rounded-control border border-divider px-4 font-semibold text-ink hover:bg-surface"><MapPin :size="16" aria-hidden="true" />แสดงแผนที่<span class="sr-only"> (เปิดแท็บใหม่)</span></a>
+          </dd>
+          <dd v-else class="mt-1 text-muted">ยังไม่มีพิกัด — เพิ่มได้ในแก้ไขข้อมูล</dd>
+        </div>
+      </dl>
+      </section>
+      <section class="min-w-0" aria-label="ข้อมูลออกหนังสือ">
+        <h4 class="font-semibold text-ink">ข้อมูลออกหนังสือ</h4>
+        <dl class="mt-3 space-y-3 text-sm">
+          <div><dt class="text-xs text-muted">เรียน (ผู้รับหนังสือ)</dt><dd class="mt-1 break-words leading-6 text-ink">{{ latestApplication.recipientName || 'ยังไม่ระบุ' }}</dd></div>
+          <div><dt class="text-xs text-muted">ที่อยู่สำหรับออกหนังสือ</dt><dd class="mt-1 whitespace-pre-line break-words leading-6 text-ink">{{ latestApplication.letterAddress || 'ยังไม่ระบุ' }}</dd></div>
+        </dl>
+      </section>
+      </div>
+      <dl class="mt-5 grid gap-4 rounded-control bg-surface p-4 text-sm sm:grid-cols-3">
+        <div class="min-w-0"><dt class="text-xs text-muted">เลขที่รายการ</dt><dd class="mt-1 break-all text-ink">{{ latestApplication.id }}</dd></div>
+        <div><dt class="text-xs text-muted">วันที่สมัคร</dt><dd class="mt-1 text-ink">{{ formatDate(latestApplication.appliedAt) }}</dd></div>
+        <div><dt class="text-xs text-muted">อัปเดตล่าสุด</dt><dd class="mt-1 text-ink">{{ formatUpdatedAt(latestApplication.updatedAt) }}</dd></div>
+      </dl>
+      <div class="mt-5 flex flex-wrap gap-2 border-t border-divider pt-4">
+        <UiButton v-if="!canCreateApplication && !currentRequest" :loading="isSavingStatus" @click="selectionDialogOpen = true">{{ latestApplication.status === 'completed' ? 'ส่งคำร้องขอหนังสือ (ทดลอง)' : 'เลือกบริษัทนี้และส่งคำร้อง (ทดลอง)' }}</UiButton>
+        <template v-if="latestApplication.status !== 'completed'">
+          <UiButton variant="secondary" :icon="Pencil" @click="openEditDialog(latestApplication)">แก้ไขข้อมูล</UiButton>
+          <UiButton variant="secondary" :icon="RefreshCw" @click="openStatusDialog(latestApplication)">อัปเดตผลการสมัคร</UiButton>
+        </template>
+      </div>
+      <div v-if="latestApplication.status === 'completed'" class="mt-4 space-y-4">
+        <p class="text-xs leading-5 text-muted">ต้นแบบคำร้อง: ข้อมูลและไฟล์อยู่ใน session นี้เท่านั้น รีโหลดหน้าแล้วหาย ยังไม่ได้ส่งเจ้าหน้าที่จริง</p>
+        <AppRequestDocuments v-if="currentRequest" :request="currentRequest" />
+      </div>
+    </UiCard>
 
     <UiCard :padded="false">
       <div class="border-b border-divider p-5 sm:p-6">
         <div>
-          <h3 class="text-lg font-bold text-ink">รายการบริษัทที่สมัคร</h3>
-          <p class="mt-1 text-sm leading-6 text-muted">เพิ่มบริษัทที่สนใจและอัปเดตผลการติดต่อไว้ในที่เดียว</p>
+          <h3 class="text-lg font-bold text-ink">ประวัติการสมัคร</h3>
+          <p class="mt-1 text-sm leading-6 text-muted">ดูบริษัทที่เคยสมัครและผลการดำเนินการย้อนหลัง</p>
         </div>
 
         <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -328,46 +468,43 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
       <div v-else-if="!paginatedApplications.length" class="p-5 sm:p-6">
         <AppEmptyState :title="hasActiveFilters ? 'ไม่พบการสมัครที่ตรงกับตัวกรอง' : 'ยังไม่มีรายการการสมัคร'" :description="hasActiveFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : 'เพิ่มบริษัทที่คุณสมัครไว้เพื่อเริ่มติดตามสถานะ'">
           <UiButton v-if="hasActiveFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
-          <UiButton v-else :icon="Plus" @click="openAddDialog">เพิ่มการสมัคร</UiButton>
+          <UiButton v-else :icon="Plus" @click="openAddDialog">กรอกข้อมูล</UiButton>
         </AppEmptyState>
       </div>
 
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[960px] border-collapse text-left text-sm">
+          <table class="w-full min-w-[1280px] border-collapse text-left text-sm">
             <caption class="sr-only">รายการบริษัทที่นักศึกษาสมัครสหกิจ</caption>
             <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
               <tr>
                 <th scope="col" class="px-6 py-3">บริษัท / ตำแหน่ง</th>
-                <th scope="col" class="px-4 py-3">จังหวัด</th>
+                <th scope="col" class="px-4 py-3">ที่อยู่ / พิกัดบริษัท</th>
+                <th scope="col" class="px-4 py-3">ผู้รับหนังสือ / ที่อยู่ออกหนังสือ</th>
                 <th scope="col" class="px-4 py-3" :aria-sort="sortDirection === 'asc' ? 'ascending' : 'descending'">
                   <button type="button" class="inline-flex items-center gap-1 font-semibold hover:text-ink" :aria-label="`เรียงวันที่สมัคร${sortDirection === 'asc' ? 'จากใหม่ไปเก่า' : 'จากเก่าไปใหม่'}`" @click="toggleDateSort">
                     วันที่สมัคร <ArrowUp v-if="sortDirection === 'asc'" :size="15" aria-hidden="true" /><ArrowDown v-else :size="15" aria-hidden="true" />
                   </button>
                 </th>
                 <th scope="col" class="px-4 py-3">สถานะ</th>
-                <th scope="col" class="w-16 px-4 py-3"><span class="sr-only">การทำงาน</span></th>
+                <th scope="col" class="px-4 py-3">อัปเดตล่าสุด</th>
+                <th scope="col" class="w-44 px-4 py-3 text-right">จัดการ</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
               <tr v-for="application in paginatedApplications" :key="application.id" class="transition-colors hover:bg-surface/70">
                 <td class="max-w-md px-6 py-4"><p class="font-semibold text-ink">{{ application.companyName }}</p><p class="mt-1 text-xs text-muted">{{ application.position }}</p></td>
-                <td class="whitespace-nowrap px-4 py-4 text-muted">{{ application.province }}</td>
+                <td class="max-w-xs break-words px-4 py-4 text-muted"><p>{{ application.companyLocation }}</p><p class="mt-1 text-xs">จังหวัด: {{ application.province || 'ยังไม่ระบุ' }}</p><a v-if="mapUrl(application)" :href="mapUrl(application)" target="_blank" rel="noopener noreferrer" class="mt-1 inline-flex min-h-9 items-center gap-1 font-semibold text-ink underline"><MapPin :size="15" />แสดงแผนที่<span class="sr-only"> (เปิดแท็บใหม่)</span></a></td>
+                <td class="max-w-xs break-words px-4 py-4"><p class="text-ink">{{ application.recipientName || 'ยังไม่ระบุผู้รับหนังสือ' }}</p><p class="mt-1 text-xs leading-5 text-muted">{{ application.letterAddress || 'ยังไม่ระบุที่อยู่' }}</p></td>
                 <td class="whitespace-nowrap px-4 py-4 text-muted">{{ formatDate(application.appliedAt) }}</td>
                 <td class="whitespace-nowrap px-4 py-4"><UiBadge :tone="trackedApplicationStatusMeta[application.status].tone">{{ trackedApplicationStatusMeta[application.status].label }}</UiBadge></td>
+                <td class="px-4 py-4 text-xs leading-5 text-muted">{{ formatUpdatedAt(application.updatedAt) }}</td>
                 <td class="px-4 py-4 text-right">
-                  <DropdownMenuRoot>
-                    <DropdownMenuTrigger class="inline-grid size-9 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`จัดการการสมัคร ${application.companyName}`">
-                      <MoreHorizontal :size="18" aria-hidden="true" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuContent :side-offset="6" align="end" class="z-40 min-w-48 rounded-panel border border-divider bg-canvas p-1.5 shadow-xl">
-                        <DropdownMenuItem class="flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-3 text-sm text-ink outline-none data-[highlighted]:bg-surface" @select="openEditDialog(application)"><Pencil :size="16" aria-hidden="true" />แก้ไขข้อมูล</DropdownMenuItem>
-                        <DropdownMenuItem class="flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-3 text-sm text-ink outline-none data-[highlighted]:bg-surface" @select="openStatusDialog(application)"><RefreshCw :size="16" aria-hidden="true" />อัปเดตสถานะ</DropdownMenuItem>
-                        <DropdownMenuItem class="flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-3 text-sm text-danger outline-none data-[highlighted]:bg-danger-soft" @select="openDeleteDialog(application)"><Trash2 :size="16" aria-hidden="true" />ลบรายการ</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuRoot>
+                  <div class="flex min-w-36 flex-nowrap justify-end gap-1 [&>button]:shrink-0">
+                    <button type="button" class="inline-grid size-11 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`แก้ไขข้อมูล ${application.companyName}`" title="แก้ไขข้อมูล" @click="openEditDialog(application)"><Pencil :size="18" aria-hidden="true" /></button>
+                    <button type="button" class="inline-grid size-11 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`อัปเดตสถานะ ${application.companyName}`" title="อัปเดตสถานะ" @click="openStatusDialog(application)"><RefreshCw :size="18" aria-hidden="true" /></button>
+                    <button v-if="application.status === 'rejected'" type="button" class="inline-grid size-11 place-items-center rounded-control text-danger hover:bg-danger-soft" :aria-label="`ลบรายการ ${application.companyName}`" title="ลบรายการ" @click="openDeleteDialog(application)"><Trash2 :size="18" aria-hidden="true" /></button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -376,21 +513,23 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="application in paginatedApplications" :key="application.id" class="p-5">
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-col gap-3">
               <div class="min-w-0"><p class="font-semibold leading-6 text-ink">{{ application.companyName }}</p><p class="mt-1 text-sm text-muted">{{ application.position }}</p></div>
-              <DropdownMenuRoot>
-                <DropdownMenuTrigger class="inline-grid size-9 shrink-0 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`จัดการการสมัคร ${application.companyName}`"><MoreHorizontal :size="18" aria-hidden="true" /></DropdownMenuTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuContent :side-offset="6" align="end" class="z-40 min-w-48 rounded-panel border border-divider bg-canvas p-1.5 shadow-xl">
-                    <DropdownMenuItem class="flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-3 text-sm text-ink outline-none data-[highlighted]:bg-surface" @select="openEditDialog(application)"><Pencil :size="16" aria-hidden="true" />แก้ไขข้อมูล</DropdownMenuItem>
-                    <DropdownMenuItem class="flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-3 text-sm text-ink outline-none data-[highlighted]:bg-surface" @select="openStatusDialog(application)"><RefreshCw :size="16" aria-hidden="true" />อัปเดตสถานะ</DropdownMenuItem>
-                    <DropdownMenuItem class="flex min-h-10 cursor-pointer items-center gap-2 rounded-control px-3 text-sm text-danger outline-none data-[highlighted]:bg-danger-soft" @select="openDeleteDialog(application)"><Trash2 :size="16" aria-hidden="true" />ลบรายการ</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenuPortal>
-              </DropdownMenuRoot>
+              <div class="flex flex-nowrap justify-end gap-1 [&>button]:shrink-0">
+                <button type="button" class="inline-grid size-11 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`แก้ไขข้อมูล ${application.companyName}`" title="แก้ไขข้อมูล" @click="openEditDialog(application)"><Pencil :size="18" aria-hidden="true" /></button>
+                <button type="button" class="inline-grid size-11 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`อัปเดตสถานะ ${application.companyName}`" title="อัปเดตสถานะ" @click="openStatusDialog(application)"><RefreshCw :size="18" aria-hidden="true" /></button>
+                <button v-if="application.status === 'rejected'" type="button" class="inline-grid size-11 place-items-center rounded-control text-danger hover:bg-danger-soft" :aria-label="`ลบรายการ ${application.companyName}`" title="ลบรายการ" @click="openDeleteDialog(application)"><Trash2 :size="18" aria-hidden="true" /></button>
+              </div>
             </div>
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
-              <div class="text-xs leading-5 text-muted"><p>{{ application.province }}</p><p>{{ formatDate(application.appliedAt) }}</p></div>
+              <dl class="w-full space-y-2 break-words text-sm leading-6 text-muted">
+                <div><dt class="text-xs">ที่อยู่บริษัท / จังหวัด</dt><dd>{{ application.companyLocation }} · {{ application.province || 'ยังไม่ระบุ' }}</dd></div>
+                <div><dt class="text-xs">ผู้รับหนังสือ</dt><dd>{{ application.recipientName || 'ยังไม่ระบุ' }}</dd></div>
+                <div><dt class="text-xs">ที่อยู่สำหรับออกหนังสือ</dt><dd>{{ application.letterAddress || 'ยังไม่ระบุ' }}</dd></div>
+                <div><dt class="text-xs">วันที่สมัคร</dt><dd>{{ formatDate(application.appliedAt) }}</dd></div>
+                <div><dt class="text-xs">อัปเดตล่าสุด</dt><dd>{{ formatUpdatedAt(application.updatedAt) }}</dd></div>
+              </dl>
+              <a v-if="mapUrl(application)" :href="mapUrl(application)" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-ink underline"><MapPin :size="16" />แสดงแผนที่<span class="sr-only"> (เปิดแท็บใหม่)</span></a>
               <UiBadge :tone="trackedApplicationStatusMeta[application.status].tone">{{ trackedApplicationStatusMeta[application.status].label }}</UiBadge>
             </div>
           </article>
@@ -410,16 +549,33 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
       </template>
     </UiCard>
 
-    <UiDialog v-model:open="applicationDialogOpen" size="lg" :title="editingId ? 'แก้ไขข้อมูลการสมัคร' : 'เพิ่มการสมัคร'" description="บันทึกข้อมูลบริษัทที่คุณยื่นสมัครเพื่อใช้ติดตามความคืบหน้า">
+    <UiDialog v-model:open="selectionDialogOpen" title="เลือกบริษัทและส่งคำร้อง" description="ยืนยันว่าบริษัทตอบรับแล้วและคุณเลือกฝึกงานที่นี่ ระบบจะบันทึกผลตอบรับและส่งข้อมูลเข้าคิวเจ้าหน้าที่ทันที หลังยืนยันเปลี่ยนบริษัทเองไม่ได้ ข้อมูลยังเป็นต้นแบบเฉพาะ session นี้">
+      <p class="font-semibold text-ink">{{ latestApplication?.companyName }}</p>
+      <div class="mt-5 flex flex-wrap justify-end gap-2">
+        <UiButton variant="ghost" :disabled="isSavingStatus" @click="selectionDialogOpen = false">กลับ</UiButton>
+        <UiButton :loading="isSavingStatus" @click="confirmSelection">ยืนยันและส่งคำร้อง (ทดลอง)</UiButton>
+      </div>
+    </UiDialog>
+
+    <UiDialog v-model:open="applicationDialogOpen" size="lg" :title="editingId ? 'แก้ไขข้อมูลการสมัคร' : 'บันทึกข้อมูลการสมัคร'" description="บันทึกบริษัทที่สมัครและข้อมูลสำหรับจัดทำหนังสือขอความอนุเคราะห์">
       <form class="grid gap-5 sm:grid-cols-2" novalidate @submit.prevent="submitApplication">
         <div class="sm:col-span-2"><UiInput v-model="form.companyName" label="ชื่อบริษัท / สถานประกอบการ" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" :error="formErrors.companyName" required /></div>
         <div class="sm:col-span-2"><UiInput v-model="form.position" label="ตำแหน่งที่สมัคร" placeholder="เช่น นักพัฒนาเว็บไซต์" :error="formErrors.position" required /></div>
-        <UiSelect v-model="form.province" :options="formProvinceOptions" label="จังหวัด" placeholder="เลือกจังหวัด" :error="formErrors.province" required />
-        <div><UiInput v-model="form.appliedAt" type="date" label="วันที่สมัคร" :error="formErrors.appliedAt" required /></div>
-        <div class="sm:col-span-2"><UiSelect v-model="form.status" :options="formStatusOptions" label="สถานะการสมัคร" :error="formErrors.status" required /></div>
-        <div class="flex flex-wrap justify-end gap-2 border-t border-divider pt-5 sm:col-span-2">
+        <div class="sm:col-span-2"><UiTextarea v-model="form.companyLocation" label="ที่อยู่บริษัท" placeholder="เลขที่ ถนน ตำบล อำเภอ จังหวัด และรหัสไปรษณีย์" :error="formErrors.companyLocation" required /></div>
+        <div class="sm:col-span-2"><UiInput v-model="form.recipientName" label="เรียน (ชื่อหรือตำแหน่งผู้รับหนังสือ)" placeholder="เช่น คุณสมชาย ใจดี หรือผู้จัดการฝ่ายทรัพยากรบุคคล" help="ระบุผู้ที่ต้องการให้เจ้าหน้าที่เรียนถึงในหนังสือ" :error="formErrors.recipientName" required /></div>
+        <div class="sm:col-span-2">
+          <UiTextarea v-model="form.letterAddress" label="ที่อยู่สำหรับออกหนังสือ" placeholder="ชื่อบริษัท / สาขา เลขที่ ถนน ตำบล อำเภอ จังหวัด และรหัสไปรษณีย์" :error="formErrors.letterAddress" required />
+          <UiButton class="mt-2" size="sm" variant="ghost" @click="form.letterAddress = form.companyLocation">ใช้ที่อยู่เดียวกับบริษัท</UiButton>
+        </div>
+        <div class="sm:col-span-2"><AppLocationPicker :latitude="form.latitude" :longitude="form.longitude" :address="form.letterAddress" address-label="ที่อยู่สำหรับออกหนังสือ" :error="formErrors.latitude || formErrors.longitude" @validity="coordinatesValid = $event" @change="Object.assign(form, $event); formErrors.latitude = undefined; formErrors.longitude = undefined" /></div>
+        <template v-if="editingId">
+          <UiSelect v-model="form.province" :options="formProvinceOptions" label="จังหวัด" placeholder="เลือกจังหวัด" :error="formErrors.province" required />
+          <div><UiInput v-model="form.appliedAt" type="date" label="วันที่สมัคร" :error="formErrors.appliedAt" required /></div>
+          <div class="sm:col-span-2"><UiSelect v-model="form.status" :options="formStatusOptions" label="สถานะการสมัคร" :error="formErrors.status" required /></div>
+        </template>
+        <div class="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-divider bg-canvas pt-5 sm:col-span-2">
           <UiButton variant="ghost" @click="applicationDialogOpen = false">ยกเลิก</UiButton>
-          <UiButton type="submit">บันทึก</UiButton>
+          <UiButton type="submit" :loading="isSubmitting">บันทึกข้อมูล</UiButton>
         </div>
       </form>
     </UiDialog>
@@ -429,7 +585,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
         <UiSelect v-model="statusValue" :options="formStatusOptions" label="สถานะใหม่" required />
         <div class="flex flex-wrap justify-end gap-2 border-t border-divider pt-5">
           <UiButton variant="ghost" @click="statusDialogOpen = false">ยกเลิก</UiButton>
-          <UiButton type="submit">บันทึกสถานะ</UiButton>
+          <UiButton type="submit" :loading="isSavingStatus">บันทึกสถานะ</UiButton>
         </div>
       </form>
     </UiDialog>

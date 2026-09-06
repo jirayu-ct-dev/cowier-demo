@@ -5,6 +5,14 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@nuxt/eslint'],
+  runtimeConfig: {
+    geocodingBaseUrl: 'https://nominatim.openstreetmap.org',
+    geocodingUserAgent: 'CWIE-BRU-Supervision/1.0',
+    public: {
+      mapTileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      mapTileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'th' },

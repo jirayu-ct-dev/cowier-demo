@@ -111,11 +111,30 @@ Dependency เหล่านี้จะติดตั้งและตั้
 
 ## 🐳 Docker และฐานข้อมูล
 
-ระยะ UI ให้รันด้วย `pnpm dev` เป็นหลัก ส่วน Docker Compose เดิมยังเป็น Backend scaffold
-ของ PostgreSQL และไม่ใช่สถาปัตยกรรมเป้าหมาย ห้ามนำไปใช้เป็นฐานสำหรับงานใหม่
+ระยะ UI ให้รันด้วย `pnpm dev` เป็นหลัก หากใช้ Docker ให้ใช้ Compose project
+`cowier-demo` เพียงชุดเดียว: `cowier-app` ที่พอร์ต 3000 และ `cowier-mysql`
+ที่พอร์ต 3307 โดยฐานข้อมูลอยู่ใน volume `cowier-demo_mysql_data`
+อย่าเปิด dev server และ Docker app บนพอร์ต 3000 พร้อมกัน
 
-เมื่อเริ่ม Backend จะเปลี่ยน Prisma provider, connection string, Docker Compose และ
-migration เป็น MySQL 8.4 LTS พร้อมกันตามแผนใน `dosc/architecture.md`
+```bash
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail 100 app
+docker compose stop
+```
+
+ตั้งค่ารหัสผ่านใน `.env` ให้ตรงกับฐานข้อมูลเดิมก่อนเริ่ม Compose;
+การเปลี่ยน environment ไม่ได้เปลี่ยนรหัสผ่านใน volume ที่สร้างแล้ว
+ห้ามใช้ `down -v` หรือ `volume prune` หากต้องการเก็บข้อมูล
+API สมัครบริษัทยังเป็น mock ไม่ได้บันทึกลง MySQL แม้ database container จะทำงาน
+
+หลัง cleanup วันที่ 2026-09-04 เก็บ volume `ciwie-comsci_mysql_data` ของชุดซ้ำไว้
+เพื่อกู้ข้อมูล ไม่ได้รวมข้อมูลเข้าฐานหลัก ส่วน container ชุดซ้ำถูกลบแล้ว
+แอปพอร์ต 3000 เดิมยังทำงานโดยมี Compose label เก่า `ciwie-comsci`;
+การ deploy ครั้งถัดไปต้องหยุดและลบเฉพาะ `cowier-app` เดิมก่อน `compose up`
+เพื่อให้ Compose สร้าง label ที่ถูกต้อง (ข้อมูล mock ใน memory จะหายเมื่อ restart)
+ไม่ต้องลบ `cowier-mysql` หรือ volume ใด ๆ
 
 ---
 
