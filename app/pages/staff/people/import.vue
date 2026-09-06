@@ -180,7 +180,7 @@ const handleImport = async () => {
   <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <button type="button" class="mb-3 inline-flex min-h-9 items-center gap-2 rounded-control text-sm font-semibold text-muted hover:text-ink" @click="navigateTo(`/staff/master-data/${context.route}`)"><ArrowLeft :size="17" aria-hidden="true" />กลับไป{{ context.plural }}</button>
+        <button type="button" class="mb-3 inline-flex min-h-9 items-center gap-2 rounded-control text-sm font-semibold text-muted hover:text-ink" @click="navigateTo(`/staff/${context.route}`)"><ArrowLeft :size="17" aria-hidden="true" />กลับไป{{ context.plural }}</button>
         <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">นำเข้าข้อมูล{{ context.plural }}</h2>
         <p class="mt-1 text-sm leading-6 text-muted">ตรวจสอบข้อมูลทั้งหมดก่อนยืนยัน ระบบจะนำเข้าเฉพาะรายการที่ผ่านการตรวจ</p>
       </div>
@@ -265,7 +265,7 @@ const handleImport = async () => {
     <UiCard v-else>
       <UiAlert tone="success" title="นำเข้าข้อมูลสำเร็จ">ระบบดำเนินการเฉพาะรายการที่ผ่านการตรวจ และคงรายการไม่ถูกต้องไว้นอกระบบ</UiAlert>
       <dl class="mt-6 grid gap-4 sm:grid-cols-3"><div class="rounded-control bg-surface p-4"><dt class="text-sm text-muted">เพิ่มข้อมูลและบัญชีใหม่</dt><dd class="mt-2 text-3xl font-bold text-ink">{{ result.created }}</dd></div><div class="rounded-control bg-surface p-4"><dt class="text-sm text-muted">อัปเดตข้อมูลเดิม</dt><dd class="mt-2 text-3xl font-bold text-ink">{{ result.updated }}</dd></div><div class="rounded-control bg-surface p-4"><dt class="text-sm text-muted">ไม่นำเข้า</dt><dd class="mt-2 text-3xl font-bold text-ink">{{ result.invalid }}</dd></div></dl>
-      <div class="mt-6 flex flex-wrap gap-2"><UiButton @click="navigateTo(`/staff/master-data/${context.route}`)">ดูข้อมูล{{ context.plural }}</UiButton><UiButton variant="secondary" @click="resetImport">นำเข้าไฟล์อื่น</UiButton><UiButton v-if="result.invalid" variant="secondary" :icon="Download" @click="handleDownloadErrors">ดาวน์โหลดรายการไม่สำเร็จ</UiButton></div>
+      <div class="mt-6 flex flex-wrap gap-2"><UiButton @click="navigateTo(`/staff/${context.route}`)">ดูข้อมูล{{ context.plural }}</UiButton><UiButton variant="secondary" @click="resetImport">นำเข้าไฟล์อื่น</UiButton><UiButton v-if="result.invalid" variant="secondary" :icon="Download" @click="handleDownloadErrors">ดาวน์โหลดรายการไม่สำเร็จ</UiButton></div>
     </UiCard>
 
     <UiDialog v-model:open="confirmOpen" title="ยืนยันการนำเข้าข้อมูล" :description="`ระบบจะดำเนินการ ${importableRows.length} รายการ และไม่นำเข้ารายการที่ไม่ถูกต้อง ${summary.invalid} รายการ`" :close-on-confirm="false">

@@ -80,7 +80,7 @@ const save = async () => {
     updatePerson(person.value, result.data)
     isEditing.value = false
     showToast({ title: 'บันทึกข้อมูลแล้ว', description: 'ระบบบันทึกค่าเดิมและค่าใหม่ในประวัติ' })
-    if (oldId !== person.value.id) await navigateTo(`/staff/master-data/${route.params.type}/${person.value.id}`, { replace: true })
+    if (oldId !== person.value.id) await navigateTo(`/staff/${route.params.type}/${person.value.id}`, { replace: true })
   } catch (error) {
     if (error instanceof Error && error.message === 'duplicate-id') editErrors.id = `${context.value.idLabel}นี้มีอยู่ในระบบแล้ว`
     else showToast({ title: 'บันทึกข้อมูลไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' })
@@ -129,7 +129,7 @@ const formatDateTime = (date: string) => new Intl.DateTimeFormat('th-TH', { date
 
 <template>
   <div v-if="person">
-    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-canvas hover:text-ink" @click="navigateTo(`/staff/master-data/${route.params.type}`)"><ArrowLeft :size="17" aria-hidden="true" />กลับไป{{ personType === 'student' ? 'ข้อมูลนักศึกษา' : 'ข้อมูลอาจารย์' }}</button>
+    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-canvas hover:text-ink" @click="navigateTo(`/staff/${route.params.type}`)"><ArrowLeft :size="17" aria-hidden="true" />กลับไป{{ personType === 'student' ? 'ข้อมูลนักศึกษา' : 'ข้อมูลอาจารย์' }}</button>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ getPersonFullName(person) }}</h2><p class="mt-1 text-sm text-muted">{{ context.idLabel }} {{ person.id }}</p></div>
       <UiButton v-if="!isEditing" :icon="Pencil" @click="startEditing">แก้ไขข้อมูล</UiButton>

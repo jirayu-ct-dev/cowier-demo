@@ -146,7 +146,7 @@ const staffRequestItems = computed<DashboardData['recentItems']>(() => staffRequ
   status: requestStatusMeta[request.status].label,
   tone: requestStatusMeta[request.status].tone,
   updatedAt: request.updatedAt,
-  to: `/staff/master-data/students/${request.application.studentId}`,
+  to: `/staff/students/${request.application.studentId}`,
 })))
 const staffDashboard = computed<DashboardData>(() => ({
   summary: [

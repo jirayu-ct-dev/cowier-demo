@@ -29,10 +29,8 @@ const showsStudentCohort = computed(() => route.path.startsWith('/lecturer/stude
   || route.path.startsWith('/lecturer/applications')
   || route.path.startsWith('/staff/applications')
   || route.path === '/staff/companies')
-const showsStudentSemester = computed(() => showsStudentCohort.value && route.path !== '/staff/master-data/students')
-const showsStudentSection = computed(() => showsStudentCohort.value && route.path !== '/staff/master-data/students')
 const toolbarGridClass = computed(() => showsStudentCohort.value
-    ? showsStudentSemester.value ? 'sm:grid-cols-[11rem_9rem_12rem]' : 'sm:grid-cols-[11rem]'
+    ? 'sm:grid-cols-[11rem_9rem_12rem]'
   : showsSupervisionRound.value
     ? 'sm:grid-cols-[17rem_12rem]'
   : 'sm:w-[17rem]')
@@ -62,7 +60,7 @@ watchEffect(() => {
         <div class="min-w-0">
           <p class="text-xs font-medium text-muted">{{ contextLabel }}</p>
           <p class="truncate text-sm font-semibold text-ink">
-            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }}<template v-if="showsStudentSection"> · {{ selectedStudentSectionLabel }}</template><template v-if="showsStudentSemester"> · {{ selectedStudentSemesterLabel }}</template></template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template></template>
+            <template v-if="showsStudentCohort">{{ selectedStudentCohortLabel }} · {{ selectedStudentSectionLabel }} · {{ selectedStudentSemesterLabel }}</template><template v-else>{{ selectedCycleLabel }}<template v-if="showsSupervisionRound"> · {{ roundOptions.find(option => option.value === roundModel)?.label }}</template></template>
           </p>
         </div>
       </div>
@@ -86,7 +84,7 @@ watchEffect(() => {
           :label-visible="false"
         />
         <UiSelect
-          v-if="showsStudentSection"
+          v-if="showsStudentCohort"
           v-model="studentSection"
           :options="studentSectionOptions"
           :placeholder="selectedStudentSectionLabel"
@@ -94,7 +92,7 @@ watchEffect(() => {
           :label-visible="false"
         />
         <UiSelect
-          v-if="showsStudentSemester"
+          v-if="showsStudentCohort"
           v-model="studentSemester"
           :options="studentSemesterOptions"
           :placeholder="selectedStudentSemesterLabel"

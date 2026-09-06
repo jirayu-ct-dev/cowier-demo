@@ -697,10 +697,10 @@ Route ต่อไปนี้คือหน้าจอที่มีอย�
 
 | Route | หน้าที่ |
 |---|---|
-| `/staff/master-data/students` | จัดการข้อมูลและบัญชีนักศึกษา |
-| `/staff/master-data/lecturers` | จัดการข้อมูล บัญชี และสิทธิ์พิเศษของอาจารย์ |
-| `/staff/master-data/:type/new` และ `/staff/master-data/:type/:id` | เพิ่มและดูรายละเอียดบุคคล |
-| `/staff/master-data/import` | นำเข้า CSV/XLSX ตรวจสอบ และสรุปผล |
+| `/staff/students` | จัดการข้อมูลและบัญชีนักศึกษา |
+| `/staff/lecturers` | จัดการข้อมูล บัญชี และสิทธิ์พิเศษของอาจารย์ |
+| `/staff/:type/new` และ `/staff/:type/:id` | เพิ่มและดูรายละเอียดบุคคล |
+| `/staff/people/import` | นำเข้า CSV/XLSX ตรวจสอบ และสรุปผล |
 | `/staff/applications` | ภาพรวมรายการสมัครของนักศึกษาแบบอ่านอย่างเดียว |
 | `/staff/companies`, `/staff/companies/new`, `/staff/companies/:id` | จัดการทะเบียนสถานประกอบการ |
 | `/staff/supervision/groups` และ `/staff/supervision/groups/new` | ดูและสร้างกลุ่มนิเทศ |

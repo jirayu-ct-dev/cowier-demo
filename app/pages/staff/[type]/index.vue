@@ -151,14 +151,14 @@ const savePermissions = () => {
         <p class="mt-1 text-sm leading-6 text-muted">ค้นหา เพิ่ม แก้ไข และจัดการสถานะข้อมูลกับบัญชีโดยไม่ลบประวัติเดิม</p>
       </div>
       <div class="flex flex-wrap gap-2 sm:justify-end">
-        <UiButton variant="secondary" :icon="Upload" @click="navigateTo({ path: '/staff/master-data/import', query: { type: personType } })">นำเข้าข้อมูล</UiButton>
+        <UiButton variant="secondary" :icon="Upload" @click="navigateTo({ path: '/staff/people/import', query: { type: personType } })">นำเข้าข้อมูล</UiButton>
         <UiDialog :title="`ส่งออก${context.title}`" :description="exportDescription">
           <template #trigger><UiButton variant="secondary" :icon="Download">ส่งออกข้อมูล</UiButton></template>
           <UiSelect v-model="exportFormat" :options="exportFormatOptions" :placeholder="exportFormatOptions.find(item => item.value === exportFormat)?.label" label="รูปแบบไฟล์" />
           <template #cancel><UiButton variant="ghost">ยกเลิก</UiButton></template>
           <template #confirm><UiButton :loading="isExporting" :icon="Download" @click="handleExport">ดาวน์โหลดไฟล์</UiButton></template>
         </UiDialog>
-        <UiButton :icon="Plus" @click="navigateTo(`/staff/master-data/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
+        <UiButton :icon="Plus" @click="navigateTo(`/staff/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
       </div>
     </div>
 
@@ -190,15 +190,21 @@ const savePermissions = () => {
       <div v-else-if="!paginatedPeople.length" class="p-5 sm:p-6">
         <AppEmptyState :title="hasFilters ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : `ยังไม่มี${context.title}`" :description="hasFilters ? 'ลองเปลี่ยนคำค้นหรือล้างตัวกรองที่ใช้อยู่' : `เพิ่ม${context.singular}คนแรกเพื่อสร้างข้อมูลและบัญชีผู้ใช้`">
           <UiButton v-if="hasFilters" variant="secondary" @click="clearFilters">ล้างตัวกรอง</UiButton>
-          <UiButton v-else :icon="Plus" @click="navigateTo(`/staff/master-data/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
+          <UiButton v-else :icon="Plus" @click="navigateTo(`/staff/${route.params.type}/new`)">เพิ่ม{{ context.singular }}</UiButton>
         </AppEmptyState>
       </div>
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[1050px] border-collapse text-left text-sm" :class="personType === 'student' ? 'table-fixed [&_td]:[overflow-wrap:anywhere]' : undefined">
+          <table class="w-full min-w-[1120px] border-collapse text-left text-sm" :class="personType === 'student' ? 'table-fixed [&_td]:[overflow-wrap:anywhere]' : undefined">
             <caption class="sr-only">{{ context.title }}</caption>
             <colgroup v-if="personType === 'student'">
-              <col v-for="column in 6" :key="column" class="w-1/6">
+              <col class="w-[14%]">
+              <col class="w-[20%]">
+              <col class="w-[14%]">
+              <col class="w-[11%]">
+              <col class="w-[21%]">
+              <col class="w-[11%]">
+              <col class="w-[9%]">
             </colgroup>
             <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
               <tr>
@@ -206,9 +212,10 @@ const savePermissions = () => {
                 <th scope="col" class="px-4 py-3" :aria-sort="sortDirection === 'asc' ? 'ascending' : 'descending'">
                   <button type="button" class="inline-flex items-center gap-1 font-semibold hover:text-ink" :aria-label="`เรียงชื่อ${sortDirection === 'asc' ? 'จาก ฮ ถึง ก' : 'จาก ก ถึง ฮ'}`" @click="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'">ชื่อ–นามสกุล <ArrowUp v-if="sortDirection === 'asc'" :size="15" aria-hidden="true" /><ArrowDown v-else :size="15" aria-hidden="true" /></button>
                 </th>
-                <th v-if="personType === 'student'" scope="col" class="px-4 py-3">รอบ / สถานประกอบการ</th>
+                <th v-if="personType === 'student'" scope="col" class="px-4 py-3">รอบสหกิจ</th>
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">หมู่เรียน</th>
-                <th scope="col" class="px-4 py-3">{{ personType === 'student' ? 'สถานะ' : 'สถานะข้อมูล' }}</th>
+                <th v-if="personType === 'student'" scope="col" class="px-4 py-3">สถานประกอบการ</th>
+                <th scope="col" class="px-4 py-3">สถานะข้อมูล</th>
                 <th v-if="personType === 'lecturer'" scope="col" class="px-4 py-3">สถานะบัญชี</th>
                 <th scope="col" class="px-4 py-3">ดำเนินการ</th>
               </tr>
@@ -217,15 +224,16 @@ const savePermissions = () => {
               <tr v-for="person in paginatedPeople" :key="person.id" class="transition-colors hover:bg-surface/70">
                 <td class="whitespace-nowrap px-6 py-4 font-semibold text-ink">{{ person.id }}</td>
                 <td class="px-4 py-4"><p class="font-semibold text-ink">{{ getPersonFullName(person) }}</p><p class="mt-1 text-xs text-muted">ชื่อผู้ใช้: {{ person.id }}</p></td>
-                <td v-if="personType === 'student'" class="max-w-sm px-4 py-4"><p class="text-ink">{{ person.cycle || 'ยังไม่กำหนดรอบ' }}</p><p class="mt-1 truncate text-xs text-muted">{{ person.company || 'ยังไม่มีสถานประกอบการที่ยืนยัน' }}</p><UiBadge class="mt-2" :tone="hasPlacement(person) ? 'success' : 'warning'">{{ hasPlacement(person) ? 'ได้ที่ฝึกงานแล้ว' : 'ยังไม่ได้ที่ฝึกงาน' }}</UiBadge></td>
+                <td v-if="personType === 'student'" class="px-4 py-4 text-ink">{{ person.cycle || 'ยังไม่กำหนด' }}</td>
                 <td v-if="personType === 'student'" class="whitespace-nowrap px-4 py-4 text-ink">{{ person.section || 'ยังไม่กำหนด' }}</td>
+                <td v-if="personType === 'student'" class="px-4 py-4"><p :class="person.company ? 'text-ink' : 'text-muted'">{{ person.company || 'ยังไม่มีสถานประกอบการ' }}</p></td>
                 <td class="px-4 py-4">
                   <div>
                     <UiBadge :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge>
                   </div>
                 </td>
                 <td v-if="personType === 'lecturer'" class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4"><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :icon="Settings2" class="whitespace-nowrap" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/master-data/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
+                <td class="px-4 py-4"><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :icon="Settings2" class="whitespace-nowrap" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
               </tr>
             </tbody>
           </table>
@@ -233,9 +241,12 @@ const savePermissions = () => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
-            <div v-if="personType === 'student'" class="mb-3"><UiBadge :tone="hasPlacement(person) ? 'success' : 'warning'">{{ hasPlacement(person) ? 'ได้ที่ฝึกงานแล้ว' : 'ยังไม่ได้ที่ฝึกงาน' }}</UiBadge><p v-if="person.company" class="mt-1 text-xs text-muted">{{ person.company }}</p></div>
             <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge v-if="personType === 'lecturer'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
-            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">{{ personType === 'student' ? 'สถานะ' : 'สถานะบัญชี' }}</p><div class="mt-1 flex flex-wrap gap-2"><UiBadge v-if="personType === 'student'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge><UiBadge v-else :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" class="whitespace-nowrap" :icon="Settings2" aria-label="กำหนดสิทธิ์" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><UiButton size="sm" variant="secondary" class="whitespace-nowrap" @click="navigateTo(`/staff/master-data/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div></div>
+            <dl v-if="personType === 'student'" class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-divider pt-3">
+              <div class="min-w-0"><dt class="text-xs text-muted">รอบสหกิจ</dt><dd class="mt-1 break-words text-sm text-ink">{{ person.cycle || 'ยังไม่กำหนด' }}</dd></div>
+              <div class="min-w-0"><dt class="text-xs text-muted">สถานประกอบการ</dt><dd class="mt-1 [overflow-wrap:anywhere] text-sm" :class="person.company ? 'text-ink' : 'text-muted'">{{ person.company || 'ยังไม่มีสถานประกอบการ' }}</dd></div>
+            </dl>
+            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">{{ personType === 'student' ? 'สถานะข้อมูล' : 'สถานะบัญชี' }}</p><div class="mt-1 flex flex-wrap gap-2"><UiBadge v-if="personType === 'student'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge><UiBadge v-else :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" class="whitespace-nowrap" :icon="Settings2" aria-label="กำหนดสิทธิ์" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><UiButton size="sm" variant="secondary" class="whitespace-nowrap" @click="navigateTo(`/staff/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div></div>
           </article>
         </div>
 

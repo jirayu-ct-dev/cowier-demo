@@ -34,7 +34,7 @@ const roleEventSeeds: RoleCalendarEvent[] = [
   {
     id: 'CAL-STAFF-001', title: 'ตรวจความพร้อมข้อมูลนักศึกษาในรอบ',
     description: 'ตรวจรายชื่อนักศึกษา รุ่น และหมู่เรียนก่อนเริ่มจัดตารางนิเทศ',
-    date: '2026-09-01', type: 'general', roles: ['staff'], href: '/staff/master-data/students', source: 'system',
+    date: '2026-09-01', type: 'general', roles: ['staff'], href: '/staff/students', source: 'system',
   },
   {
     id: 'CAL-STAFF-002', title: 'จัดสถานประกอบการที่ยังไม่มีกลุ่มรับผิดชอบ',

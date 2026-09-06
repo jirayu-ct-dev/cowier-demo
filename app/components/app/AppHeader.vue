@@ -37,13 +37,13 @@ const pageTitle = computed(() => {
   if (path === '/staff/supervision') return 'ตารางนิเทศ'
   if (path.startsWith('/staff/supervision/groups/new')) return 'สร้างกลุ่มอาจารย์นิเทศ'
   if (path.startsWith('/staff/supervision/groups')) return 'จัดกลุ่มอาจารย์นิเทศ'
-  if (path.startsWith('/staff/master-data/import')) return 'นำเข้าข้อมูลบุคคล'
-  if (path.startsWith('/staff/master-data/students/new')) return 'เพิ่มนักศึกษา'
-  if (/^\/staff\/master-data\/students\/[^/]+$/.test(path)) return 'รายละเอียดนักศึกษา'
-  if (path.startsWith('/staff/master-data/students')) return 'ข้อมูลนักศึกษา'
-  if (path.startsWith('/staff/master-data/lecturers/new')) return 'เพิ่มอาจารย์'
-  if (/^\/staff\/master-data\/lecturers\/[^/]+$/.test(path)) return 'รายละเอียดอาจารย์'
-  if (path.startsWith('/staff/master-data/lecturers')) return 'ข้อมูลอาจารย์'
+  if (path.startsWith('/staff/people/import')) return 'นำเข้าข้อมูลบุคคล'
+  if (path.startsWith('/staff/students/new')) return 'เพิ่มนักศึกษา'
+  if (/^\/staff\/students\/[^/]+$/.test(path)) return 'รายละเอียดนักศึกษา'
+  if (path.startsWith('/staff/students')) return 'ข้อมูลนักศึกษา'
+  if (path.startsWith('/staff/lecturers/new')) return 'เพิ่มอาจารย์'
+  if (/^\/staff\/lecturers\/[^/]+$/.test(path)) return 'รายละเอียดอาจารย์'
+  if (path.startsWith('/staff/lecturers')) return 'ข้อมูลอาจารย์'
   return String(route.meta.title ?? 'หน้าหลัก')
 })
 </script>

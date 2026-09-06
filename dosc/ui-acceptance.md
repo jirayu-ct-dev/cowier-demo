@@ -43,10 +43,10 @@
 
 | Route | หน้าที่ |
 |---|---|
-| `/staff/master-data/students` และ `/:id` | จัดการข้อมูลนักศึกษาและสถานะบัญชีรายบุคคล |
-| `/staff/master-data/lecturers` และ `/:id` | จัดการข้อมูลอาจารย์และสถานะบัญชีรายบุคคล |
-| `/staff/master-data/:type/new` | เพิ่มข้อมูลบุคคล |
-| `/staff/master-data/import` | ตรวจสอบและนำเข้า CSV/XLSX พร้อมส่งออกผลตรวจ |
+| `/staff/students` และ `/:id` | จัดการข้อมูลนักศึกษาและสถานะบัญชีรายบุคคล |
+| `/staff/lecturers` และ `/:id` | จัดการข้อมูลอาจารย์และสถานะบัญชีรายบุคคล |
+| `/staff/:type/new` | เพิ่มข้อมูลบุคคล |
+| `/staff/people/import` | ตรวจสอบและนำเข้า CSV/XLSX พร้อมส่งออกผลตรวจ |
 | `/staff/applications` | ดูภาพรวมการสมัครสหกิจของนักศึกษา |
 | `/staff/companies` และ `/:id` | จัดการสถานประกอบการและนักศึกษาที่ฝึกอยู่ |
 | `/staff/supervision/groups` | ดูกลุ่มอาจารย์และสถานประกอบการที่ยังไม่จัดกลุ่ม |
@@ -60,7 +60,7 @@
 | ติดตามบริษัทที่สมัคร | `/student/applications` | `/lecturer/applications` | `/staff/applications` |
 | ยื่นและติดตามคำร้อง | `/student/placements*` | `/lecturer/placements*` | ไม่อยู่ในสิทธิ์ |
 | ตรวจคำร้องและออกหนังสือ | ดูผลใน `/student/placements/:id` | `/lecturer/placements*` | ไม่อยู่ในสิทธิ์ |
-| จัดการข้อมูลบุคคล | ดูข้อมูลตนเองผ่าน Flow | ดูข้อมูลนักศึกษาแบบจำกัด | `/staff/master-data/*` |
+| จัดการข้อมูลบุคคล | ดูข้อมูลตนเองผ่าน Flow | ดูข้อมูลนักศึกษาแบบจำกัด | `/staff/students/*`, `/staff/lecturers/*` |
 | จัดการสถานประกอบการ | เลือกในคำร้อง | `/lecturer/companies*` | `/staff/companies*` |
 | จัดกลุ่มอาจารย์นิเทศ | ไม่อยู่ในสิทธิ์ | ดูผลผ่านตารางนิเทศ | `/staff/supervision/groups*` |
 | ดูและเข้าร่วมนิเทศ | `/student/supervision` | `/lecturer/supervision*` | `/staff/supervision` |
