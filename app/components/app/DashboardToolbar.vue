@@ -27,8 +27,7 @@ const showsSupervisionRound = computed(() => route.path.startsWith('/lecturer/su
 const showsLecturerSupervisionBack = computed(() => /^\/lecturer\/supervision\/[^/]+$/.test(route.path))
 const showsStudentCohort = computed(() => route.path.startsWith('/lecturer/students')
   || route.path.startsWith('/lecturer/applications')
-  || route.path.startsWith('/staff/applications')
-  || route.path === '/staff/companies')
+  || route.path.startsWith('/staff/applications'))
 const toolbarGridClass = computed(() => showsStudentCohort.value
     ? 'sm:grid-cols-[11rem_9rem_12rem]'
   : showsSupervisionRound.value
@@ -41,7 +40,6 @@ const contextLabel = computed(() => {
   if (route.path.startsWith('/staff/applications')) return 'บริบทการสมัครสหกิจ'
   if (route.path.startsWith('/lecturer/evaluations')) return 'บริบทการประเมิน'
   if (route.path.startsWith('/lecturer/supervision')) return 'บริบทตารางนิเทศ'
-  if (route.path === '/staff/companies') return 'บริบทสถานประกอบการ'
   if (route.path === '/staff/supervision') return 'บริบทตารางนิเทศ'
   return 'บริบทการจัดกลุ่มนิเทศ'
 })

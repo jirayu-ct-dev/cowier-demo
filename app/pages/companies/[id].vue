@@ -8,6 +8,7 @@ definePageMeta({ title: 'รายละเอียดสถานประก�
 const route = useRoute()
 const { scenario } = useScenario()
 const { getCompanyRecord, getCompanyPlacements, getStudentProfile, updateCompany, deactivateCompany, restoreCompany, deleteCompany, updateCompanyStudent } = useSupervisionGroups()
+const { cycles } = useCoopCycles()
 const { showToast } = useToast()
 const companyId = computed(() => String(route.params.id))
 const company = computed(() => getCompanyRecord(companyId.value))
@@ -17,6 +18,9 @@ const companyBasePath = computed(() => scenario.value.role === 'lecturer' ? '/le
 const isSaving = ref(false)
 const companyDialogOpen = ref(false)
 const studentSearch = ref('')
+const studentCycleFilter = ref('all')
+const studentCohortFilter = ref('all')
+const studentSectionFilter = ref('all')
 const selectedPlacement = ref<SupervisionPlacement | null>(null)
 const studentDialogOpen = computed({
   get: () => selectedPlacement.value !== null,
@@ -34,12 +38,55 @@ const studentSchema = z.object({
 const companyInitialValue = computed<CompanyInput>(() => company.value
   ? { name: company.value.name, branch: company.value.branch, province: company.value.province, region: company.value.region, address: company.value.address, contactName: company.value.contactName, contactPhone: company.value.contactPhone }
   : { name: '', branch: '', province: '', region: '', address: '', contactName: '', contactPhone: '' })
+const formatCycleLabel = (cycleId: string) => {
+  return cycles.find(item => item.id === cycleId)?.label ?? cycleId
+}
+const formatCompactCycleLabel = (cycleId: string) => formatCycleLabel(cycleId)
+  .replace('ภาคเรียนที่ ', 'ภาค ')
+  .replace('ภาคฤดูร้อน', 'ฤดูร้อน')
+const studentCycleOptions = computed(() => [
+  { value: 'all', label: 'ทุกรอบสหกิจ' },
+  ...[...new Set(placements.value.map(placement => placement.cycleId))]
+    .map(cycleId => ({ value: cycleId, label: formatCompactCycleLabel(cycleId) })),
+])
+const studentCohortOptions = computed(() => [
+  { value: 'all', label: 'ทุกรุ่น' },
+  ...[...new Set(placements.value.map(placement => getStudentCohortYear(placement.studentId)))]
+    .toSorted((a, b) => b.localeCompare(a, 'th'))
+    .map(cohort => ({ value: cohort, label: `รุ่น ${cohort}` })),
+])
+const studentSectionOptions = computed(() => [
+  { value: 'all', label: 'ทุกหมู่เรียน' },
+  ...[...new Set(placements.value.map(placement => getStudentProfile(placement.studentId).section))]
+    .toSorted((a, b) => a.localeCompare(b, 'th', { numeric: true }))
+    .map(section => ({ value: section, label: section })),
+])
+const hasStudentFilters = computed(() => Boolean(studentSearch.value.trim())
+  || studentCycleFilter.value !== 'all'
+  || studentCohortFilter.value !== 'all'
+  || studentSectionFilter.value !== 'all')
 const visiblePlacements = computed(() => {
   const keyword = studentSearch.value.trim().toLocaleLowerCase('th')
   return placements.value.filter((placement) => {
     const profile = getStudentProfile(placement.studentId)
-    return !keyword || [placement.studentId, `${profile.prefix}${placement.studentName}`, placement.position, profile.section].some(value => value.toLocaleLowerCase('th').includes(keyword))
+    const matchesSearch = !keyword || [placement.studentId, `${profile.prefix}${placement.studentName}`, placement.position, profile.section, placement.cycleId, formatCycleLabel(placement.cycleId)]
+      .some(value => value.toLocaleLowerCase('th').includes(keyword))
+    return matchesSearch
+      && (studentCycleFilter.value === 'all' || placement.cycleId === studentCycleFilter.value)
+      && (studentCohortFilter.value === 'all' || getStudentCohortYear(placement.studentId) === studentCohortFilter.value)
+      && (studentSectionFilter.value === 'all' || profile.section === studentSectionFilter.value)
   })
+})
+const resetStudentFilters = () => {
+  studentSearch.value = ''
+  studentCycleFilter.value = 'all'
+  studentCohortFilter.value = 'all'
+  studentSectionFilter.value = 'all'
+}
+watchEffect(() => {
+  if (!studentCycleOptions.value.some(option => option.value === studentCycleFilter.value)) studentCycleFilter.value = 'all'
+  if (!studentCohortOptions.value.some(option => option.value === studentCohortFilter.value)) studentCohortFilter.value = 'all'
+  if (!studentSectionOptions.value.some(option => option.value === studentSectionFilter.value)) studentSectionFilter.value = 'all'
 })
 
 watch(company, value => { if (value) useHead({ title: `${value.name} · สถานประกอบการ` }) }, { immediate: true })
@@ -118,7 +165,7 @@ const handleDelete = async () => {
       <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-sm font-semibold text-primary">{{ company.id }} · {{ company.branch }}</p><h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ company.name }}</h2><p class="mt-1 text-sm leading-6 text-muted">{{ company.province }} · {{ company.region }}</p></div><UiBadge :tone="company.status === 'active' ? 'success' : 'neutral'">{{ company.status === 'active' ? 'ใช้งาน' : 'ยุติการใช้งาน' }}</UiBadge></header>
 
       <div class="grid gap-4 sm:grid-cols-3">
-        <UiCard><p class="text-xs font-medium text-muted">นักศึกษาที่ฝึกอยู่</p><p class="mt-2 text-2xl font-bold text-ink">{{ placements.length }} คน</p></UiCard>
+        <UiCard><p class="text-xs font-medium text-muted">นักศึกษาฝึกงาน</p><p class="mt-2 text-2xl font-bold text-ink">{{ placements.length }} คน</p></UiCard>
         <UiCard><p class="text-xs font-medium text-muted">รอบสหกิจศึกษา</p><p class="mt-2 text-2xl font-bold text-ink">{{ new Set(placements.map(item => item.cycleId)).size }} รอบ</p></UiCard>
         <UiCard><p class="text-xs font-medium text-muted">ผู้ประสานงาน</p><p class="mt-2 font-bold text-ink">{{ company.contactName }}</p><p class="mt-1 text-sm text-muted">{{ company.contactPhone }}</p></UiCard>
       </div>
@@ -143,12 +190,12 @@ const handleDelete = async () => {
       </UiDialog>
 
       <UiCard class="mt-6" :padded="false">
-        <div class="border-b border-divider p-5 sm:p-6"><div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h3 class="text-lg font-bold text-ink">นักศึกษาที่ฝึกอยู่สถานประกอบการนี้</h3><p class="mt-1 text-sm text-muted">กดแก้ไขเพื่อปรับชื่อ หมู่เรียน และตำแหน่งฝึกงานของนักศึกษา</p></div><UiBadge tone="info">{{ placements.length }} คน</UiBadge></div><div v-if="placements.length" class="mt-4 flex gap-2"><div class="relative min-w-0 flex-1 sm:max-w-md"><Search class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" :size="18" aria-hidden="true" /><label for="company-student-search" class="sr-only">ค้นหานักศึกษา</label><input id="company-student-search" v-model="studentSearch" type="search" class="min-h-11 w-full rounded-control border border-divider bg-canvas pr-3 pl-10 text-sm text-ink placeholder:text-muted" placeholder="ค้นหารหัส ชื่อ หมู่ หรือตำแหน่ง"></div><button v-if="studentSearch" type="button" class="grid size-11 place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink" aria-label="ล้างคำค้นหา" title="ล้างคำค้นหา" @click="studentSearch = ''"><RotateCcw :size="17" aria-hidden="true" /></button></div></div>
-        <div v-if="!placements.length" class="p-5 sm:p-6"><AppEmptyState title="ยังไม่มีนักศึกษาฝึกที่สถานประกอบการนี้" description="เมื่อนักศึกษาได้รับการยืนยันสถานที่ฝึกงาน รายชื่อจะแสดงในส่วนนี้" /></div>
-        <div v-else-if="!visiblePlacements.length" class="p-5 sm:p-6"><AppEmptyState title="ไม่พบนักศึกษาที่ตรงกับคำค้นหา" description="ลองเปลี่ยนรหัส ชื่อ หมู่เรียน หรือตำแหน่งที่ค้นหา"><UiButton variant="secondary" @click="studentSearch = ''">ล้างคำค้นหา</UiButton></AppEmptyState></div>
+        <div class="border-b border-divider p-5 sm:p-6"><div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h3 class="text-lg font-bold text-ink">นักศึกษาที่ฝึกงาน</h3><p class="mt-1 text-sm text-muted">รายชื่อนักศึกษาและประวัติการฝึกงานของสถานประกอบการ</p></div><UiBadge tone="info">{{ hasStudentFilters ? `${visiblePlacements.length} จาก ${placements.length} คน` : `${placements.length} คน` }}</UiBadge></div><div v-if="placements.length" class="mt-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between"><div class="relative w-full lg:w-80 lg:flex-none"><Search class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" :size="18" aria-hidden="true" /><label for="company-student-search" class="sr-only">ค้นหานักศึกษา</label><input id="company-student-search" v-model="studentSearch" type="search" maxlength="100" class="min-h-11 w-full rounded-control border border-divider bg-canvas pr-3 pl-10 text-sm text-ink placeholder:text-muted" placeholder="ค้นหารหัส ชื่อ หรือตำแหน่ง"></div><div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-[11rem_8rem_8rem_2.75rem] lg:w-auto"><UiSelect v-model="studentCycleFilter" :options="studentCycleOptions" label="กรองรอบสหกิจศึกษา" :label-visible="false" /><UiSelect v-model="studentCohortFilter" :options="studentCohortOptions" label="กรองรุ่นนักศึกษา" :label-visible="false" /><UiSelect v-model="studentSectionFilter" :options="studentSectionOptions" label="กรองหมู่เรียน" :label-visible="false" /><button type="button" class="grid size-11 shrink-0 place-self-end place-items-center rounded-control border border-divider text-muted hover:bg-surface hover:text-ink sm:place-self-auto" aria-label="รีเซ็ตตัวกรองนักศึกษา" title="รีเซ็ตตัวกรอง" @click="resetStudentFilters"><RotateCcw :size="17" aria-hidden="true" /></button></div></div></div>
+        <div v-if="!placements.length" class="p-5 sm:p-6"><AppEmptyState title="ยังไม่มีประวัตินักศึกษาฝึกงาน" description="เมื่อนักศึกษาได้รับการยืนยันสถานที่ฝึกงาน รายชื่อจะแสดงในส่วนนี้" /></div>
+        <div v-else-if="!visiblePlacements.length" class="p-5 sm:p-6"><AppEmptyState title="ไม่พบนักศึกษาที่ตรงกับตัวกรอง" description="ลองเปลี่ยนคำค้นหา รอบสหกิจ รุ่น หรือหมู่เรียน"><UiButton v-if="hasStudentFilters" variant="secondary" @click="resetStudentFilters">ล้างตัวกรอง</UiButton></AppEmptyState></div>
         <template v-else>
-          <div class="hidden overflow-x-auto md:block"><table class="w-full min-w-[820px] text-left text-sm"><caption class="sr-only">นักศึกษาที่ฝึกอยู่สถานประกอบการนี้</caption><thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th class="px-6 py-3">นักศึกษา</th><th class="px-4 py-3">หมู่เรียน</th><th class="px-4 py-3">ตำแหน่งฝึกงาน</th><th class="px-4 py-3">รอบสหกิจศึกษา</th><th class="w-20 px-4 py-3"><span class="sr-only">แก้ไข</span></th></tr></thead><tbody class="divide-y divide-divider"><tr v-for="placement in visiblePlacements" :key="placement.id" class="hover:bg-surface/70"><td class="px-6 py-4"><p class="font-semibold text-ink">{{ getStudentProfile(placement.studentId).prefix }}{{ placement.studentName }}</p><p class="mt-1 text-xs text-muted">{{ placement.studentId }}</p></td><td class="whitespace-nowrap px-4 py-4 text-ink">{{ getStudentProfile(placement.studentId).section }}</td><td class="px-4 py-4 text-ink">{{ placement.position }}</td><td class="whitespace-nowrap px-4 py-4 text-muted">{{ placement.cycleId }}</td><td class="px-4 py-4 text-right"><button type="button" class="inline-grid size-9 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`แก้ไข ${placement.studentId}`" title="แก้ไขข้อมูลนักศึกษา" @click="openStudent(placement)"><Pencil :size="16" aria-hidden="true" /></button></td></tr></tbody></table></div>
-          <div class="divide-y divide-divider md:hidden"><article v-for="placement in visiblePlacements" :key="placement.id" class="p-5"><div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ getStudentProfile(placement.studentId).prefix }}{{ placement.studentName }}</h4><p class="mt-1 text-xs text-muted">{{ placement.studentId }} · {{ getStudentProfile(placement.studentId).section }}</p></div><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted" :aria-label="`แก้ไข ${placement.studentId}`" @click="openStudent(placement)"><Pencil :size="16" aria-hidden="true" /></button></div><p class="mt-3 text-sm text-ink">{{ placement.position }}</p><p class="mt-1 text-xs text-muted">{{ placement.cycleId }}</p></article></div>
+          <div class="hidden overflow-x-auto md:block"><table class="w-full min-w-[960px] text-left text-sm"><caption class="sr-only">ประวัตินักศึกษาฝึกงานของสถานประกอบการนี้</caption><thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase"><tr><th scope="col" class="px-6 py-3">นักศึกษา</th><th scope="col" class="px-4 py-3">รุ่น</th><th scope="col" class="px-4 py-3">หมู่เรียน</th><th scope="col" class="px-4 py-3">ตำแหน่งฝึกงาน</th><th scope="col" class="px-4 py-3">รอบสหกิจศึกษา</th><th scope="col" class="w-20 px-4 py-3"><span class="sr-only">แก้ไข</span></th></tr></thead><tbody class="divide-y divide-divider"><tr v-for="placement in visiblePlacements" :key="placement.id" class="hover:bg-surface/70"><td class="px-6 py-4"><p class="font-semibold text-ink">{{ getStudentProfile(placement.studentId).prefix }}{{ placement.studentName }}</p><p class="mt-1 text-xs text-muted">{{ placement.studentId }}</p></td><td class="whitespace-nowrap px-4 py-4 text-ink">{{ getStudentCohortYear(placement.studentId) }}</td><td class="whitespace-nowrap px-4 py-4 text-ink">{{ getStudentProfile(placement.studentId).section }}</td><td class="px-4 py-4 text-ink">{{ placement.position }}</td><td class="whitespace-nowrap px-4 py-4 text-muted">{{ formatCycleLabel(placement.cycleId) }}</td><td class="px-4 py-4 text-right"><button type="button" class="inline-grid size-9 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`แก้ไข ${placement.studentId}`" title="แก้ไขข้อมูลนักศึกษา" @click="openStudent(placement)"><Pencil :size="16" aria-hidden="true" /></button></td></tr></tbody></table></div>
+          <div class="divide-y divide-divider md:hidden"><article v-for="placement in visiblePlacements" :key="placement.id" class="p-5"><div class="flex items-start justify-between gap-3"><div><h4 class="font-semibold text-ink">{{ getStudentProfile(placement.studentId).prefix }}{{ placement.studentName }}</h4><p class="mt-1 text-xs text-muted">{{ placement.studentId }} · รุ่น {{ getStudentCohortYear(placement.studentId) }} · {{ getStudentProfile(placement.studentId).section }}</p></div><button type="button" class="inline-grid size-9 shrink-0 place-items-center rounded-control border border-divider text-muted" :aria-label="`แก้ไข ${placement.studentId}`" @click="openStudent(placement)"><Pencil :size="16" aria-hidden="true" /></button></div><p class="mt-3 text-sm text-ink">{{ placement.position }}</p><p class="mt-1 text-xs text-muted">{{ formatCycleLabel(placement.cycleId) }}</p></article></div>
         </template>
       </UiCard>
 
