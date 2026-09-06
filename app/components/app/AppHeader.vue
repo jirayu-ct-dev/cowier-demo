@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, ChevronDown, KeyRound, LogOut, Menu } from '@lucide/vue'
+import { Bell, ChevronDown, KeyRound, LogOut, Menu, PanelLeftClose, PanelLeftOpen } from '@lucide/vue'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from 'reka-ui'
 
-const emit = defineEmits<{ openNavigation: [] }>()
+defineProps<{ sidebarCollapsed?: boolean }>()
+const emit = defineEmits<{ openNavigation: [], toggleSidebar: [] }>()
 const route = useRoute()
 const { scenario } = useScenario()
 const { roleNotifications, unreadCount, markAllAsRead, openNotification } = useNotifications()
@@ -57,6 +58,17 @@ const pageTitle = computed(() => {
         @click="emit('openNavigation')"
       >
         <Menu :size="21" aria-hidden="true" />
+      </button>
+
+      <button
+        type="button"
+        class="hidden size-10 shrink-0 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink lg:grid"
+        :aria-label="sidebarCollapsed ? 'ขยายแถบเมนู' : 'ยุบแถบเมนู'"
+        :title="sidebarCollapsed ? 'ขยายแถบเมนู' : 'ยุบแถบเมนู'"
+        @click="emit('toggleSidebar')"
+      >
+        <PanelLeftOpen v-if="sidebarCollapsed" :size="20" aria-hidden="true" />
+        <PanelLeftClose v-else :size="20" aria-hidden="true" />
       </button>
 
       <div class="min-w-0 flex-1">

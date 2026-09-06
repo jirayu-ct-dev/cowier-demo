@@ -14,6 +14,7 @@ import {
   UsersRound,
 } from "@lucide/vue";
 
+withDefaults(defineProps<{ collapsed?: boolean }>(), { collapsed: false });
 const emit = defineEmits<{ navigate: [] }>();
 const route = useRoute();
 const { scenario } = useScenario();
@@ -35,7 +36,7 @@ const navigationGroups = computed<NavigationGroup[]>(() => [
   {
     label: "ภาพรวม",
     items: [
-      { label: "หน้าหลัก", to: "/", icon: LayoutDashboard, exact: true },
+      { label: "ภาพรวมระบบ", to: "/", icon: LayoutDashboard, exact: true },
       { label: "ปฏิทินงาน", to: "/calendar", icon: CalendarDays, exact: true },
     ],
   },
@@ -104,16 +105,25 @@ const isActive = (to: string, exact: boolean) => {
 </script>
 
 <template>
-  <aside class="flex h-full w-64 flex-col bg-sidebar text-white">
-    <div class="flex min-h-20 items-center px-3 py-3 sm:px-4">
-      <AppBrandLogo class="h-auto w-full max-w-56 object-left" />
+  <aside class="flex h-full w-full flex-col overflow-hidden bg-sidebar text-white">
+    <div class="flex min-h-20 items-center" :class="collapsed ? 'justify-center px-3' : 'px-3 py-3 sm:px-4'">
+      <div v-if="collapsed" class="h-10 w-11 overflow-hidden" title="วิทยาการคอมพิวเตอร์ มรภ.บุรีรัมย์">
+        <AppBrandLogo class="h-10 w-[226px] max-w-none object-contain object-left" />
+      </div>
+      <AppBrandLogo v-else class="h-auto w-full max-w-56 object-left" />
     </div>
 
-    <nav class="flex-1 space-y-5 overflow-y-auto p-3" aria-label="เมนูหลัก">
-      <section v-for="group in navigationGroups" :key="group.label" :aria-labelledby="`nav-${group.label}`">
-        <h2 :id="`nav-${group.label}`" class="mb-1 px-3 text-[11px] font-semibold tracking-wide text-white/45 uppercase">
+    <nav class="flex-1 space-y-5 overflow-y-auto" :class="collapsed ? 'px-2 py-3' : 'p-3'" aria-label="เมนูหลัก">
+      <section
+        v-for="group in navigationGroups"
+        :key="group.label"
+        :aria-label="collapsed ? group.label : undefined"
+        :aria-labelledby="collapsed ? undefined : `nav-${group.label}`"
+      >
+        <h2 v-if="!collapsed" :id="`nav-${group.label}`" class="mb-1 px-3 text-[11px] font-semibold tracking-wide text-white/45 uppercase">
           {{ group.label }}
         </h2>
+        <div v-else class="mx-2 mb-2 border-t border-white/10" aria-hidden="true" />
         <div class="space-y-1">
           <NuxtLink
             v-for="item in group.items"
@@ -121,25 +131,28 @@ const isActive = (to: string, exact: boolean) => {
         :to="item.to"
         active-class=""
         exact-active-class=""
-        class="flex min-h-11 items-center gap-3 rounded-control px-3 py-2 text-sm font-medium transition-colors"
-        :class="
+        class="flex min-h-11 items-center rounded-control py-2 text-sm font-medium transition-colors"
+        :class="[
+          collapsed ? 'justify-center px-2' : 'gap-3 px-3',
           isActive(item.to, item.exact)
             ? 'bg-primary text-ink'
-            : 'text-white/72 hover:bg-white/8 hover:text-white'
-        "
+            : 'text-white/72 hover:bg-white/8 hover:text-white',
+        ]"
         :aria-current="isActive(item.to, item.exact) ? 'page' : undefined"
+        :aria-label="collapsed ? item.label : undefined"
+        :title="collapsed ? item.label : undefined"
         @click="emit('navigate')"
           >
             <component :is="item.icon" :size="18" aria-hidden="true" />
-            <span class="leading-5">{{ item.label }}</span>
+            <span :class="collapsed ? 'sr-only' : 'leading-5'">{{ item.label }}</span>
           </NuxtLink>
         </div>
       </section>
     </nav>
 
-    <div class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
+    <div v-if="!collapsed" class="border-t border-white/10 p-4 text-xs leading-5 text-white/50">
       <p>มหาวิทยาลัยราชภัฏบุรีรัมย์</p>
-      <p>UI Prototype · Checkpoint 11</p>
     </div>
+    <div v-else class="border-t border-white/10 px-2 py-4 text-center text-[10px] font-semibold text-white/45">BRU</div>
   </aside>
 </template>

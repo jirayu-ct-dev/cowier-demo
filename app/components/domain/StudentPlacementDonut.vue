@@ -2,60 +2,79 @@
 import type { StudentPlacementSummary } from '~/utils/studentPlacementSummary'
 
 const props = defineProps<{ summary: StudentPlacementSummary, cycleLabel: string }>()
-const center = 88
-const radius = 84
+
+const radius = 44
+const circumference = 2 * Math.PI * radius
 const items = computed(() => [
-  { key: 'confirmed', label: 'ยืนยันสถานประกอบการ', value: props.summary.confirmed, color: 'text-success', labelClass: 'text-white' },
-  { key: 'pending', label: 'ยังไม่ยืนยันสถานประกอบการ', value: props.summary.pending, color: 'text-primary', labelClass: 'text-ink' },
-  { key: 'not-started', label: 'ยังไม่ดำเนินการ', value: props.summary.notStarted, color: 'text-divider', labelClass: 'text-ink' },
+  { key: 'confirmed', label: 'ยืนยันแล้ว', value: props.summary.confirmed, colorClass: 'text-success', dotClass: 'bg-success' },
+  { key: 'pending', label: 'รอยืนยัน', value: props.summary.pending, colorClass: 'text-primary', dotClass: 'bg-primary' },
+  { key: 'not-started', label: 'ยังไม่ดำเนินการ', value: props.summary.notStarted, colorClass: 'text-divider', dotClass: 'bg-divider' },
 ])
-const percent = (value: number) => props.summary.total ? Math.round(value / props.summary.total * 100) : 0
-const point = (angle: number) => {
-  const rad = angle * Math.PI / 180
-  return { x: center + radius * Math.sin(rad), y: center - radius * Math.cos(rad) }
-}
-const wedges = computed(() => {
-  let start = 0
-  return items.value
-    .filter(item => item.value > 0)
-    .map((item) => {
-      const sweep = item.value / props.summary.total * 360
-      const end = start + sweep
-      const from = point(start)
-      const to = point(end)
-      const path = sweep >= 359.9
-        ? `M ${center} ${center - radius} A ${radius} ${radius} 0 1 1 ${center} ${center + radius} A ${radius} ${radius} 0 1 1 ${center} ${center - radius} Z`
-        : `M ${center} ${center} L ${from.x} ${from.y} A ${radius} ${radius} 0 ${sweep > 180 ? 1 : 0} 1 ${to.x} ${to.y} Z`
-      const mid = start + sweep / 2
-      start = end
-      return { ...item, path, mid, share: percent(item.value) }
-    })
+
+const percent = (value: number) => props.summary.total
+  ? Math.round(value / props.summary.total * 100)
+  : 0
+
+const segments = computed(() => {
+  let offset = 0
+  return items.value.map((item) => {
+    const length = props.summary.total ? item.value / props.summary.total * circumference : 0
+    const segment = { ...item, length, offset }
+    offset += length
+    return segment
+  })
 })
-const labelStyle = (mid: number) => {
-  const rad = mid * Math.PI / 180
-  return { left: `${50 + 30 * Math.sin(rad)}%`, top: `${50 - 30 * Math.cos(rad)}%` }
-}
+
+const summaryLabel = computed(() => [
+  `${props.cycleLabel} นักศึกษาทั้งหมด ${props.summary.total} คน`,
+  ...items.value.map(item => `${item.label} ${item.value} คน`),
+].join(' '))
 </script>
 
 <template>
   <UiCard aria-labelledby="student-placement-summary-title">
-    <div>
-      <h3 id="student-placement-summary-title" class="text-lg font-bold text-ink">สรุปสถานะการยืนยันสถานประกอบการ</h3>
-      <p class="mt-1 text-sm text-muted">{{ cycleLabel }} · นักศึกษาทั้งหมด {{ summary.total }} คน แต่ละคนถูกนับในสถานะเดียว</p>
+    <div class="flex items-center justify-between gap-4">
+      <h3 id="student-placement-summary-title" class="text-lg font-bold text-ink">สถานะการยืนยันสถานประกอบการ</h3>
     </div>
-    <div v-if="summary.total" class="mt-5 flex justify-center">
-      <div class="relative size-72 sm:size-80" role="img" :aria-label="`นักศึกษาทั้งหมด ${summary.total} คน ยืนยันแล้ว ${summary.confirmed} คน ยังไม่ยืนยัน ${summary.pending} คน ยังไม่ดำเนินการ ${summary.notStarted} คน`">
-        <svg class="size-full" viewBox="0 0 176 176" aria-hidden="true">
-          <path v-for="wedge in wedges" :key="wedge.key" :d="wedge.path" fill="currentColor" stroke="white" stroke-width="2" stroke-linejoin="round" :class="wedge.color" />
-        </svg>
-        <div class="pointer-events-none absolute inset-0">
-          <div v-for="wedge in wedges" :key="wedge.key" class="absolute w-24 -translate-x-1/2 -translate-y-1/2 text-center" :class="wedge.labelClass" :style="labelStyle(wedge.mid)">
-            <p class="text-xs font-medium leading-4">{{ wedge.label }}</p>
-            <p class="mt-1 text-base font-bold">{{ wedge.value }} คน<span class="ml-1 text-xs font-semibold opacity-80">{{ wedge.share }}%</span></p>
+
+    <template v-if="summary.total">
+      <div class="mt-5 grid items-center gap-6 sm:grid-cols-[12rem_minmax(0,1fr)]">
+        <div class="relative mx-auto size-44" role="img" :aria-label="summaryLabel">
+          <svg class="size-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" :r="radius" fill="none" stroke="currentColor" stroke-width="12" class="text-surface" />
+            <circle
+              v-for="segment in segments"
+              :key="segment.key"
+              cx="50"
+              cy="50"
+              :r="radius"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="12"
+              :stroke-dasharray="`${segment.length} ${circumference - segment.length}`"
+              :stroke-dashoffset="-segment.offset"
+              :class="segment.colorClass"
+            />
+          </svg>
+          <div class="absolute inset-0 grid place-content-center text-center">
+            <strong class="text-3xl font-bold text-ink">{{ summary.total }}</strong>
+            <span class="mt-0.5 text-xs text-muted">นักศึกษา</span>
           </div>
         </div>
+
+        <dl class="divide-y divide-divider">
+          <div v-for="item in items" :key="item.key" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <span class="size-2.5 shrink-0 rounded-full" :class="item.dotClass" aria-hidden="true" />
+            <dt class="min-w-0 flex-1 text-sm text-muted">{{ item.label }}</dt>
+            <dd class="flex items-baseline gap-2 text-right">
+              <strong class="text-lg font-bold text-ink">{{ item.value }}</strong>
+              <span class="w-10 text-xs text-muted">{{ percent(item.value) }}%</span>
+            </dd>
+          </div>
+        </dl>
       </div>
-    </div>
-    <AppEmptyState v-else title="ยังไม่มีนักศึกษาในรอบนี้" description="เมื่อเพิ่มนักศึกษาเข้ารอบ กราฟจะแสดงสัดส่วนตามสถานะการยืนยันสถานประกอบการ" />
+    </template>
+
+    <AppEmptyState v-else title="ยังไม่มีนักศึกษาในรอบนี้" />
   </UiCard>
 </template>
