@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Settings2, Upload } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Upload } from '@lucide/vue'
 import type { PeopleFileFormat } from '~/composables/usePeopleImport'
 import type { PersonRecord, PersonType } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
@@ -217,6 +217,7 @@ const savePermissions = () => {
                 <th v-if="personType === 'student'" scope="col" class="px-4 py-3">สถานประกอบการ</th>
                 <th scope="col" class="px-4 py-3">สถานะข้อมูล</th>
                 <th v-if="personType === 'lecturer'" scope="col" class="px-4 py-3">สถานะบัญชี</th>
+                <th v-if="personType === 'lecturer'" scope="col" class="px-4 py-3">สิทธิ์ตรวจคำร้อง</th>
                 <th scope="col" class="px-4 py-3">ดำเนินการ</th>
               </tr>
             </thead>
@@ -233,7 +234,10 @@ const savePermissions = () => {
                   </div>
                 </td>
                 <td v-if="personType === 'lecturer'" class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
-                <td class="px-4 py-4"><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :icon="Settings2" class="whitespace-nowrap" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
+                <td v-if="personType === 'lecturer'" class="px-4 py-4">
+                  <UiBadge :tone="getPermissions(person.id).placements ? 'success' : 'neutral'">{{ getPermissions(person.id).placements ? 'อนุญาต' : 'ไม่อนุญาต' }}</UiBadge>
+                </td>
+                <td class="px-4 py-4"><div class="flex flex-wrap gap-2"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :aria-label="`กำหนดสิทธิ์ของ ${getPersonFullName(person)}`" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
               </tr>
             </tbody>
           </table>
@@ -241,12 +245,21 @@ const savePermissions = () => {
 
         <div class="divide-y divide-divider md:hidden">
           <article v-for="person in paginatedPeople" :key="person.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><UiBadge v-if="personType === 'lecturer'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
+            <div class="flex items-start justify-between gap-3"><div><h3 class="font-semibold text-ink">{{ getPersonFullName(person) }}</h3><p class="mt-1 text-xs text-muted">{{ person.id }}<template v-if="personType === 'student'"> · {{ person.section || 'ยังไม่กำหนดหมู่' }}</template></p></div><div v-if="personType === 'lecturer'" class="shrink-0 text-right"><p class="text-xs text-muted">สถานะข้อมูล</p><UiBadge class="mt-1" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div></div>
             <dl v-if="personType === 'student'" class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-divider pt-3">
               <div class="min-w-0"><dt class="text-xs text-muted">รอบสหกิจ</dt><dd class="mt-1 break-words text-sm text-ink">{{ person.cycle || 'ยังไม่กำหนด' }}</dd></div>
               <div class="min-w-0"><dt class="text-xs text-muted">สถานประกอบการ</dt><dd class="mt-1 [overflow-wrap:anywhere] text-sm" :class="person.company ? 'text-ink' : 'text-muted'">{{ person.company || 'ยังไม่มีสถานประกอบการ' }}</dd></div>
             </dl>
-            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3"><div><p class="text-xs text-muted">{{ personType === 'student' ? 'สถานะข้อมูล' : 'สถานะบัญชี' }}</p><div class="mt-1 flex flex-wrap gap-2"><UiBadge v-if="personType === 'student'" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge><UiBadge v-else :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div></div><div class="flex gap-1"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" class="whitespace-nowrap" :icon="Settings2" aria-label="กำหนดสิทธิ์" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><UiButton size="sm" variant="secondary" class="whitespace-nowrap" @click="navigateTo(`/staff/${route.params.type}/${person.id}`)">ดูข้อมูล</UiButton></div></div>
+            <div v-if="personType === 'lecturer'" class="mt-4 space-y-3 border-t border-divider pt-3">
+              <div><p class="text-xs text-muted">สถานะบัญชี</p><UiBadge class="mt-1" :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div>
+              <div class="border-t border-divider pt-3">
+                <div><p class="text-xs text-muted">สิทธิ์ตรวจคำร้อง</p><UiBadge class="mt-1" :tone="getPermissions(person.id).placements ? 'success' : 'neutral'">{{ getPermissions(person.id).placements ? 'อนุญาต' : 'ไม่อนุญาต' }}</UiBadge></div>
+              </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3">
+              <div v-if="personType === 'student'"><p class="text-xs text-muted">สถานะข้อมูล</p><UiBadge class="mt-1" :tone="recordStatusMeta[person.recordStatus].tone">{{ recordStatusMeta[person.recordStatus].label }}</UiBadge></div>
+              <div class="ml-auto flex flex-wrap justify-end gap-2"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :aria-label="`กำหนดสิทธิ์ของ ${getPersonFullName(person)}`" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div>
+            </div>
           </article>
         </div>
 
