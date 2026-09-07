@@ -126,7 +126,7 @@ watch(appointment, (value) => {
         <UiBadge :tone="supervisionAppointmentStatusMeta[appointment.status].tone">{{ supervisionAppointmentStatusMeta[appointment.status].label }}</UiBadge>
       </header>
 
-      <UiAlert v-if="!canManage" class="mb-6" tone="warning" title="ดูรายละเอียดได้ แต่ยังบันทึกผลไม่ได้">เข้าร่วมรายการนี้จากหน้าตารางนิเทศก่อน จึงจะแก้ไขตารางและบันทึกผลการนิเทศได้</UiAlert>
+      <UiAlert v-if="!canManage" class="mb-6" tone="warning" title="ดูรายละเอียดได้ แต่ยังบันทึกผลไม่ได้">เฉพาะอาจารย์ในกลุ่มที่รับผิดชอบหรือมีชื่อในรายการนิเทศเท่านั้นที่บันทึกผลการนิเทศได้</UiAlert>
       <UiAlert v-else-if="appointment.status === 'completed'" class="mb-6" tone="info" title="บันทึกข้อมูลการนิเทศแล้ว" />
       <UiAlert v-else-if="isCancelled" class="mb-6" tone="warning" title="รายการนี้ถูกยกเลิก">ไม่สามารถแก้ไขข้อมูลหรือทำแบบประเมินของรายการที่ยกเลิกแล้วได้</UiAlert>
 

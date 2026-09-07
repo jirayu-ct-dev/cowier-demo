@@ -1,4 +1,6 @@
-export type EvaluationRating = '1' | '2' | '3' | '4' | '5' | 'na'
+import { readonly } from 'vue'
+
+export type EvaluationRating = '1' | '2' | '3' | '4' | '5'
 export type EvaluationStatus = 'draft' | 'submitted'
 export type CompanyRecommendation = 'recommended' | 'conditional' | 'follow_up' | 'not_recommended' | 'safety_risk'
 
@@ -40,12 +42,11 @@ export interface CompanyEvaluation extends CompanyEvaluationInput {
 }
 
 export const evaluationRatingOptions = [
-  { value: '1', label: '1 · ต้องปรับปรุงอย่างมาก' },
-  { value: '2', label: '2 · ต้องปรับปรุง' },
-  { value: '3', label: '3 · ผ่านตามเกณฑ์' },
-  { value: '4', label: '4 · ดี' },
-  { value: '5', label: '5 · ดีมาก' },
-  { value: 'na', label: 'N/A · ไม่สามารถประเมินได้' },
+  { value: '1', label: '1 · ต้องปรับปรุงอย่างมาก', shortLabel: 'ปรับปรุงมาก' },
+  { value: '2', label: '2 · ต้องปรับปรุง', shortLabel: 'ปรับปรุง' },
+  { value: '3', label: '3 · ผ่านตามเกณฑ์', shortLabel: 'ผ่านเกณฑ์' },
+  { value: '4', label: '4 · ดี', shortLabel: 'ดี' },
+  { value: '5', label: '5 · ดีเยี่ยม (ระดับสูงสุด)', shortLabel: 'ดีเยี่ยม' },
 ]
 
 export const companyRecommendationOptions = [
@@ -67,16 +68,19 @@ export const studentEvaluationCriteria: EvaluationCriterion[] = [
 ]
 
 export const companyEvaluationCriteria: EvaluationCriterion[] = [
-  { id: 'field_relevance', label: 'งานตรงหรือสัมพันธ์กับสาขาวิชา' },
-  { id: 'work_scope', label: 'ปริมาณและความท้าทายของงานเหมาะสม' },
-  { id: 'supervisor_readiness', label: 'ผู้ควบคุมงานพร้อมให้คำแนะนำ' },
-  { id: 'student_support', label: 'มีการดูแลและติดตามนักศึกษา' },
-  { id: 'environment', label: 'สภาพแวดล้อมและความปลอดภัยเหมาะสม' },
-  { id: 'resources', label: 'อุปกรณ์และทรัพยากรเพียงพอ' },
-  { id: 'allowance', label: 'สวัสดิการและเบี้ยเลี้ยงมีความเหมาะสม' },
-  { id: 'transportation', label: 'การเดินทางสะดวกและมีความปลอดภัย' },
-  { id: 'nearby_accommodation', label: 'มีที่พักที่เหมาะสมในบริเวณใกล้เคียง' },
-  { id: 'coordination', label: 'การประสานงานกับมหาวิทยาลัย' },
+  { id: 'field_relevance', label: 'ลักษณะงานมีความสอดคล้องกับสาขาวิชาและผลลัพธ์การเรียนรู้ของนักศึกษา' },
+  { id: 'work_scope', label: 'ขอบเขต ปริมาณ และระดับความท้าทายของงานมีความเหมาะสม' },
+  { id: 'learning_opportunity', label: 'สถานประกอบการเปิดโอกาสให้นักศึกษาเรียนรู้และพัฒนาทักษะวิชาชีพ' },
+  { id: 'supervisor_readiness', label: 'ผู้ควบคุมงานมีความพร้อมในการมอบหมายงาน ให้คำแนะนำ และติดตามผล' },
+  { id: 'student_support', label: 'สถานประกอบการมีระบบดูแล ช่วยเหลือ และให้ข้อเสนอแนะแก่นักศึกษาอย่างเหมาะสม' },
+  { id: 'environment', label: 'สภาพแวดล้อมและบรรยากาศในการทำงานเอื้อต่อการเรียนรู้และการปฏิบัติงาน' },
+  { id: 'safety', label: 'มาตรการด้านความปลอดภัยและสุขอนามัยในการทำงานมีความเหมาะสม' },
+  { id: 'resources', label: 'อุปกรณ์ เครื่องมือ ระบบงาน และทรัพยากรที่จำเป็นมีความพร้อม' },
+  { id: 'allowance', label: 'สวัสดิการ ค่าตอบแทน หรือเบี้ยเลี้ยงที่จัดให้นักศึกษามีความเหมาะสม' },
+  { id: 'transportation', label: 'การเดินทางมายังสถานประกอบการมีความสะดวกและปลอดภัย' },
+  { id: 'public_transport', label: 'มีบริการรถรับส่งหรือสามารถเข้าถึงระบบขนส่งสาธารณะ เช่น รถโดยสารประจำทาง รถไฟฟ้า BTS หรือ MRT ได้สะดวก' },
+  { id: 'nearby_accommodation', label: 'มีที่พักที่ปลอดภัย เหมาะสม และอยู่ในระยะเดินทางสะดวกจากสถานประกอบการ' },
+  { id: 'coordination', label: 'การประสานงานและการสื่อสารกับมหาวิทยาลัยมีความชัดเจนและต่อเนื่อง' },
 ]
 
 const studentEvaluationSeed: StudentEvaluation[] = [
@@ -95,34 +99,36 @@ const studentEvaluationSeed: StudentEvaluation[] = [
 const companyEvaluationSeed: CompanyEvaluation[] = [
   {
     appointmentId: 'SA-006', evaluatorId: 'L0012', status: 'submitted', submittedAt: '2026-08-20T17:10:00+07:00',
-    ratings: { field_relevance: '5', work_scope: '4', supervisor_readiness: '5', student_support: '4', environment: '5', resources: '4', allowance: '3', transportation: '4', nearby_accommodation: '4', coordination: '4' },
+    ratings: { field_relevance: '5', work_scope: '4', learning_opportunity: '5', supervisor_readiness: '5', student_support: '4', environment: '5', safety: '5', resources: '4', allowance: '3', transportation: '4', public_transport: '4', nearby_accommodation: '4', coordination: '4' },
     recommendation: 'recommended', observations: 'พี่เลี้ยงให้คำแนะนำสม่ำเสมอ', companyRequirements: 'ต้องการนักศึกษาด้านพัฒนาเว็บและทดสอบระบบ', issues: '', suggestions: 'ประสานหัวข้องานก่อนเริ่มรอบถัดไป',
   },
 ]
 
 const hasCompleteRatings = (ratings: Record<string, EvaluationRating>, criteria: EvaluationCriterion[]) => criteria
   .every(criterion => Boolean(ratings[criterion.id]))
-
-export const calculateEvaluationAverage = (ratings: Record<string, EvaluationRating>) => {
-  const scores = Object.values(ratings).filter((rating): rating is Exclude<EvaluationRating, 'na'> => rating !== 'na').map(Number)
-  if (!scores.length) return null
-  return scores.reduce((total, score) => total + score, 0) / scores.length
-}
+const cloneStudentEvaluation = (evaluation: StudentEvaluation): StudentEvaluation => ({ ...evaluation, ratings: { ...evaluation.ratings } })
+const cloneCompanyEvaluation = (evaluation: CompanyEvaluation): CompanyEvaluation => ({ ...evaluation, ratings: { ...evaluation.ratings } })
 
 export const useSupervisionEvaluations = () => {
   const studentEvaluations = useState<StudentEvaluation[]>('supervision-student-evaluations-v1', () => structuredClone(studentEvaluationSeed))
-  const companyEvaluations = useState<CompanyEvaluation[]>('supervision-company-evaluations-v1', () => structuredClone(companyEvaluationSeed))
+  const companyEvaluations = useState<CompanyEvaluation[]>('supervision-company-evaluations-v2', () => structuredClone(companyEvaluationSeed))
   const { recordEvent } = useScenario()
   const { currentAccount } = useAuthPrototype()
+  const requireStudentEvaluator = () => {
+    if (currentAccount.value?.role !== 'lecturer') throw new Error('ไม่มีสิทธิ์ประเมินนักศึกษา')
+  }
   const requireCompanyEvaluator = () => {
     if (!currentAccount.value || !['lecturer', 'staff'].includes(currentAccount.value.role)) throw new Error('ไม่มีสิทธิ์ประเมินสถานประกอบการ')
   }
 
-  const getStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string) => studentEvaluations.value
+  const findStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string) => studentEvaluations.value
     .find(item => item.appointmentId === appointmentId && item.studentId === studentId && item.lecturerId === lecturerId) ?? null
-
-  const saveStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string, input: StudentEvaluationInput) => {
-    const existing = getStudentEvaluation(appointmentId, studentId, lecturerId)
+  const getStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string) => {
+    const evaluation = findStudentEvaluation(appointmentId, studentId, lecturerId)
+    return evaluation ? cloneStudentEvaluation(evaluation) : null
+  }
+  const writeStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string, input: StudentEvaluationInput) => {
+    const existing = findStudentEvaluation(appointmentId, studentId, lecturerId)
     if (existing?.status === 'submitted') throw new Error('evaluation-locked')
     const evaluation: StudentEvaluation = {
       appointmentId,
@@ -134,25 +140,33 @@ export const useSupervisionEvaluations = () => {
     }
     if (existing) Object.assign(existing, evaluation)
     else studentEvaluations.value.push(evaluation)
-    recordEvent(`บันทึกร่างแบบประเมินนักศึกษา ${studentId}`)
     return existing ?? evaluation
+  }
+  const saveStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string, input: StudentEvaluationInput) => {
+    requireStudentEvaluator()
+    const evaluation = writeStudentEvaluation(appointmentId, studentId, lecturerId, input)
+    recordEvent(`บันทึกร่างแบบประเมินนักศึกษา ${studentId}`)
+    return cloneStudentEvaluation(evaluation)
   }
 
   const submitStudentEvaluation = (appointmentId: string, studentId: string, lecturerId: string, input: StudentEvaluationInput) => {
+    requireStudentEvaluator()
     if (!hasCompleteRatings(input.ratings, studentEvaluationCriteria)) throw new Error('ratings-incomplete')
-    const evaluation = saveStudentEvaluation(appointmentId, studentId, lecturerId, input)
+    const evaluation = writeStudentEvaluation(appointmentId, studentId, lecturerId, input)
     evaluation.status = 'submitted'
     evaluation.submittedAt = new Date().toISOString()
     recordEvent(`ส่งแบบประเมินนักศึกษา ${studentId}`)
-    return evaluation
+    return cloneStudentEvaluation(evaluation)
   }
 
-  const getCompanyEvaluation = (appointmentId: string) => companyEvaluations.value
+  const findCompanyEvaluation = (appointmentId: string) => companyEvaluations.value
     .find(item => item.appointmentId === appointmentId) ?? null
-
-  const saveCompanyEvaluation = (appointmentId: string, evaluatorId: string, input: CompanyEvaluationInput) => {
-    requireCompanyEvaluator()
-    const existing = getCompanyEvaluation(appointmentId)
+  const getCompanyEvaluation = (appointmentId: string) => {
+    const evaluation = findCompanyEvaluation(appointmentId)
+    return evaluation ? cloneCompanyEvaluation(evaluation) : null
+  }
+  const writeCompanyEvaluation = (appointmentId: string, evaluatorId: string, input: CompanyEvaluationInput) => {
+    const existing = findCompanyEvaluation(appointmentId)
     if (existing?.status === 'submitted') throw new Error('evaluation-locked')
     const evaluation: CompanyEvaluation = {
       appointmentId,
@@ -163,24 +177,28 @@ export const useSupervisionEvaluations = () => {
     }
     if (existing) Object.assign(existing, evaluation)
     else companyEvaluations.value.push(evaluation)
-    recordEvent(`บันทึกร่างแบบประเมินสถานประกอบการ ${appointmentId}`)
     return existing ?? evaluation
+  }
+  const saveCompanyEvaluation = (appointmentId: string, evaluatorId: string, input: CompanyEvaluationInput) => {
+    requireCompanyEvaluator()
+    const evaluation = writeCompanyEvaluation(appointmentId, evaluatorId, input)
+    recordEvent(`บันทึกร่างแบบประเมินสถานประกอบการ ${appointmentId}`)
+    return cloneCompanyEvaluation(evaluation)
   }
 
   const submitCompanyEvaluation = (appointmentId: string, evaluatorId: string, input: CompanyEvaluationInput) => {
     requireCompanyEvaluator()
     if (!hasCompleteRatings(input.ratings, companyEvaluationCriteria)) throw new Error('ratings-incomplete')
-    if (!input.recommendation) throw new Error('recommendation-required')
-    const evaluation = saveCompanyEvaluation(appointmentId, evaluatorId, input)
+    const evaluation = writeCompanyEvaluation(appointmentId, evaluatorId, input)
     evaluation.status = 'submitted'
     evaluation.submittedAt = new Date().toISOString()
     recordEvent(`ส่งแบบประเมินสถานประกอบการ ${appointmentId}`)
-    return evaluation
+    return cloneCompanyEvaluation(evaluation)
   }
 
   return {
-    studentEvaluations,
-    companyEvaluations,
+    studentEvaluations: readonly(studentEvaluations),
+    companyEvaluations: readonly(companyEvaluations),
     getStudentEvaluation,
     saveStudentEvaluation,
     submitStudentEvaluation,

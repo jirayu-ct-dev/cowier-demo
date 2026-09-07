@@ -134,7 +134,7 @@ watch(pageCount, (count) => { if (currentPage.value > count) currentPage.value =
       <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">ตารางนิเทศ</h2>
       <p class="mt-1 text-sm leading-6 text-muted">ติดตามรายการนิเทศของทุกกลุ่ม อาจารย์ผู้เข้าร่วม นักศึกษา และความคืบหน้าการประเมิน</p>
       <div class="mt-3 flex justify-end">
-        <UiDialog :close-on-confirm="false" title="ส่งออกผลคะแนนประเมิน" description="ส่งออกแบบประเมินนักศึกษาและสถานประกอบการที่ส่งแล้ว ตามรอบ ครั้ง และตัวกรองปัจจุบันทั้งหมด ไม่จำกัดเฉพาะหน้าที่แสดง หนึ่งแถวต่อเกณฑ์ พร้อมคะแนนเฉลี่ยที่ไม่รวม N/A">
+        <UiDialog :close-on-confirm="false" title="ส่งออกผลคะแนนประเมิน" description="ส่งออกแบบประเมินนักศึกษาและสถานประกอบการที่ส่งแล้ว ตามรอบ ครั้ง และตัวกรองปัจจุบันทั้งหมด ไม่จำกัดเฉพาะหน้าที่แสดง หนึ่งแถวต่อเกณฑ์">
           <template #trigger><UiButton variant="secondary" :icon="Download" :disabled="effectiveViewState !== 'data'">ส่งออกผลประเมิน</UiButton></template>
           <UiSelect v-model="exportFormat" :options="[{ value: 'xlsx', label: 'Excel (.xlsx)' }, { value: 'csv', label: 'CSV (.csv)' }]" label="รูปแบบไฟล์" />
           <p v-if="exportError" role="alert" class="mt-3 text-sm text-danger">{{ exportError }}</p>

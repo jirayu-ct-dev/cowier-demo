@@ -24,7 +24,19 @@ export interface CoopCycle {
   status: CoopCycleStatus;
 }
 
-const cycles: CoopCycle[] = [
+const cycleCatalog: CoopCycle[] = [
+  {
+    id: "CYCLE-2568-2",
+    label: "ภาคเรียนที่ 2/2568",
+    academicYear: "2568",
+    semester: "ภาคเรียนที่ 2",
+    cohort: "รุ่น 65",
+    requestStart: "2025-08-01",
+    requestEnd: "2025-09-30",
+    trainingStart: "2025-11-03",
+    trainingEnd: "2026-03-06",
+    status: "closed",
+  },
   {
     id: "CYCLE-2569-2",
     label: "ภาคเรียนที่ 2/2569",
@@ -61,7 +73,26 @@ const cycles: CoopCycle[] = [
     trainingEnd: "2027-10-15",
     status: "draft",
   },
+  {
+    id: "CYCLE-2570-2",
+    label: "ภาคเรียนที่ 2/2570",
+    academicYear: "2570",
+    semester: "ภาคเรียนที่ 2",
+    cohort: "รุ่น 67",
+    requestStart: "2027-08-02",
+    requestEnd: "2027-09-30",
+    trainingStart: "2027-11-01",
+    trainingEnd: "2028-03-03",
+    status: "draft",
+  },
 ];
+
+export const selectableCoopSemester = "ภาคเรียนที่ 2" as const;
+
+export const getSelectableCoopCycles = (cycleList: CoopCycle[]) => cycleList
+  .filter(cycle => cycle.semester === selectableCoopSemester);
+
+const cycles = getSelectableCoopCycles(cycleCatalog);
 
 export const cycleStatusMeta: Record<
   CoopCycleStatus,
@@ -90,5 +121,5 @@ export const useCoopCycles = () => {
     () => cycles.find((cycle) => cycle.label === scenario.value.cycle) ?? cycles[0]!,
   );
 
-  return { cycles, selectedCycle };
+  return { cycles, cycleCatalog, selectedCycle };
 };

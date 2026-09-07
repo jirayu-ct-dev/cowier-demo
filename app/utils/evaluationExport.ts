@@ -1,12 +1,12 @@
 import type { SupervisionAppointment } from '../composables/useSupervisionAppointments'
-import { calculateEvaluationAverage, companyEvaluationCriteria, studentEvaluationCriteria } from '../composables/useSupervisionEvaluations'
+import { companyEvaluationCriteria, studentEvaluationCriteria } from '../composables/useSupervisionEvaluations'
 import type { CompanyEvaluation, StudentEvaluation } from '../composables/useSupervisionEvaluations'
 
 export type EvaluationExportRow = Record<string, string | number>
 export const buildEvaluationRows = (
-  appointments: SupervisionAppointment[],
-  students: StudentEvaluation[],
-  companies: CompanyEvaluation[],
+  appointments: readonly SupervisionAppointment[],
+  students: readonly StudentEvaluation[],
+  companies: readonly CompanyEvaluation[],
   nameFor: (id: string) => string,
   companyFor: (id: string) => string,
 ): EvaluationExportRow[] => {
@@ -17,7 +17,6 @@ export const buildEvaluationRows = (
   ]
   return evaluations.filter(item => item.status === 'submitted' && byId.has(item.appointmentId)).flatMap(item => {
     const appointment = byId.get(item.appointmentId)!
-    const average = calculateEvaluationAverage(item.ratings)
     return item.criteria.map(criterion => ({
       'รอบสหกิจศึกษา': appointment.cycleId,
       'ครั้งที่นิเทศ': appointment.round,
@@ -30,8 +29,7 @@ export const buildEvaluationRows = (
       'รหัสผู้ประเมิน': item.evaluator,
       'ผู้ประเมิน': nameFor(item.evaluator),
       'เกณฑ์ประเมิน': criterion.label,
-      'คะแนน (เต็ม 5)': item.ratings[criterion.id] === 'na' ? 'N/A' : Number(item.ratings[criterion.id]) || '',
-      'เฉลี่ย (ไม่รวม N/A)': average === null ? 'N/A' : Number(average.toFixed(2)),
+      'คะแนน (เต็ม 5)': Number(item.ratings[criterion.id]) || '',
       'วันที่ส่งผลประเมิน': item.submittedAt ?? '',
     }))
   })

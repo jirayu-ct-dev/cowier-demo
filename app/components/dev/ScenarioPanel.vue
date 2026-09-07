@@ -3,6 +3,7 @@ import { RotateCcw, SlidersHorizontal, X } from '@lucide/vue'
 import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 
 const { scenario, events, resetScenario } = useScenario()
+const { cycles } = useCoopCycles()
 const { resetPlacementData } = useStudentPlacements()
 const { switchPrototypeRole } = useAuthPrototype()
 const roleOptions = [
@@ -10,11 +11,11 @@ const roleOptions = [
   { value: 'lecturer', label: 'อาจารย์' },
   { value: 'student', label: 'นักศึกษา' },
 ]
-const cycleOptions = [
-  { value: 'ภาคเรียนที่ 2/2569', label: 'ภาคเรียนที่ 2/2569' },
-  { value: 'ภาคฤดูร้อน/2569', label: 'ภาคฤดูร้อน/2569' },
-  { value: 'ภาคเรียนที่ 1/2570', label: 'ภาคเรียนที่ 1/2570' },
-]
+const cycleOptions = cycles.map(cycle => ({ value: cycle.label, label: cycle.label }))
+const selectedCycle = computed({
+  get: () => cycleOptions.some(option => option.value === scenario.value.cycle) ? scenario.value.cycle : cycleOptions[0]!.value,
+  set: (value: string) => { scenario.value.cycle = value },
+})
 const dataSetOptions = [
   { value: 'normal', label: 'ข้อมูลปกติ' },
   { value: 'long', label: 'ข้อความยาว' },
@@ -84,7 +85,7 @@ const resetAllMockData = () => {
         <div class="mt-5 space-y-4">
           <UiSelect v-model="selectedRole" :options="roleOptions" label="บทบาท" />
           <div><UiInput v-model="scenario.userName" label="ผู้ใช้งาน" /></div>
-          <UiSelect v-model="scenario.cycle" :options="cycleOptions" label="รอบสหกิจศึกษา" />
+          <UiSelect v-model="selectedCycle" :options="cycleOptions" label="รอบสหกิจศึกษา" />
           <UiSelect v-model="selectedDataSet" :options="dataSetOptions" label="ชุดข้อมูล" />
           <UiSelect v-model="selectedDelay" :options="delayOptions" label="ความเร็วเครือข่ายจำลอง" />
           <UiRadioGroup v-model="selectedViewState" label="สถานะข้อมูล" :options="viewStateOptions" />

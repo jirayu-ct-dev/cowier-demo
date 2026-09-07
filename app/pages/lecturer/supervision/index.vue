@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RotateCcw, Search, UserMinus, UserPlus, X } from '@lucide/vue'
+import { CheckCircle2, RotateCcw, Search, X } from '@lucide/vue'
 import type { SupervisionAppointment } from '~/composables/useSupervisionAppointments'
 
 definePageMeta({ title: 'ตารางนิเทศ', middleware: 'lecturer-prototype' })
@@ -10,9 +10,9 @@ const { showToast } = useToast()
 const { people } = usePeopleDirectory()
 const { cycleId, round, scheduleGroupId } = useSupervisionContext()
 const { groups, getCompanies } = useSupervisionGroups()
-const { appointments, joinAppointment, leaveAppointment } = useSupervisionAppointments()
+const { appointments, completeAppointment } = useSupervisionAppointments()
 const currentLecturerId = 'L0012'
-const workingAppointmentId = ref<string | null>(null)
+const completingAppointmentId = ref<string | null>(null)
 const searchQuery = ref('')
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 const groupOptions = computed(() => [
@@ -70,21 +70,24 @@ const resetTable = () => {
 const isParticipating = (appointment: SupervisionAppointment) => appointment.lecturerIds.includes(currentLecturerId)
 const isResponsibleGroup = (appointment: SupervisionAppointment) => groups.value
   .find(group => group.id === appointment.groupId)?.lecturerIds.includes(currentLecturerId) ?? false
-const isLocked = (appointment: SupervisionAppointment) => appointment.status === 'completed' || appointment.status === 'cancelled'
-const toggleParticipation = (appointment: SupervisionAppointment) => {
-  workingAppointmentId.value = appointment.id
+const canComplete = (appointment: SupervisionAppointment) => ['published', 'postponed'].includes(appointment.status)
+  && isParticipating(appointment)
+const completeSupervision = (appointment: SupervisionAppointment) => {
+  if (!canComplete(appointment) || completingAppointmentId.value) return
+  completingAppointmentId.value = appointment.id
   try {
-    if (isParticipating(appointment)) {
-      leaveAppointment(appointment.id, currentLecturerId)
-      showToast({ title: 'ยกเลิกการเข้าร่วมแล้ว', description: `นำชื่อของคุณออกจากการนิเทศที่ ${companyName(appointment.companyId)}` })
-      return
-    }
-    joinAppointment(appointment.id, currentLecturerId)
-    showToast({ title: 'เข้าร่วมนิเทศแล้ว', description: `เพิ่มชื่อของคุณในรายการของ ${companyName(appointment.companyId)}` })
+    completeAppointment(appointment.id, {
+      summary: appointment.result.summary,
+      issues: appointment.result.issues,
+      suggestions: appointment.result.suggestions,
+      companyRequirements: appointment.result.companyRequirements,
+      actualLecturerIds: [...appointment.lecturerIds],
+    })
+    showToast({ title: 'บันทึกว่านิเทศเสร็จแล้ว', description: `${companyName(appointment.companyId)} พร้อมสำหรับการประเมิน` })
   } catch {
-    showToast({ title: 'เข้าร่วมรายการนี้ไม่ได้', description: 'ไม่สามารถแก้ไขรายชื่อผู้เข้าร่วมได้ กรุณาลองอีกครั้ง' })
+    showToast({ title: 'บันทึกสถานะไม่สำเร็จ', description: 'รายการต้องมีอาจารย์ผู้เข้าร่วมอย่างน้อย 1 คน กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง' })
   } finally {
-    workingAppointmentId.value = null
+    completingAppointmentId.value = null
   }
 }
 watchEffect(() => {
@@ -97,7 +100,7 @@ watchEffect(() => {
     <div class="mb-6">
       <div>
         <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">ตารางนิเทศ</h2>
-        <p class="mt-1 text-sm leading-6 text-muted">ดูตารางของทุกกลุ่มและเลือกเข้าร่วมนิเทศสถานประกอบการที่ต้องการช่วยดูแล</p>
+        <p class="mt-1 text-sm leading-6 text-muted">ดูตารางนิเทศที่ได้รับมอบหมายและบันทึกสถานะเมื่อดำเนินการนิเทศเรียบร้อยแล้ว</p>
       </div>
     </div>
 
@@ -144,7 +147,7 @@ watchEffect(() => {
                 <td class="px-4 py-4 align-top"><p class="font-medium text-ink">{{ groupName(item.groupId) }}</p><UiBadge v-if="isResponsibleGroup(item)" class="mt-2" tone="info">กลุ่มของคุณ</UiBadge></td>
                 <td class="px-4 py-4 align-top"><div v-if="item.lecturerIds.length" class="space-y-1"><p v-for="id in item.lecturerIds" :key="id" class="text-sm leading-5 text-ink">{{ lecturerName(id) }}</p></div><p v-else class="text-sm text-danger">ยังไม่มีอาจารย์เข้าร่วม</p></td>
                 <td class="px-4 py-4 align-top"><p class="font-semibold text-ink">{{ item.studentIds.length }} คน</p><p class="mt-1 text-xs text-muted">ดูรายชื่อในรายละเอียด</p></td>
-                <td class="px-4 py-4 align-top"><div class="flex items-center justify-end gap-2"><UiButton size="sm" variant="secondary" @click="navigateTo(`/lecturer/supervision/${item.id}`)">ดูข้อมูล</UiButton><UiButton v-if="!isLocked(item)" :variant="isParticipating(item) ? 'secondary' : 'primary'" size="sm" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton></div></td>
+                <td class="px-4 py-4 align-top"><div class="flex items-center justify-end gap-2"><UiButton v-if="canComplete(item)" size="sm" :icon="CheckCircle2" :loading="completingAppointmentId === item.id" @click="completeSupervision(item)">นิเทศเสร็จ</UiButton><UiButton size="sm" variant="secondary" @click="navigateTo(`/lecturer/supervision/${item.id}`)">ดูข้อมูล</UiButton></div></td>
               </tr>
             </tbody>
           </table>
@@ -155,7 +158,7 @@ watchEffect(() => {
             <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-semibold text-ink">{{ companyName(item.companyId) }}</h3><p class="mt-1 text-xs text-muted">{{ company(item.companyId)?.branch }} · {{ company(item.companyId)?.province }}</p></div><UiButton class="shrink-0" size="sm" variant="secondary" @click="navigateTo(`/lecturer/supervision/${item.id}`)">ดูข้อมูล</UiButton></div>
             <div class="mt-3 flex flex-wrap items-center gap-2"><UiBadge v-if="isResponsibleGroup(item)" tone="info">กลุ่มของคุณ</UiBadge><UiBadge :tone="supervisionAppointmentStatusMeta[item.status].tone">{{ supervisionAppointmentStatusMeta[item.status].label }}</UiBadge><span class="text-sm text-muted">{{ formatDate(item.date) }} · {{ supervisionPeriodMeta[item.period].label }}</span></div>
             <dl class="mt-3 grid gap-2 border-t border-divider pt-3 text-sm"><div><dt class="text-xs font-medium text-muted">กลุ่มรับผิดชอบ</dt><dd class="mt-1 text-ink">{{ groupName(item.groupId) }}</dd></div><div><dt class="text-xs font-medium text-muted">อาจารย์ผู้เข้าร่วม</dt><dd class="mt-1 text-ink">{{ item.lecturerIds.length ? item.lecturerIds.map(lecturerName).join(', ') : 'ยังไม่มีอาจารย์เข้าร่วม' }}</dd></div><div><dt class="text-xs font-medium text-muted">นักศึกษา</dt><dd class="mt-1 text-ink">{{ studentNames(item).join(', ') }} ({{ item.studentIds.length }} คน)</dd></div></dl>
-            <UiButton v-if="!isLocked(item)" class="mt-4 w-full" :variant="isParticipating(item) ? 'secondary' : 'primary'" :icon="isParticipating(item) ? UserMinus : UserPlus" :loading="workingAppointmentId === item.id" @click="toggleParticipation(item)">{{ isParticipating(item) ? 'ยกเลิกการเข้าร่วม' : 'เข้าร่วมนิเทศ' }}</UiButton>
+            <UiButton v-if="canComplete(item)" class="mt-4 w-full" :icon="CheckCircle2" :loading="completingAppointmentId === item.id" @click="completeSupervision(item)">นิเทศเสร็จ</UiButton>
           </article>
         </div>
       </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, BriefcaseBusiness, CheckCircle2, ChevronLeft, ChevronRight, Clock3, RotateCcw, Search, Users, X } from '@lucide/vue'
+import { selectableCoopSemester } from '~/composables/useCoopCycles'
 import type { PersonRecord } from '~/composables/usePeopleDirectory'
 import { getPageCount, paginateItems } from '~/utils/table'
 
@@ -52,7 +53,7 @@ const cohortApplications = computed(() => {
     return student
       && (studentCohort.value === 'all' || getStudentCohortYear(student.id) === studentCohort.value)
       && (studentSection.value === 'all' || student.section === studentSection.value)
-      && (studentSemester.value === 'all' || getStudentSemester(student.cycle) === studentSemester.value)
+      && getStudentSemester(student.cycle) === selectableCoopSemester
   })
 })
 const summaryCards = computed(() => {

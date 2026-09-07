@@ -11,11 +11,12 @@ useHead({ title: 'ภาพรวมระบบ' })
 const { scenario } = useScenario()
 const { cycles, selectedCycle } = useCoopCycles()
 const { activeRequest, findCompany } = useStudentPlacements()
-const { canAccess } = useLecturerPermissions()
 const { people } = usePeopleDirectory()
 const { requests: placementPreviewRequests } = usePlacementRequestPreview()
 const { getUnassignedCompanies } = useSupervisionGroups()
 const { appointments } = useSupervisionAppointments()
+const { studentEvaluations, companyEvaluations } = useSupervisionEvaluations()
+const currentLecturerId = 'L0012'
 type DashboardTone = 'neutral' | 'warning' | 'info' | 'success' | 'danger'
 
 interface DashboardData {
@@ -37,10 +38,10 @@ interface QuickAction {
 const quickActions = computed<QuickAction[]>(() => ({
   staff: [],
   lecturer: [
-    ...(canAccess() ? [{ label: 'ตรวจคำร้องและผลตอบกลับ', description: 'ตรวจข้อมูลโดยเจ้าหน้าที่เป็นผู้ออกหนังสือ', to: '/lecturer/placements', icon: ClipboardCheck, primary: true }] : []),
-    { label: 'ดูตารางนิเทศ', description: 'เปิดนัดหมายที่รับผิดชอบ', to: '/lecturer/supervision', icon: CalendarDays, primary: !canAccess() },
-    { label: 'ประเมินผลการนิเทศ', description: 'ทำงานประเมินที่ยังค้างอยู่', to: '/lecturer/evaluations', icon: ClipboardList },
-    { label: 'ค้นหานักศึกษา', description: 'ดูข้อมูลและประวัติคำร้อง', to: '/lecturer/students', icon: GraduationCap },
+    { label: 'ดูตารางนิเทศ', description: 'เปิดนัดหมายและงานนิเทศที่รับผิดชอบ', to: '/lecturer/supervision', icon: CalendarDays, primary: true },
+    { label: 'ประเมินนักศึกษา', description: 'ทำแบบประเมินนักศึกษาที่ยังค้างอยู่', to: '/lecturer/evaluations?type=student', icon: ClipboardList },
+    { label: 'ประเมินสถานประกอบการ', description: 'ประเมินสถานประกอบการหลังการนิเทศ', to: '/lecturer/evaluations?type=company', icon: Building2 },
+    { label: 'ข้อมูลนักศึกษา', description: 'ดูข้อมูลนักศึกษาและสถานที่ฝึกงาน', to: '/lecturer/students', icon: GraduationCap },
   ],
   student: [
     {
@@ -94,34 +95,8 @@ const currentCycleDashboard: { staff: DashboardData, lecturer: DashboardData, st
   },
 }
 
-const emptyStaffDashboard = (): DashboardData => ({
-  summary: [
-    { label: 'คำร้องรอออกหนังสือ', value: '0', hint: '', icon: ClipboardList },
-    { label: 'เอกสารลงนามรอตรวจ', value: '0', hint: '', icon: FileCheck2 },
-    { label: 'รอจัดกลุ่มนิเทศ ครั้งที่ 1', value: '0', hint: '', icon: UsersRound },
-    { label: 'นัดนิเทศที่เผยแพร่', value: '0', hint: '', icon: CalendarDays },
-  ],
-  recentTitle: 'คำร้องล่าสุด', primaryLabel: 'นักศึกษา', secondaryLabel: 'สถานประกอบการ', recentItems: [],
-})
-
-const emptyLecturerDashboard: DashboardData = {
-  summary: [
-    { label: 'คำร้องรอตรวจ', value: '0', hint: 'รอบยังไม่เปิดรับคำร้อง', icon: ClipboardCheck },
-    { label: 'หนังสือตอบกลับรอตรวจ', value: '0', hint: 'ยังไม่มีเอกสารตอบกลับ', icon: Building2 },
-    { label: 'รายการนิเทศที่รับผิดชอบ', value: '0', hint: 'ยังไม่มีการมอบหมาย', icon: CalendarDays },
-    { label: 'งานประเมินค้าง', value: '0', hint: 'ยังไม่เริ่มการนิเทศ', icon: Users },
-  ],
-  recentTitle: 'งานที่ต้องดำเนินการ', primaryLabel: 'นักศึกษา / สถานประกอบการ', secondaryLabel: 'รายละเอียดงาน', recentItems: [],
-}
-
-const dashboardByCycle: Record<string, { staff: DashboardData, lecturer: DashboardData }> = {
-  'CYCLE-2569-2': { staff: currentCycleDashboard.staff, lecturer: currentCycleDashboard.lecturer },
-  'CYCLE-2569-SUMMER': { staff: emptyStaffDashboard(), lecturer: emptyLecturerDashboard },
-  'CYCLE-2570-1': { staff: emptyStaffDashboard(), lecturer: emptyLecturerDashboard },
-}
-
 const canSelectDashboardCycle = computed(() => scenario.value.role === 'staff' || scenario.value.role === 'lecturer')
-const dashboardCycles = cycles.filter(cycle => cycle.id !== 'CYCLE-2569-SUMMER')
+const dashboardCycles = cycles
 const dashboardCycleId = ref(dashboardCycles.find(cycle => cycle.id === selectedCycle.value.id)?.id ?? dashboardCycles[0]!.id)
 const cycleOptions = dashboardCycles.map(cycle => ({ value: cycle.id, label: `${cycle.label} · ${cycle.cohort}` }))
 const dashboardCycle = computed(() => canSelectDashboardCycle.value
@@ -130,7 +105,7 @@ const dashboardCycle = computed(() => canSelectDashboardCycle.value
 const dashboard = computed<DashboardData>(() => {
   if (scenario.value.role === 'student') return currentCycleDashboard.student
   if (scenario.value.role === 'staff') return staffDashboard.value
-  return dashboardByCycle[dashboardCycle.value.id]?.[scenario.value.role] ?? emptyLecturerDashboard
+  return lecturerDashboard.value
 })
 const staffPlacementSummary = computed(() => summarizeStudentPlacements(
   people.value.filter(person => person.type === 'student' && person.recordStatus === 'active' && person.cycle === dashboardCycle.value.label),
@@ -159,6 +134,37 @@ const staffDashboard = computed<DashboardData>(() => ({
   primaryLabel: 'นักศึกษา',
   secondaryLabel: 'สถานประกอบการ',
   recentItems: staffRequestItems.value,
+}))
+const lecturerAppointments = computed(() => appointments.value
+  .filter(appointment => appointment.cycleId === dashboardCycle.value.id)
+  .filter((appointment) => {
+    const evaluatorIds = appointment.result.actualLecturerIds.length ? appointment.result.actualLecturerIds : appointment.lecturerIds
+    return evaluatorIds.includes(currentLecturerId)
+  }))
+const pendingStudentEvaluations = computed(() => lecturerAppointments.value
+  .filter(appointment => appointment.status === 'completed')
+  .reduce((total, appointment) => total + appointment.studentIds.filter(studentId => !studentEvaluations.value.some(evaluation => evaluation.appointmentId === appointment.id
+    && evaluation.studentId === studentId
+    && evaluation.lecturerId === currentLecturerId
+    && evaluation.status === 'submitted')).length, 0))
+const pendingCompanyEvaluations = computed(() => lecturerAppointments.value
+  .filter(appointment => appointment.status === 'completed')
+  .filter((appointment) => {
+    const evaluatorIds = appointment.result.actualLecturerIds.length ? appointment.result.actualLecturerIds : appointment.lecturerIds
+    return evaluatorIds[0] === currentLecturerId
+      && !companyEvaluations.value.some(evaluation => evaluation.appointmentId === appointment.id && evaluation.status === 'submitted')
+  }).length)
+const lecturerDashboard = computed<DashboardData>(() => ({
+  summary: [
+    { label: 'นัดนิเทศที่รับผิดชอบ', value: String(lecturerAppointments.value.filter(appointment => appointment.status !== 'cancelled').length), hint: 'รายการในรอบที่เลือก', icon: CalendarDays },
+    { label: 'รอนิเทศ', value: String(lecturerAppointments.value.filter(appointment => appointment.status === 'published' || appointment.status === 'postponed').length), hint: 'นัดหมายที่ยังไม่เสร็จสิ้น', icon: ClipboardCheck },
+    { label: 'ประเมินนักศึกษาค้าง', value: String(pendingStudentEvaluations.value), hint: 'แบบประเมินรายบุคคลที่ยังไม่ส่ง', icon: Users },
+    { label: 'ประเมินสถานประกอบการค้าง', value: String(pendingCompanyEvaluations.value), hint: 'แบบประเมินสถานประกอบการที่ยังไม่ส่ง', icon: Building2 },
+  ],
+  recentTitle: '',
+  primaryLabel: '',
+  secondaryLabel: '',
+  recentItems: [],
 }))
 const summaryGridClass = 'sm:grid-cols-2 xl:grid-cols-4'
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
@@ -267,6 +273,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
+    <header v-if="scenario.role === 'lecturer'" class="mb-6">
+      <p class="text-sm font-semibold text-primary">หน้าหลักอาจารย์นิเทศ</p>
+      <h2 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">งานนิเทศของคุณ</h2>
+      <p class="mt-1 text-sm leading-6 text-muted">ติดตามนัดหมายและทำแบบประเมินที่ได้รับมอบหมายจากจุดเดียว</p>
+    </header>
+
     <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
       <div>
         <p class="text-xs font-medium text-muted">รอบที่กำลังแสดง</p>
@@ -345,7 +357,7 @@ onBeforeUnmount(() => {
           <UiSkeleton class="mt-3 h-3 w-40" />
         </UiCard>
       </div>
-      <UiCard class="mt-6">
+      <UiCard v-if="scenario.role !== 'lecturer'" class="mt-6">
         <UiSkeleton class="h-6 w-44" />
         <UiSkeleton v-for="index in 3" :key="index" class="mt-5 h-14 w-full" />
       </UiCard>
@@ -394,7 +406,7 @@ onBeforeUnmount(() => {
         </UiCard>
       </section>
 
-      <UiCard class="mt-6" :padded="false">
+      <UiCard v-if="scenario.role !== 'lecturer'" class="mt-6" :padded="false">
         <div class="border-b border-divider p-5 sm:p-6">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -478,7 +490,12 @@ onBeforeUnmount(() => {
                     <template v-else>{{ item.primary }}</template>
                   </td>
                   <td class="px-4 py-4 text-muted">{{ item.secondary }}</td>
-                  <td class="px-4 py-4"><UiBadge :tone="item.tone">{{ item.status }}</UiBadge></td>
+                  <td class="px-4 py-4">
+                    <div class="flex items-center justify-between gap-3">
+                      <UiBadge :tone="item.tone">{{ item.status }}</UiBadge>
+                      <NuxtLink v-if="scenario.role !== 'staff' && item.to" :to="item.to" class="inline-flex min-h-9 items-center rounded-control px-3 text-xs font-semibold text-primary hover:bg-warning-soft">ทำต่อ</NuxtLink>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -492,6 +509,12 @@ onBeforeUnmount(() => {
                 class="absolute inset-0 w-full rounded-control"
                 :aria-label="`เปิดรายละเอียดคำร้อง ${item.id} ของ ${item.primary}`"
                 @click="openRequest(item.id)"
+              />
+              <NuxtLink
+                v-else-if="item.to"
+                :to="item.to"
+                class="absolute inset-0 z-10 w-full rounded-control focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+                :aria-label="`เปิด ${item.primary} สถานะ ${item.status}`"
               />
               <div class="pointer-events-none relative">
                 <div class="flex items-start justify-between gap-3">

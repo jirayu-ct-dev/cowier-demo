@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, UsersRound, X } from '@lucide/vue'
+import { Building2, ChevronLeft, ChevronRight, RotateCcw, Search, UsersRound, X } from '@lucide/vue'
 import type { SupervisionCompany, SupervisionGroup } from '~/composables/useSupervisionGroups'
 import { getPageCount, paginateItems } from '~/utils/table'
 
@@ -61,7 +61,6 @@ const retry = () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
 }
-const startCreateGroup = () => navigateTo({ path: '/staff/supervision/groups/new', query: { cycle: cycleId.value, round: String(round.value) } })
 const lecturerName = (id: string) => {
   const lecturer = people.value.find(person => person.type === 'lecturer' && person.id === id)
   return lecturer ? getPersonFullName(lecturer) : id
@@ -82,7 +81,6 @@ const openCompanyDialog = (company: SupervisionCompany) => {
   <div>
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">จัดกลุ่มนิเทศ</h2><p class="mt-1 text-sm leading-6 text-muted">จัดกลุ่มสถานประกอบการตามพิกัด และกำหนดอาจารย์ผู้รับผิดชอบให้แต่ละกลุ่ม</p></div>
-      <UiButton :icon="Plus" @click="startCreateGroup">สร้างกลุ่มอาจารย์</UiButton>
     </div>
 
     <div class="mb-3 flex items-center justify-between gap-3">
@@ -102,7 +100,7 @@ const openCompanyDialog = (company: SupervisionCompany) => {
           <div class="border-b border-divider p-5 sm:p-6"><div class="flex items-start gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-control bg-warning-soft text-warning"><UsersRound :size="20" aria-hidden="true" /></span><div><h3 class="text-lg font-bold text-ink">กลุ่มอาจารย์ที่จัดแล้ว</h3><p class="mt-1 text-sm text-muted">{{ selectedCycleLabel }} · นิเทศครั้งที่ {{ round }}</p></div></div></div>
           <div v-if="effectiveViewState === 'loading'" class="space-y-3 p-5 sm:p-6" aria-label="กำลังโหลดกลุ่มอาจารย์"><UiSkeleton v-for="row in 3" :key="row" class="h-14" /></div>
           <div v-else-if="effectiveViewState === 'error'" class="p-5 sm:p-6"><AppErrorState title="โหลดกลุ่มอาจารย์ไม่สำเร็จ" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง" @retry="retry" /></div>
-          <div v-else-if="!currentGroups.length" class="p-5 sm:p-6"><AppEmptyState title="ยังไม่มีกลุ่มอาจารย์สำหรับการนิเทศครั้งนี้" description="สร้างกลุ่ม เลือกอาจารย์ และมอบหมายสถานประกอบการก่อนเริ่มวางตาราง"><UiButton :icon="Plus" @click="startCreateGroup">สร้างกลุ่มอาจารย์</UiButton></AppEmptyState></div>
+          <div v-else-if="!currentGroups.length" class="p-5 sm:p-6"><AppEmptyState title="ยังไม่มีกลุ่มอาจารย์สำหรับการนิเทศครั้งนี้" description="สร้างกลุ่ม เลือกอาจารย์ และมอบหมายสถานประกอบการก่อนเริ่มวางตาราง" /></div>
           <template v-else>
             <div class="hidden overflow-x-auto md:block">
               <table class="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">

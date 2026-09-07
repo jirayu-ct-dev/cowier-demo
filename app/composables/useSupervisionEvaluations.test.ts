@@ -1,14 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import { calculateEvaluationAverage, companyEvaluationCriteria, useSupervisionEvaluations } from './useSupervisionEvaluations'
+import { companyEvaluationCriteria, evaluationRatingOptions, studentEvaluationCriteria, useSupervisionEvaluations } from './useSupervisionEvaluations'
 
-describe('calculateEvaluationAverage', () => {
-  it('excludes ratings that cannot be evaluated', () => {
-    expect(calculateEvaluationAverage({ responsibility: '5', ethics: '3', safety: 'na' })).toBe(4)
+describe('evaluation form definitions', () => {
+  it('uses a five-level scale and identifies level five as the highest', () => {
+    expect(evaluationRatingOptions.map(option => option.value)).toEqual(['1', '2', '3', '4', '5'])
+    expect(evaluationRatingOptions.at(-1)?.label).toContain('ระดับสูงสุด')
   })
 
-  it('returns null when every criterion is unavailable', () => {
-    expect(calculateEvaluationAverage({ responsibility: 'na', ethics: 'na' })).toBeNull()
+  it('covers workplace conditions, welfare, transport, and nearby accommodation', () => {
+    expect(companyEvaluationCriteria.map(criterion => criterion.id)).toEqual(expect.arrayContaining([
+      'environment',
+      'safety',
+      'allowance',
+      'transportation',
+      'public_transport',
+      'nearby_accommodation',
+    ]))
   })
 })
 
@@ -35,6 +43,43 @@ describe('company evaluation roles', () => {
     companyRequirements: '',
     issues: '',
     suggestions: 'มีที่พักใกล้สถานประกอบการ',
+  })
+
+  const studentInput = () => ({
+    ratings: Object.fromEntries(studentEvaluationCriteria.map(criterion => [criterion.id, '4' as const])),
+    strengths: 'มีความรับผิดชอบ',
+    issues: '',
+    suggestions: '',
+    followUp: '',
+  })
+
+  it('blocks staff from saving student evaluations', () => {
+    const store = useSupervisionEvaluations()
+    expect(() => store.saveStudentEvaluation('A1', 'student-1', 'staff-1', studentInput())).toThrow('ไม่มีสิทธิ์ประเมินนักศึกษา')
+    expect(() => store.submitStudentEvaluation('A1', 'student-1', 'staff-1', studentInput())).toThrow('ไม่มีสิทธิ์ประเมินนักศึกษา')
+  })
+
+  it('allows lecturers to submit student evaluations', () => {
+    account.value = { role: 'lecturer' }
+    const store = useSupervisionEvaluations()
+    expect(store.submitStudentEvaluation('A1', 'student-1', 'lecturer-1', studentInput())).toMatchObject({
+      status: 'submitted',
+      lecturerId: 'lecturer-1',
+    })
+  })
+
+  it('allows lecturers to save and retrieve a student evaluation draft', () => {
+    account.value = { role: 'lecturer' }
+    const store = useSupervisionEvaluations()
+    const saved = store.saveStudentEvaluation('A1', 'student-1', 'lecturer-1', studentInput())
+    expect(saved).toMatchObject({
+      status: 'draft',
+      submittedAt: null,
+    })
+    saved.status = 'submitted'
+    const retrieved = store.getStudentEvaluation('A1', 'student-1', 'lecturer-1')!
+    retrieved.status = 'submitted'
+    expect(store.getStudentEvaluation('A1', 'student-1', 'lecturer-1')).toMatchObject({ status: 'draft' })
   })
 
   it.each(['staff', 'lecturer'] as const)('allows %s to submit the shared company evaluation', (role) => {

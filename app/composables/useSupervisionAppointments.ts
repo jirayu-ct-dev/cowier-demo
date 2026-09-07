@@ -173,7 +173,7 @@ export const useSupervisionAppointments = () => {
   const completeAppointment = (appointmentId: string, input: SupervisionResultInput) => {
     const appointment = appointments.value.find(item => item.id === appointmentId)
     if (!appointment) throw new Error('appointment-not-found')
-    if (appointment.status === 'completed' || appointment.status === 'cancelled') throw new Error('appointment-locked')
+    if (!['published', 'postponed'].includes(appointment.status)) throw new Error('appointment-not-completable')
     if (!input.actualLecturerIds.length) throw new Error('actual-lecturer-required')
     if (input.actualLecturerIds.some(id => !appointment.lecturerIds.includes(id))) throw new Error('actual-lecturer-invalid')
     appointment.result = {

@@ -32,6 +32,7 @@ const pageTitle = computed(() => {
   if (/^\/(staff|lecturer)\/companies\/new$/.test(path)) return 'เพิ่มสถานประกอบการ'
   if (/^\/(staff|lecturer)\/companies\/[^/]+$/.test(path)) return 'รายละเอียดสถานประกอบการ'
   if (/^\/(staff|lecturer)\/companies/.test(path)) return 'ข้อมูลสถานประกอบการ'
+  if (path.startsWith('/lecturer/evaluations')) return route.query.type === 'company' ? 'ประเมินสถานประกอบการ' : 'ประเมินนักศึกษา'
   if (path.startsWith('/lecturer/supervision')) return 'ตารางนิเทศ'
   if (path.startsWith('/staff/applications')) return 'การสมัครสหกิจของนักศึกษา'
   if (path === '/staff/supervision') return 'ตารางนิเทศ'

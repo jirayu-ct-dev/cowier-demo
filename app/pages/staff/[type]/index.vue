@@ -2,6 +2,7 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, Upload } from '@lucide/vue'
 import type { PeopleFileFormat } from '~/composables/usePeopleImport'
 import type { PersonRecord, PersonType } from '~/composables/usePeopleDirectory'
+import { selectableCoopSemester } from '~/composables/useCoopCycles'
 import { getPageCount, paginateItems } from '~/utils/table'
 import { hasConfirmedPlacement as hasPlacement } from '~/utils/studentPlacementStatus'
 
@@ -67,7 +68,7 @@ const filteredPeople = computed(() => {
   return people.value
     .filter(person => person.type === personType.value)
     .filter(person => personType.value !== 'student' || studentCohort.value === 'all' || getStudentCohortYear(person.id) === studentCohort.value)
-    .filter(person => personType.value !== 'student' || studentSemester.value === 'all' || getStudentSemester(person.cycle) === studentSemester.value)
+    .filter(person => personType.value !== 'student' || getStudentSemester(person.cycle) === selectableCoopSemester)
     .filter(person => personType.value !== 'student' || studentSection.value === 'all' || person.section === studentSection.value)
     .filter(person => !keyword || [person.id, person.prefix, person.firstName, person.lastName, person.company]
       .some(value => value?.toLocaleLowerCase('th').includes(keyword)))
@@ -90,7 +91,7 @@ watch([search, recordStatus, accountStatus, placementStatus, sortDirection, page
 watch(pageCount, count => { if (currentPage.value > count) currentPage.value = count })
 watchEffect(() => {
   if (personType.value !== 'student') return
-  studentSemester.value = 'all'
+  studentSemester.value = selectableCoopSemester
   ensureAvailableStudentFilters()
 })
 
@@ -102,7 +103,7 @@ const clearFilters = () => {
   if (personType.value === 'student') {
     studentSection.value = 'all'
     studentCohort.value = 'all'
-    studentSemester.value = 'all'
+    studentSemester.value = selectableCoopSemester
   }
 }
 const resetTable = () => {

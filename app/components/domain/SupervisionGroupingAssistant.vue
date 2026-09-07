@@ -87,14 +87,11 @@ const save = () => {
 
 <template>
   <UiCard class="mb-6">
-    <h3 class="text-lg font-bold text-ink">จัดกลุ่มนิเทศด้วย AI (Clustering)</h3>
-    <p class="mt-2 text-sm leading-6 text-muted">จัดสถานประกอบการที่มีนักศึกษายืนยันแล้วและยังไม่มีกลุ่มในครั้งนี้ตามพิกัด ด้วยอัลกอริทึมจัดกลุ่มแบบลำดับชั้น ไม่ใช้บริการ AI ภายนอก ระยะเป็นเส้นตรง ไม่ใช่ระยะขับรถ ตรวจกลุ่มและเลือกอาจารย์ก่อนบันทึกได้</p>
-    <form novalidate class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="suggest">
+    <form novalidate class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="suggest">
       <div class="min-w-0 flex-1"><UiInput v-model="distance" type="number" label="ระยะสูงสุดระหว่างสถานประกอบการ (กม.)" :error="fieldErrors.maxDistanceKm" /></div>
       <div class="min-w-0 flex-1"><UiInput v-model="capacity" type="number" label="จำนวนสถานประกอบการสูงสุดต่อกลุ่ม" :error="fieldErrors.maxCompanies" /></div>
       <UiButton type="submit" :icon="Sparkles" :loading="busy" :disabled="disabled || !companies.length">เสนอการจัดกลุ่ม</UiButton>
     </form>
-    <p v-if="!companies.length" class="mt-3 text-sm text-muted">ไม่มีสถานประกอบการรอจัดกลุ่มในรอบและครั้งนี้</p>
     <p v-if="error" role="alert" class="mt-3 text-sm text-danger">{{ error }}</p>
     <div v-if="preview" class="mt-5 space-y-4" aria-live="polite">
       <UiAlert v-if="preview.missingIds.length" tone="warning" title="ยังจัดกลุ่มไม่ได้เนื่องจากไม่มีพิกัดที่ถูกต้อง">{{ preview.missingIds.map(companyName).join(' · ') }} — แก้ไขพิกัดในหน้าสถานประกอบการ หรือจัดกลุ่มด้วยตนเอง</UiAlert>

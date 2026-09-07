@@ -4,6 +4,7 @@ import {
   Blocks,
   BriefcaseBusiness,
   Building2,
+  Calculator,
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
@@ -46,8 +47,8 @@ const navigationGroups = computed<NavigationGroup[]>(() => [
           label: "ข้อมูลและคำร้อง",
           items: [
             { label: "ข้อมูลนักศึกษา", to: "/staff/students", icon: GraduationCap, exact: false },
-            { label: "อาจารย์", to: "/staff/lecturers", icon: Presentation, exact: false },
-            { label: "สถานประกอบการ", to: "/staff/companies", icon: Building2, exact: false },
+            { label: "ข้อมูลอาจารย์", to: "/staff/lecturers", icon: Presentation, exact: false },
+            { label: "ข้อมูลสถานประกอบการ", to: "/staff/companies", icon: Building2, exact: false },
             { label: "การสมัครสหกิจ", to: "/staff/applications", icon: BriefcaseBusiness, exact: false },
             { label: "คำร้องและหนังสือ", to: "/staff/requests", icon: FileCheck2, exact: false },
           ],
@@ -57,6 +58,7 @@ const navigationGroups = computed<NavigationGroup[]>(() => [
           items: [
             { label: "จัดกลุ่มอาจารย์", to: "/staff/supervision/groups", icon: UsersRound, exact: false },
             { label: "ตารางนิเทศ", to: "/staff/supervision", icon: CalendarDays, exact: true },
+            { label: "คำนวณค่าใช้จ่าย", to: "/staff/expenses", icon: Calculator, exact: true },
           ],
         },
       ]
@@ -80,14 +82,15 @@ const navigationGroups = computed<NavigationGroup[]>(() => [
           items: [
             ...(canAccess() ? [{ label: "ตรวจคำร้องและผลตอบกลับ", to: "/lecturer/placements", icon: FileCheck2, exact: false }] : []),
             { label: "ตารางนิเทศ", to: "/lecturer/supervision", icon: CalendarDays, exact: false },
-            { label: "ประเมินผล", to: "/lecturer/evaluations", icon: ClipboardCheck, exact: false },
+            { label: "ประเมินนักศึกษา", to: "/lecturer/evaluations?type=student", icon: ClipboardCheck, exact: false },
+            { label: "ประเมินสถานประกอบการ", to: "/lecturer/evaluations?type=company", icon: Building2, exact: false },
           ],
         },
         {
           label: "ข้อมูลประกอบงาน",
           items: [
             { label: "การสมัครสหกิจ", to: "/lecturer/applications", icon: BriefcaseBusiness, exact: false },
-            { label: "นักศึกษา", to: "/lecturer/students", icon: GraduationCap, exact: false },
+            { label: "ข้อมูลนักศึกษา", to: "/lecturer/students", icon: GraduationCap, exact: false },
             { label: "สถานประกอบการ", to: "/lecturer/companies", icon: Building2, exact: false },
           ],
         },
@@ -99,8 +102,11 @@ const navigationGroups = computed<NavigationGroup[]>(() => [
 ]);
 
 const isActive = (to: string, exact: boolean) => {
-  if (exact) return route.path === to;
-  return route.path.startsWith(to);
+  const [targetPath = to, queryString] = to.split('?')
+  const pathMatches = exact ? route.path === targetPath : route.path.startsWith(targetPath)
+  if (!pathMatches || !queryString) return pathMatches
+  const targetQuery = new URLSearchParams(queryString)
+  return [...targetQuery].every(([key, value]) => String(route.query[key] ?? '') === value)
 };
 </script>
 

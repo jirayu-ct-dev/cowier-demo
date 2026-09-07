@@ -54,7 +54,7 @@ const roleEventSeeds: RoleCalendarEvent[] = [
   {
     id: 'CAL-LECTURER-002', title: 'ติดตามแบบประเมินหลังการนิเทศ',
     description: 'ตรวจรายการที่นิเทศแล้วและส่งแบบประเมินให้ครบถ้วน',
-    date: '2026-09-07', type: 'evaluation', roles: ['lecturer'], href: '/lecturer/evaluations', source: 'system',
+    date: '2026-09-07', type: 'evaluation', roles: ['lecturer'], href: '/lecturer/evaluations?type=student', source: 'system',
   },
   {
     id: 'CAL-STUDENT-001', title: 'ติดตามหนังสือขออนุญาตฝึกสหกิจ',
