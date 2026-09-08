@@ -1,109 +1,37 @@
-# AGENTS.md — Cowier Co-op Supervision System
+# CWIE BRU — Agent Guide
 
-แนวทางการทำงานสำหรับ Coding Agents ในโปรเจกต์ **ระบบบริหารจัดการและนิเทศงานสหกิจศึกษา (Cooperative Education Management & Supervision System)**
+## Scope
 
----
+ระบบ Nuxt 4 สำหรับบริหารและนิเทศสหกิจศึกษา (เจ้าหน้าที่ อาจารย์ นักศึกษา)
+ปัจจุบัน UI และ workflow ส่วนใหญ่ใช้ mock/in-memory data; Prisma/MySQL และ session auth เป็นโครงสร้างสำหรับระยะ backend
 
-## 1. ภาพรวมโปรเจกต์และขอบเขตการทำงาน (Project & Domain Scope)
+## Project map
 
-ระบบนี้ใช้สำหรับบริหารจัดการและติดตามการฝึกงานสหกิจศึกษาของนักศึกษา ตั้งแต่การเลือกสถานประกอบการ การจัดสรรอาจารย์นิเทศ การวางแผนตารางนิเทศ การบันทึกผลและประเมินผล ไปจนถึงการคำนวณค่าใช้จ่ายในการนิเทศ
+- `app/pages` — file-based routes และ page orchestration
+- `app/components` — reusable UI/presentational components
+- `app/composables` — feature logic และ shared state
+- `app/middleware` — prototype route access checks
+- `server/api` — Nitro endpoints (บาง flow ยังเป็น mock)
+- `shared` — types และ Zod schemas ที่ใช้ร่วม client/server
+- `prisma/schema.prisma` — target data model; อย่าสมมติว่า runtime เชื่อม DB แล้ว
+- `app/pages/dev/ui.vue` — visual reference สำหรับ UI ที่มีอยู่
 
-ขอบเขตการทำงานแบ่งตาม 3 บทบาทหลัก (อ้างอิง [`dosc/requirement.md`](./dosc/requirement.md)):
+## Working rules
 
-### 1. ส่วนสำหรับเจ้าหน้าที่ (Admin / Staff)
-- **จัดการข้อมูล Master Data:** เพิ่ม ลบ แก้ไข และสืบค้นข้อมูลนักศึกษา อาจารย์ และสถานประกอบการ
-- **นำเข้าและส่งออกข้อมูล:** นำเข้าและส่งออกข้อมูลนักศึกษาด้วยไฟล์ CSV หรือ Excel (`.xlsx`) พร้อมระบบตรวจสอบความถูกต้อง
-- **จัดการรอบสหกิจศึกษา:** จัดการข้อมูลปีการศึกษา ภาคเรียน และสถานะรอบสหกิจ
-- **จัดสรรพื้นที่และความรับผิดชอบ:** กำหนดพื้นที่รับผิดชอบให้อาจารย์ตามภูมิภาค จังหวัด หรือสถานประกอบการ
-- **วางแผนและจัดตารางนิเทศ:** คัดกรองนักศึกษาเพื่อสร้างและแก้ไขตารางนิเทศ (แบ่งเป็นการนิเทศครั้งที่ 1 และครั้งที่ 2) กำหนดวัน เวลา สถานประกอบการ นักศึกษา และอาจารย์ผู้รับผิดชอบ
-- **ตรวจสอบตารางซ้ำซ้อน (Conflict Detection):** ตรวจสอบตารางเวลาที่ซ้ำหรือชนกันของอาจารย์ นักศึกษา และสถานประกอบการ
-- **คำนวณค่าใช้จ่าย:** บันทึกค่าเดินทาง ค่าที่พัก ค่าเบี้ยเลี้ยง/อาหาร และคำนวณยอดรวมค่าใช้จ่ายในการนิเทศ
+1. สำรวจโค้ดและสถานะ Git ก่อนแก้; เปลี่ยนเฉพาะไฟล์ที่เกี่ยวข้อง และรักษา user changes
+2. ใช้ Composition API + TypeScript; ย้าย business logic ไป composables และใช้ shared types/schemas
+3. สำหรับ UI ที่มีข้อมูล แสดง loading, empty, error และ data state; รองรับ mobile และ keyboard accessibility
+4. ใช้ existing components/tokens ใน `app/components/ui` และ pattern จาก `/dev/ui` ก่อนสร้างของใหม่
+5. ตรวจ input/API ด้วย Zod; destructive actions ต้องมี confirmation และ feedback ที่เหมาะสม
+6. หากแตะ backend ให้ตรวจสิทธิ์ที่ server, จำกัด query/include และใช้ transaction เมื่อแก้หลาย entity
+7. เสร็จงานแล้วรัน checks ที่เกี่ยวข้องจาก `package.json` (อย่างน้อย lint/typecheck/test หรือ build ตามขอบเขต) และรายงานผล
 
-### 2. ส่วนสำหรับอาจารย์นิเทศ (Lecturer / Supervisor)
-- **เข้าสู่ระบบ / ยืนยันตัวตน:** เข้าสู่ระบบและออกจากระบบ
-- **ดูตารางนิเทศ:** ดูตารางนิเทศที่ตนเองได้รับมอบหมาย แยกตามครั้งที่ 1 และครั้งที่ 2
-- **ดูข้อมูลนักศึกษาและสถานประกอบการ:** ค้นหาและดูรายละเอียดนักศึกษาและสถานประกอบการที่ได้รับมอบหมาย
-- **อัปเดตสถานะการนิเทศ:** บันทึกสถานะ (เช่น จัดตารางแล้ว, นิเทศเสร็จแล้ว, เลื่อน, ยกเลิก)
-- **บันทึกผลและข้อเสนอแนะ:** บันทึกผลการนิเทศและข้อเสนอแนะของนักศึกษา
-- **ประเมินผล:** ประเมินนักศึกษาและประเมินสถานประกอบการหลังการนิเทศแต่ละครั้ง
+## Skills
 
-### 3. ส่วนสำหรับนักศึกษา (Student)
-- **เข้าสู่ระบบ / ยืนยันตัวตน:** เข้าสู่ระบบและออกจากระบบ
-- **ค้นหาและเลือกสถานประกอบการ:** ค้นหา ดูข้อมูล และเลือก/บันทึกสถานประกอบการที่ต้องการไปปฏิบัติงานสหกิจศึกษา
-- **ตรวจสอบผลการยืนยัน:** ดูสถานประกอบการที่ได้รับการยืนยันเป็นสถานที่ฝึกงานของตนเอง
-- **ดูตารางนิเทศ:** ดูตารางนิเทศของตนเอง (ครั้งที่นิเทศ วันที่ เวลา สถานประกอบการ และอาจารย์นิเทศ)
+เรียกใช้ skill เฉพาะเมื่อเข้าเงื่อนไข: `grill-with-docs`/`to-spec` ก่อนงานที่ requirement ยังไม่ชัด, `codebase-design`/`domain-modeling` เมื่อต้องออกแบบ boundary หรือศัพท์โดเมน, `tdd` เมื่อต้องเพิ่ม logic/แก้ bug, `code-review` ก่อนส่งมอบ diff, `docker-deployment-standards` เมื่องานแตะ Docker, และ `diagnosing-bugs` เมื่อต้องวิเคราะห์ failure
 
----
+## Guardrails
 
-## 2. สถาปัตยกรรมและเทคโนโลยี (Tech Stack & Architecture)
-
-| Layer / Domain | Technology | รายละเอียดและแนวปฏิบัติ |
-|---|---|---|
-| **App Framework** | **Nuxt 4** (Vue 3 + Nitro Engine) | ใช้ Composition API `<script setup lang="ts">` และ TypeScript แบบเข้มงวด |
-| **Styling & UI** | **Tailwind CSS + Radix UI (radix-vue / reka-ui)** | ใช้ Tailwind CSS สำหรับ Styling และ Radix UI สำหรับ Headless Accessible Primitives (ไม่ใช้ `@nuxt/ui`) |
-| **Icons** | **Lucide Icons** (`lucide-vue-next`) | ใช้ icon จากชุดเดียวกันทั้งโปรเจกต์ ไม่ผสมหลาย icon sets และไม่ใช้ emoji แทน functional icon |
-| **Date & Time** | **date-fns** | จัดการวันเวลา ปฏิทินรอบสหกิจ และตารางนิเทศ |
-| **Validation** | **Zod** | Schema validation สำหรับ Form inputs, API payloads, และ Data import validation |
-| **Database & ORM** | **Prisma ORM + PostgreSQL** | Data modeling, migrations, และ Type-safe database queries |
-| **Authentication** | **Nuxt Auth / Session Auth** | Session-based authentication พร้อม Role-Based Access Control (Admin, Lecturer, Student) |
-| **Files & Data** | **Excel & CSV Utilities** | นำเข้า/ส่งออกข้อมูลนักศึกษาและรายงานผลการนิเทศ |
-| **DevOps & Deploy** | **Docker & Docker Compose** | Multi-stage build, non-root user, healthcheck, แยก runtime config ออกจาก build-time |
-
----
-
-## 3. กฎและมาตรฐานการพัฒนา (Engineering Standards)
-
-### A. Frontend & UI (Nuxt + Tailwind CSS + Radix UI)
-1. **Separation of Concerns:**
-   - Business/Data Logic ให้แยกไว้ใน Composables (`composables/use*.ts`)
-   - Presentational Components รับ props และ emit events
-   - ใช้ Radix UI primitives สำหรับ Dialog, DropdownMenu, Tabs, Popover เพื่อให้ได้ Accessibility ครบถ้วน โดยแต่งสไตล์ด้วย Tailwind CSS
-2. **Mandatory 4-State UI:** ทุก View/Component ที่มีการดึงข้อมูล ต้องจัดการ 4 สถานะให้ครบถ้วน:
-   - **Loading State:** แสดง Skeleton loader ที่รูปทรงสอดคล้องกับ Layout จริง (หลีกเลี่ยง spinner เต็มจอ)
-   - **Empty State:** กล่องข้อความแจ้งเตือนพร้อม icon และปุ่ม Action เมื่อไม่มีข้อมูล
-   - **Error State:** การแจ้งเตือนข้อผิดพลาดที่ชัดเจน พร้อมปุ่ม Retry เพื่อดึงข้อมูลใหม่
-   - **Data State:** แสดงผลข้อมูลจริง พร้อม responsive layout (Mobile Card / Desktop Table)
-3. **Forms & Actions:**
-   - ใช้ Zod Schema ในการ validate form ก่อน submit
-   - แสดง inline validation error ให้ตรงกับ field/section ที่ผิดพลาด
-   - มี Loading state และป้องกัน double submission บนปุ่ม Action
-   - การกระทำที่เป็น destructive (เช่น ลบข้อมูล) ต้องมีกลไกยืนยัน (Confirmation)
-   - ใช้ feedback component ของโปรเจกต์ (Toast / Modal) ไม่ใช้ browser `alert()` หรือ `confirm()`
-
-### B. Backend, Database & Security
-1. **Role-Based Access Control (RBAC):** ตรวจสอบสิทธิ์ที่ Backend ทุก Nitro Endpoint อย่างเข้มงวดตาม 3 บทบาท (Admin, Lecturer, Student)
-2. **Prisma & Database Safety:**
-   - ป้องกัน N+1 query: ใช้ `select` หรือ bounded `include` ที่เฉพาะเจาะจงเสมอ
-   - จัดการ Multi-table transaction ผ่าน `prisma.$transaction()` เมื่อมีการแก้ไขหลายตารางพร้อมกัน
-   - ปฏิบัติตาม Migration workflow อย่างเคร่งครัด
-3. **Data Validation:** ตรวจสอบความถูกต้องของข้อมูลทุก Endpoint ด้วย Zod Schema ก่อนบันทึกลงฐานข้อมูลเสมอ
-
----
-
-## 4. คู่มือการเรียกใช้ Skills เฉพาะทาง (.agents/skills/)
-
-เมื่อทำงานในแต่ละด้าน ให้ศึกษาและปฏิบัติตามคำแนะนำใน skill ที่เกี่ยวข้อง:
-
-| งานที่ทำ | Skill ที่ต้องใช้งาน | เอกสารอ้างอิง |
-|---|---|---|
-| **สร้าง/แก้ไข Nuxt UI, Components, Forms, Tables ด้วย Tailwind CSS** | `web-ui-coding-standards` | [`.agents/skills/web-ui-coding-standards/SKILL.md`](./.agents/skills/web-ui-coding-standards/SKILL.md)<br>- [App Shells](./.agents/skills/web-ui-coding-standards/references/app-shells.md)<br>- [Data Tables](./.agents/skills/web-ui-coding-standards/references/data-tables.md) |
-| **สร้าง/แก้ไข Dockerfile, Docker Compose, Deployment config** | `docker-deployment-standards` | [`.agents/skills/docker-deployment-standards/SKILL.md`](./.agents/skills/docker-deployment-standards/SKILL.md) |
-| **ตรวจสอบคุณภาพโค้ด, PR, แผนงาน หรือ Architecture Review** | `scrutinize` | [`.agents/skills/scrutinize/SKILL.md`](./.agents/skills/scrutinize/SKILL.md) |
-| **สรุปสถานะและส่งต่องานให้อีก Agent** | `handoff` | [`.agents/skills/handoff/SKILL.md`](./.agents/skills/handoff/SKILL.md) |
-
----
-
-## 5. หลักการทำงานพื้นฐานของ Agent (Core Operating Principles)
-
-1. **Understand Before Acting (เข้าใจก่อนลงมือ):**
-   - อ่านโค้ดและเอกสารที่เกี่ยวข้อง (`dosc/requirement.md`, `AGENTS.md`, Skills) ก่อนแก้ไขเสมอ
-   - หากความต้องการไม่ชัดเจนและส่งผลต่อสถาปัตยกรรมอย่างมีนัยสำคัญ ให้สอบถามก่อน
-2. **Respect Scope and Authority (เคารพขอบเขตของงาน):**
-   - ดำเนินการเฉพาะสิ่งที่ได้รับมอบหมาย ไม่แก้ไขหรือ refactor โค้ดนอกขอบเขตโดยไม่จำเป็น
-3. **Keep the Solution Simple (เรียบง่ายและตรงจุด):**
-   - เลือกใช้วิธีการที่เรียบง่ายที่สุดที่แก้ปัญหาได้อย่างสมบูรณ์ ไม่เพิ่ม abstraction ที่ใช้งานเพียงครั้งเดียว
-4. **Make Surgical Changes (แก้ไขอย่างแม่นยำ):**
-   - ทุกบรรทัดที่เปลี่ยนแปลงต้องสืบย้อนไปยังเป้าหมายของงานได้ รักษา format และ style ของโค้ดเดิม
-5. **Work Toward Verifiable Outcomes (ตรวจสอบผลลัพธ์ได้จริง):**
-   - วางแผนขั้นตอนการทดสอบและรันคำสั่งตรวจสอบ (TypeCheck, Lint, Build, Test) ก่อนส่งมอบงานเสมอ
-
+- เก็บ secrets ใน `.env` ที่ไม่ track; ใช้ `.env.example` เป็น template
+- อย่าลบ volume/database หรือรันคำสั่ง destructive หาก scope ยังไม่ชัดเจน
+- อย่าอ้างว่า feature เป็น production-ready จนกว่าจะมี server auth, persistence และ tests รองรับจริง
