@@ -43,19 +43,19 @@ const finishReview = (outcome: 'return' | 'confirm') => {
     <p v-if="request.returnReason" class="rounded-control bg-danger-soft p-3 text-sm text-danger">จุดที่ต้องแก้ไข: {{ request.returnReason }}</p>
     <div class="flex flex-wrap gap-3">
       <a v-if="request.letter" :href="request.letter.dataUrl" :download="request.letter.name" class="inline-flex min-h-11 items-center rounded-control border border-divider px-4 text-sm font-semibold text-ink hover:bg-surface">ดาวน์โหลดหนังสือขอความอนุเคราะห์</a>
-      <a v-if="request.signedDocument" :href="request.signedDocument.dataUrl" :download="request.signedDocument.name" class="inline-flex min-h-11 items-center rounded-control border border-divider px-4 text-sm font-semibold text-ink hover:bg-surface">ดาวน์โหลดเอกสารลงนาม</a>
+      <a v-if="request.signedDocument" :href="request.signedDocument.dataUrl" :download="request.signedDocument.name" class="inline-flex min-h-11 items-center rounded-control border border-divider px-4 text-sm font-semibold text-ink hover:bg-surface">ดาวน์โหลดหนังสือตอบรับ</a>
     </div>
     <form v-if="canAttach" class="space-y-3" @submit.prevent="save">
       <label class="block text-sm font-semibold text-ink">
-        {{ staff ? 'แนบหนังสือขอความอนุเคราะห์' : 'แนบหนังสือที่สถานประกอบการลงนามแล้ว' }}
+        {{ staff ? 'แนบหนังสือขอความอนุเคราะห์' : 'อัปโหลดหนังสือตอบรับจากสถานประกอบการ' }}
         <input :key="inputKey" type="file" accept="application/pdf,.pdf" class="mt-2 block w-full min-w-0 rounded-control border border-divider p-3 text-sm" :disabled="busy" :aria-invalid="!!error" :aria-describedby="`pdf-help-${request.id}${error ? ` pdf-error-${request.id}` : ''}`" @change="pickFile">
       </label>
       <p :id="`pdf-help-${request.id}`" class="text-xs text-muted">PDF ไม่เกิน 5 MB · เก็บชั่วคราวในต้นแบบ ไม่ใช่การส่งเอกสารจริง</p>
-      <UiButton type="submit" :loading="busy">{{ staff ? 'ส่งหนังสือให้นักศึกษา (ทดลอง)' : 'ส่งเอกสารให้ตรวจ (ทดลอง)' }}</UiButton>
+      <UiButton type="submit" :loading="busy">{{ staff ? 'ส่งหนังสือให้นักศึกษา (ทดลอง)' : 'ส่งหนังสือตอบรับให้เจ้าหน้าที่ (ทดลอง)' }}</UiButton>
     </form>
     <div v-if="staff && request.status === 'signed-uploaded'" class="space-y-3">
       <UiTextarea v-model="reason" label="จุดที่ต้องแก้ไข (กรณีส่งกลับ)" :error="error" />
-      <p class="text-xs text-muted">ตรวจเอกสารลงนามก่อนยืนยัน ผลตรวจนี้จะยืนยันสถานที่ฝึกงานโดยไม่เปิดให้เพิ่มบริษัทใหม่</p>
+      <p class="text-xs text-muted">ตรวจหนังสือตอบรับก่อนยืนยัน ผลตรวจนี้จะยืนยันสถานที่ฝึกงานโดยไม่เปิดให้เพิ่มบริษัทใหม่</p>
       <div class="flex flex-wrap gap-2">
         <UiButton :loading="busy" @click="finishReview('confirm')">ยืนยันเอกสารถูกต้อง</UiButton>
         <UiButton variant="secondary" :loading="busy" @click="finishReview('return')">ส่งกลับให้แก้ไข</UiButton>

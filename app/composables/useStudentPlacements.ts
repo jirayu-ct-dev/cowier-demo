@@ -1,7 +1,7 @@
 import type { StudentWorkStatus } from './useCoopCycles'
 
 export type CompanyStatus = 'active' | 'pending' | 'inactive'
-export type PlacementStatus = 'draft' | 'submitted' | 'returned' | 'batched' | 'letter-issued' | 'confirmed' | 'cancelled'
+export type PlacementStatus = 'draft' | 'submitted' | 'returned' | 'batched' | 'letter-issued' | 'response-uploaded' | 'response-returned' | 'confirmed' | 'cancelled'
 
 export interface Company {
   id: string
@@ -22,6 +22,7 @@ export interface PlacementTimelineItem {
 
 export interface PlacementRequest {
   id: string
+  studentId: string
   cycleId: string
   companyId: string
   position: string
@@ -96,6 +97,7 @@ const initialCompanies: Company[] = [
 const initialRequests: PlacementRequest[] = [
   {
     id: 'REQ-0269-018',
+    studentId: '66123456701',
     cycleId: 'CYCLE-2569-2',
     companyId: 'COM-001',
     position: 'นักพัฒนาเว็บไซต์',
@@ -104,12 +106,10 @@ const initialRequests: PlacementRequest[] = [
     recipientName: 'ผู้จัดการฝ่ายทรัพยากรบุคคล',
     recipientRole: 'ฝ่ายทรัพยากรบุคคล',
     letterAddress: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด 88 ถนนจิระ ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000',
-    status: 'confirmed',
-    workStatus: 'not_started',
-    confirmedAt: '2026-08-28T09:30:00+07:00',
+    status: 'letter-issued',
     updatedAt: '2026-08-28T09:30:00+07:00',
     timeline: [
-      { id: 'TL-018-4', title: 'ยืนยันสถานประกอบการ', description: 'อาจารย์ตรวจเอกสารตอบกลับและยืนยันสถานที่ฝึกงานแล้ว', createdAt: '2026-08-28T09:30:00+07:00' },
+      { id: 'TL-018-4', title: 'ออกหนังสือแล้ว', description: 'เจ้าหน้าที่ส่งหนังสือขอความอนุเคราะห์ให้นักศึกษาดาวน์โหลดแล้ว', createdAt: '2026-08-28T09:30:00+07:00' },
       { id: 'TL-018-3', title: 'รวมในชุดหนังสือแล้ว', description: 'อาจารย์รับคำร้องเข้าชุดหนังสือ คำร้องจึงถูกล็อกชั่วคราว', createdAt: '2026-08-27T09:30:00+07:00' },
       { id: 'TL-018-2', title: 'ส่งคำร้องแล้ว', description: 'ส่งข้อมูลให้อาจารย์ตรวจสอบ', createdAt: '2026-08-24T14:20:00+07:00' },
       { id: 'TL-018-1', title: 'สร้างฉบับร่าง', description: 'บันทึกข้อมูลคำร้องครั้งแรก', createdAt: '2026-08-24T13:55:00+07:00' },
@@ -117,6 +117,7 @@ const initialRequests: PlacementRequest[] = [
   },
   {
     id: 'REQ-0269-006',
+    studentId: '66123456701',
     cycleId: 'CYCLE-2569-SUMMER',
     companyId: 'COM-002',
     position: 'นักวิเคราะห์ข้อมูล',
@@ -137,6 +138,7 @@ const initialRequests: PlacementRequest[] = [
   },
   {
     id: 'REQ-0269-002',
+    studentId: '66123456701',
     cycleId: 'CYCLE-2570-1',
     companyId: 'COM-003',
     position: 'ผู้ช่วยออกแบบ UX/UI',
@@ -178,6 +180,8 @@ export const placementStatusMeta: Record<PlacementStatus, { label: string, tone:
   returned: { label: 'ส่งกลับให้แก้ไข', tone: 'danger', nextStep: 'ตรวจเหตุผล แก้ข้อมูล แล้วส่งคำร้องอีกครั้ง' },
   batched: { label: 'รวมในชุดหนังสือแล้ว', tone: 'info', nextStep: 'รออาจารย์จัดทำหนังสือขอฝึกงาน' },
   'letter-issued': { label: 'ออกหนังสือแล้ว', tone: 'success', nextStep: 'ดาวน์โหลดหนังสือและนำส่งสถานประกอบการ' },
+  'response-uploaded': { label: 'ส่งหนังสือตอบรับแล้ว', tone: 'info', nextStep: 'รอเจ้าหน้าที่ตรวจสอบและยืนยันสถานที่ฝึกงาน' },
+  'response-returned': { label: 'หนังสือตอบรับถูกส่งกลับ', tone: 'danger', nextStep: 'ตรวจเหตุผลและอัปโหลดหนังสือตอบรับฉบับแก้ไข' },
   confirmed: { label: 'ยืนยันสถานประกอบการแล้ว', tone: 'success', nextStep: 'ติดตามวันเริ่มปฏิบัติงานตามรอบสหกิจศึกษา' },
   cancelled: { label: 'ยกเลิกคำร้อง', tone: 'neutral', nextStep: 'รายการนี้สิ้นสุดแล้ว' },
 }
@@ -190,14 +194,73 @@ export const companyStatusMeta: Record<CompanyStatus, { label: string, tone: 'su
 
 export const useStudentPlacements = () => {
   const { selectedCycle } = useCoopCycles()
+  const { currentAccount } = useAuthPrototype()
   const companies = useState<Company[]>('mock-placement-companies', cloneCompanies)
   const requests = useState<PlacementRequest[]>('mock-placement-requests', cloneRequests)
   const findCompany = (id: string) => companies.value.find(company => company.id === id)
-  const findRequest = (id: string) => requests.value.find(request => request.id === id)
-  const cycleRequests = computed(() => requests.value.filter(request => request.cycleId === selectedCycle.value.id))
+  const findStoredRequest = (id: string) => requests.value.find(request => request.id === id)
+  const findRequest = (id: string) => {
+    const request = findStoredRequest(id)
+    return request?.studentId === currentAccount.value?.username ? request : undefined
+  }
+  const cycleRequests = computed(() => requests.value.filter(request => request.cycleId === selectedCycle.value.id
+    && request.studentId === currentAccount.value?.username))
   const activeRequest = computed(() => cycleRequests.value.find(request => request.status !== 'cancelled'))
   const confirmedRequest = computed(() => cycleRequests.value.find(request => request.status === 'confirmed'))
   const confirmedCompany = computed(() => confirmedRequest.value ? findCompany(confirmedRequest.value.companyId) : undefined)
+  const syncSubmittedRequest = (request: PlacementRequest) => {
+    const company = findCompany(request.companyId)
+    if (!company || !currentAccount.value) return
+    usePlacementRequestPreview().syncPlacementRequest({
+      id: request.id,
+      cycleId: request.cycleId,
+      studentId: request.studentId,
+      studentName: currentAccount.value.name,
+      companyName: company.name,
+      companyLocation: company.address,
+      province: company.province,
+      position: request.position,
+      recipientName: request.recipientName,
+      letterAddress: request.letterAddress,
+      appliedAt: request.appliedAt,
+    })
+  }
+  const syncDocumentStatus = (id: string, status: Extract<PlacementStatus, 'letter-issued' | 'response-uploaded' | 'response-returned' | 'confirmed'>, returnReason?: string) => {
+    const request = findStoredRequest(id)
+    if (!request || request.status === status) return request
+    const role = currentAccount.value?.role
+    const transitionRules: Record<typeof status, { role: 'staff' | 'student', from: PlacementStatus[] }> = {
+      'letter-issued': { role: 'staff', from: ['submitted', 'batched'] },
+      'response-uploaded': { role: 'student', from: ['letter-issued', 'response-returned'] },
+      'response-returned': { role: 'staff', from: ['response-uploaded'] },
+      confirmed: { role: 'staff', from: ['response-uploaded'] },
+    }
+    const transition = transitionRules[status]
+    if (role !== transition.role) throw new Error('ไม่มีสิทธิ์อัปเดตสถานะเอกสาร')
+    if (role === 'student' && request.studentId !== currentAccount.value?.username) throw new Error('ไม่มีสิทธิ์อัปเดตคำร้องของนักศึกษาคนอื่น')
+    if (!transition.from.includes(request.status)) throw new Error('สถานะคำร้องไม่รองรับการดำเนินการนี้')
+    const now = new Date().toISOString()
+    const timelineMeta = {
+      'letter-issued': ['ออกหนังสือแล้ว', 'เจ้าหน้าที่ส่งหนังสือขอความอนุเคราะห์ให้นักศึกษาดาวน์โหลดแล้ว'],
+      'response-uploaded': ['ส่งหนังสือตอบรับแล้ว', 'นักศึกษาอัปโหลดหนังสือตอบรับให้เจ้าหน้าที่ตรวจสอบแล้ว'],
+      'response-returned': ['ส่งหนังสือตอบรับกลับให้แก้ไข', returnReason || 'เจ้าหน้าที่ส่งหนังสือตอบรับกลับให้นักศึกษาแก้ไข'],
+      confirmed: ['ยืนยันสถานประกอบการ', 'เจ้าหน้าที่ตรวจหนังสือตอบรับและยืนยันสถานที่ฝึกงานแล้ว'],
+    } satisfies Record<typeof status, [string, string]>
+    request.status = status
+    request.returnReason = status === 'response-returned' ? returnReason : undefined
+    request.updatedAt = now
+    if (status === 'confirmed') {
+      request.confirmedAt = now
+      request.workStatus = 'not_started'
+    }
+    request.timeline.unshift({
+      id: crypto.randomUUID(),
+      title: timelineMeta[status][0],
+      description: timelineMeta[status][1],
+      createdAt: now,
+    })
+    return request
+  }
 
   const addCompany = (value: NewCompanyValue) => {
     const company: Company = {
@@ -212,9 +275,11 @@ export const useStudentPlacements = () => {
   }
 
   const saveRequest = (value: PlacementFormValue, mode: 'draft' | 'submitted', requestId?: string) => {
+    if (currentAccount.value?.role !== 'student') throw new Error('ไม่มีสิทธิ์บันทึกคำร้องของนักศึกษา')
     const now = new Date().toISOString()
-    const existing = requestId ? findRequest(requestId) : undefined
+    const existing = requestId ? findStoredRequest(requestId) : undefined
     if (existing) {
+      if (existing.studentId !== currentAccount.value.username) throw new Error('ไม่มีสิทธิ์แก้ไขคำร้องของนักศึกษาคนอื่น')
       if (!['draft', 'submitted', 'returned'].includes(existing.status)) {
         throw new Error('placement-request-not-editable')
       }
@@ -229,6 +294,7 @@ export const useStudentPlacements = () => {
         description: mode === 'submitted' ? 'บันทึกข้อมูลที่แก้ไขและส่งให้อาจารย์ตรวจสอบ' : 'บันทึกข้อมูลล่าสุดไว้เป็นฉบับร่าง',
         createdAt: now,
       })
+      if (mode === 'submitted') syncSubmittedRequest(existing)
       return existing
     }
 
@@ -237,7 +303,8 @@ export const useStudentPlacements = () => {
     }
 
     const ongoingCycleIds = new Set(requests.value
-      .filter(request => request.status !== 'cancelled' && !(request.status === 'confirmed' && ['completed', 'terminated'].includes(request.workStatus ?? '')))
+      .filter(request => request.status !== 'cancelled'
+        && !(request.status === 'confirmed' && ['completed', 'terminated'].includes(request.workStatus ?? '')))
       .map(request => request.cycleId))
     if (activeRequest.value || (ongoingCycleIds.size && !ongoingCycleIds.has(selectedCycle.value.id))) {
       throw new Error('active-placement-request-exists')
@@ -245,6 +312,7 @@ export const useStudentPlacements = () => {
 
     const request: PlacementRequest = {
       id: `REQ-0269-${String(requests.value.length + 21).padStart(3, '0')}`,
+      studentId: currentAccount.value.username,
       cycleId: selectedCycle.value.id,
       ...value,
       status: mode,
@@ -257,12 +325,15 @@ export const useStudentPlacements = () => {
       }],
     }
     requests.value.unshift(request)
+    if (mode === 'submitted') syncSubmittedRequest(request)
     return request
   }
 
   const cancelRequest = (id: string) => {
-    const request = findRequest(id)
+    const request = findStoredRequest(id)
     if (!request || !['draft', 'submitted', 'returned'].includes(request.status)) return false
+    if (currentAccount.value?.role !== 'student' || request.studentId !== currentAccount.value.username) throw new Error('ไม่มีสิทธิ์ยกเลิกคำร้องนี้')
+    if (request.status !== 'draft') usePlacementRequestPreview().cancelPlacementRequest(id)
     request.status = 'cancelled'
     request.updatedAt = new Date().toISOString()
     request.timeline.unshift({
@@ -279,5 +350,5 @@ export const useStudentPlacements = () => {
     requests.value = cloneRequests()
   }
 
-  return { companies, requests, cycleRequests, activeRequest, confirmedRequest, confirmedCompany, findCompany, findRequest, addCompany, saveRequest, cancelRequest, resetPlacementData }
+  return { companies, requests, cycleRequests, activeRequest, confirmedRequest, confirmedCompany, findCompany, findRequest, addCompany, saveRequest, syncDocumentStatus, cancelRequest, resetPlacementData }
 }

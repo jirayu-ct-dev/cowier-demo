@@ -3,10 +3,11 @@ import type { StudentApplicationRecord } from './student-applications'
 
 export const requestStatusMeta = {
   submitted: { label: 'รอออกหนังสือ', tone: 'warning' },
-  'letter-issued': { label: 'รอนักศึกษาส่งเอกสารลงนาม', tone: 'info' },
-  'signed-uploaded': { label: 'รอตรวจเอกสารลงนาม', tone: 'warning' },
-  returned: { label: 'ให้แก้ไขเอกสารลงนาม', tone: 'danger' },
+  'letter-issued': { label: 'รอนักศึกษาส่งหนังสือตอบรับ', tone: 'info' },
+  'signed-uploaded': { label: 'รอตรวจหนังสือตอบรับ', tone: 'warning' },
+  returned: { label: 'ให้แก้ไขหนังสือตอบรับ', tone: 'danger' },
   confirmed: { label: 'ยืนยันสถานที่ฝึกงานแล้ว', tone: 'success' },
+  cancelled: { label: 'ยกเลิกคำร้องแล้ว', tone: 'neutral' },
 } as const
 export type RequestStatus = keyof typeof requestStatusMeta
 export interface RequestDocument { name: string, dataUrl: string }

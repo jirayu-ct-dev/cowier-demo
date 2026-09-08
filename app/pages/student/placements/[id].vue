@@ -13,7 +13,7 @@ const request = computed(() => findRequest(requestId.value))
 const company = computed(() => request.value ? findCompany(request.value.companyId) : undefined)
 const canEdit = computed(() => request.value && ['draft', 'submitted', 'returned'].includes(request.value.status))
 const canCancel = computed(() => request.value && ['draft', 'submitted', 'returned'].includes(request.value.status))
-const isLocked = computed(() => request.value && ['batched', 'letter-issued'].includes(request.value.status))
+const isLocked = computed(() => request.value && ['batched', 'letter-issued', 'response-uploaded', 'response-returned'].includes(request.value.status))
 const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
 
 const formatDate = (date: string, includeTime = false) => new Intl.DateTimeFormat('th-TH', includeTime
@@ -32,8 +32,8 @@ const confirmCancel = () => {
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control text-sm font-medium text-muted hover:text-ink" @click="navigateTo('/student/placements')">
-      <ArrowLeft :size="18" aria-hidden="true" /> กลับไปรายการคำร้อง
+    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control text-sm font-medium text-muted hover:text-ink" @click="navigateTo('/student/applications')">
+      <ArrowLeft :size="18" aria-hidden="true" /> กลับไปหน้าสมัครและยืนยันที่ฝึกงาน
     </button>
 
     <template v-if="effectiveViewState === 'loading'">
@@ -42,7 +42,7 @@ const confirmCancel = () => {
     </template>
     <AppErrorState v-else-if="effectiveViewState === 'error'" @retry="retry" />
     <AppEmptyState v-else-if="!request || !company" title="ไม่พบคำร้อง" description="คำร้องนี้อาจไม่มีอยู่หรือไม่ใช่คำร้องของคุณ">
-      <UiButton variant="secondary" @click="navigateTo('/student/placements')">กลับไปรายการคำร้อง</UiButton>
+      <UiButton variant="secondary" @click="navigateTo('/student/applications')">กลับไปหน้าสมัครและยืนยันที่ฝึกงาน</UiButton>
     </AppEmptyState>
 
     <template v-else>

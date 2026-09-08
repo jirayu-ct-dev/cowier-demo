@@ -59,12 +59,12 @@ const roleEventSeeds: RoleCalendarEvent[] = [
   {
     id: 'CAL-STUDENT-001', title: 'ติดตามหนังสือขออนุญาตฝึกสหกิจ',
     description: 'ตรวจสถานะเอกสารและดาวน์โหลดหนังสือเมื่อเจ้าหน้าที่เผยแพร่แล้ว',
-    date: '2026-09-01', type: 'document', roles: ['student'], href: '/student/placements', source: 'system',
+    date: '2026-09-01', type: 'document', roles: ['student'], href: '/student/applications', source: 'system',
   },
   {
     id: 'CAL-STUDENT-002', title: 'ส่งหนังสือตอบรับให้เจ้าหน้าที่',
     description: 'อัปโหลดหนังสือตอบรับจากสถานประกอบการเพื่อยืนยันสถานที่ฝึกงาน',
-    date: '2026-09-07', type: 'deadline', roles: ['student'], href: '/student/placements', source: 'system',
+    date: '2026-09-07', type: 'deadline', roles: ['student'], href: '/student/applications', source: 'system',
   },
   {
     id: 'CAL-TRAINING-001', title: 'เริ่มปฏิบัติงานสหกิจศึกษา',

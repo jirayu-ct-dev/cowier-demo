@@ -13,6 +13,7 @@ beforeEach(() => {
   vi.stubGlobal('useAuthPrototype', () => ({ currentAccount: account }))
   vi.stubGlobal('useCoopCycles', () => ({ selectedCycle: ref({ id: 'CYCLE-2569-2' }) }))
   vi.stubGlobal('useSupervisionGroups', () => ({ registerConfirmedPlacement: vi.fn() }))
+  vi.stubGlobal('useStudentPlacements', () => ({ syncDocumentStatus: vi.fn() }))
 })
 afterEach(() => vi.unstubAllGlobals())
 

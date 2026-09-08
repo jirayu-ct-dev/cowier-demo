@@ -203,8 +203,8 @@ const submit = async (mode: 'draft' | 'submitted') => {
 
 <template>
   <div>
-    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control text-sm font-medium text-muted hover:text-ink" @click="navigateTo(isEditing ? `/student/placements/${editId}` : '/student/placements')">
-      <ArrowLeft :size="18" aria-hidden="true" /> กลับ{{ isEditing ? 'ไปหน้ารายละเอียด' : 'ไปรายการคำร้อง' }}
+    <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control text-sm font-medium text-muted hover:text-ink" @click="navigateTo(isEditing ? `/student/placements/${editId}` : '/student/applications')">
+      <ArrowLeft :size="18" aria-hidden="true" /> กลับ{{ isEditing ? 'ไปหน้ารายละเอียด' : 'ไปหน้าสมัครและยืนยันที่ฝึกงาน' }}
     </button>
 
     <div class="mb-6">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildEvaluationRows, evaluationCsv } from './evaluationExport'
+import { buildEvaluationRows, buildStudentEvaluationRows, evaluationCsv } from './evaluationExport'
 import type { SupervisionAppointment } from '../composables/useSupervisionAppointments'
 import { companyEvaluationCriteria, studentEvaluationCriteria } from '../composables/useSupervisionEvaluations'
 import type { CompanyEvaluation, StudentEvaluation } from '../composables/useSupervisionEvaluations'
@@ -21,5 +21,33 @@ describe('evaluation export', () => {
     expect(csv).toContain('"\'=1+1"')
     expect(csv).toContain('"ชื่อ,""ไทย""\nบรรทัดใหม่"')
     expect(csv).toContain('"00123"')
+  })
+
+  it('builds one wide row per submitted student evaluation with placement details and every criterion score', () => {
+    const appointments = [
+      { id: 'A1', cycleId: 'C1', round: 1, date: '2026-09-04', companyId: 'CO1', studentIds: ['S1', 'S2'] },
+      { id: 'A2', cycleId: 'C1', round: 2, date: '2026-09-11', companyId: 'CO1', studentIds: ['S1'] },
+    ] as SupervisionAppointment[]
+    const submitted: StudentEvaluation = {
+      appointmentId: 'A1', studentId: 'S1', lecturerId: 'L1', status: 'submitted', submittedAt: '2026-09-04',
+      ratings: Object.fromEntries(studentEvaluationCriteria.map((criterion, index) => [criterion.id, String((index % 5) + 1)])) as StudentEvaluation['ratings'],
+      strengths: '', issues: '', suggestions: '', followUp: '',
+    }
+    const rows = buildStudentEvaluationRows(
+      appointments,
+      [submitted, { ...submitted, appointmentId: 'A2' }, { ...submitted, studentId: 'S2' }, { ...submitted, lecturerId: 'L2' }, { ...submitted, status: 'draft' }],
+      studentId => ({ studentName: studentId === 'S1' ? 'สมชาย ใจดี' : 'นักศึกษาอีกคน', position: 'Frontend Developer', companyName: 'บริษัท ตัวอย่าง จำกัด' }),
+      'L1',
+      [{ appointmentId: 'A1', studentId: 'S1' }],
+    )
+
+    expect(rows).toEqual([{
+      'ชื่อ-นามสกุล': 'สมชาย ใจดี',
+      'ตำแหน่งงาน': 'Frontend Developer',
+      'ชื่อสถานประกอบการ': 'บริษัท ตัวอย่าง จำกัด',
+      'สรุปผลคะแนน (เฉลี่ยเต็ม 5)': 2.67,
+      ...Object.fromEntries(studentEvaluationCriteria.map((criterion, index) => [criterion.label, (index % 5) + 1])),
+    }])
+    expect(Object.keys(rows[0] ?? {})).toHaveLength(4 + studentEvaluationCriteria.length)
   })
 })

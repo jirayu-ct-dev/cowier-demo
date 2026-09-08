@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, ClipboardCheck, RotateCcw, Search, X } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, ClipboardCheck, Download, RotateCcw, Search, X } from '@lucide/vue'
 import type { SupervisionAppointment } from '~/composables/useSupervisionAppointments'
 import { getPageCount, paginateItems } from '~/utils/table'
 
@@ -11,7 +11,12 @@ const { cycleId, round } = useSupervisionContext()
 const { groups, getCompanies } = useSupervisionGroups()
 const { appointments } = useSupervisionAppointments()
 const { studentEvaluations, companyEvaluations } = useSupervisionEvaluations()
+const { exportStudentEvaluations } = useEvaluationExport()
+const { showToast } = useToast()
 const currentLecturerId = 'L0012'
+const exportFormat = ref('xlsx')
+const exporting = ref(false)
+const exportError = ref('')
 const evaluationType = computed(() => route.query.type === 'company' ? 'company' : 'student')
 const pageTitle = computed(() => evaluationType.value === 'company' ? 'ประเมินสถานประกอบการ' : 'ประเมินนักศึกษา')
 const pageDescription = computed(() => evaluationType.value === 'company'
@@ -121,6 +126,20 @@ const paginatedStudentTasks = computed(() => paginateItems(currentStudentTasks.v
 const resultStart = computed(() => currentItemCount.value ? (currentPage.value - 1) * pageSizeNumber.value + 1 : 0)
 const resultEnd = computed(() => Math.min(currentPage.value * pageSizeNumber.value, currentItemCount.value))
 const hasFilters = computed(() => Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all')
+const studentExportAppointments = computed(() => [...new Map(currentStudentTasks.value.map(task => [task.appointment.id, task.appointment])).values()])
+const studentExportScopes = computed(() => currentStudentTasks.value.map(task => ({ appointmentId: task.appointment.id, studentId: task.studentId })))
+
+const handleExport = async () => {
+  if (exporting.value || effectiveViewState.value !== 'data') return
+  exporting.value = true
+  exportError.value = ''
+  try {
+    const count = await exportStudentEvaluations(studentExportAppointments.value, exportFormat.value, studentExportScopes.value)
+    showToast({ title: 'ส่งออกคะแนนนักศึกษาแล้ว', description: `${count} รายการประเมิน · ${exportFormat.value.toUpperCase()}` })
+  }
+  catch (cause) { exportError.value = cause instanceof Error ? cause.message : 'ส่งออกไม่สำเร็จ กรุณาลองใหม่' }
+  finally { exporting.value = false }
+}
 
 watch([searchQuery, statusFilter, pageSize, cycleId, round, evaluationType], () => { currentPage.value = 1 })
 watch([cycleId, round, evaluationType], () => { selectedCompanyAppointment.value = null })
@@ -141,6 +160,15 @@ const evaluationPath = (appointmentId: string, studentId?: string) => ({
     <div class="mb-6">
       <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ pageTitle }}</h2>
       <p class="mt-1 text-sm leading-6 text-muted">{{ pageDescription }}</p>
+      <div v-if="evaluationType === 'student'" class="mt-3 flex justify-end">
+        <UiDialog :close-on-confirm="false" title="ส่งออกคะแนนประเมินนักศึกษา" description="ส่งออกเฉพาะแบบประเมินที่คุณส่งแล้วตามรอบและตัวกรองปัจจุบัน หนึ่งแถวต่อรายการ พร้อมชื่อ ตำแหน่ง บริษัท คะแนนเฉลี่ย และคะแนนทุกหัวข้อ">
+          <template #trigger><UiButton variant="secondary" :icon="Download" :disabled="effectiveViewState !== 'data'">ส่งออกคะแนนนักศึกษา</UiButton></template>
+          <UiSelect v-model="exportFormat" :options="[{ value: 'xlsx', label: 'Excel (.xlsx)' }, { value: 'csv', label: 'CSV (.csv)' }]" label="รูปแบบไฟล์" />
+          <p v-if="exportError" role="alert" class="mt-3 text-sm text-danger">{{ exportError }}</p>
+          <template #cancel><UiButton variant="ghost">ปิด</UiButton></template>
+          <template #confirm><UiButton :icon="Download" :loading="exporting" @click="handleExport">ดาวน์โหลดคะแนน</UiButton></template>
+        </UiDialog>
+      </div>
     </div>
 
     <UiCard :padded="false">

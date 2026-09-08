@@ -8,13 +8,19 @@ import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import 'leaflet/dist/leaflet.css'
 
 interface Coordinates { latitude: number | null, longitude: number | null }
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   latitude: number | null
   longitude: number | null
   address?: string
   addressLabel?: string
   error?: string
-}>()
+  showCoordinateInputs?: boolean
+}>(), {
+  address: undefined,
+  addressLabel: undefined,
+  error: undefined,
+  showCoordinateInputs: true,
+})
 const emit = defineEmits<{ change: [coordinates: Coordinates], validity: [valid: boolean] }>()
 const config = useRuntimeConfig()
 const id = useId()
@@ -145,34 +151,51 @@ const locate = () => {
   }, { timeout: 10000 })
 }
 
-interface GeocodingSearchResult {
+interface SampleLocation {
+  keywords: string[]
   latitude: number
   longitude: number
   displayName: string
 }
+
+const sampleLocations: SampleLocation[] = [
+  {
+    keywords: ['บุรีรัมย์ดิจิทัล', '88/8 ถนนธานี', '31000'],
+    latitude: 14.993,
+    longitude: 103.102,
+    displayName: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์',
+  },
+  {
+    keywords: ['โคราชซอฟต์', '299 ถนนมิตรภาพ', '30000'],
+    latitude: 14.98,
+    longitude: 102.097,
+    displayName: 'บริษัท โคราชซอฟต์ จำกัด อำเภอเมืองนครราชสีมา จังหวัดนครราชสีมา',
+  },
+  {
+    keywords: ['อีสานเทค', '55/21 ถนนศรีจันทร์', '40000'],
+    latitude: 16.432,
+    longitude: 102.823,
+    displayName: 'บริษัท อีสานเทค จำกัด อำเภอเมืองขอนแก่น จังหวัดขอนแก่น',
+  },
+]
 
 const searchAddress = async () => {
   if (searchingAddress.value || searchableAddress.value.length < 5) return
   searchingAddress.value = true
   addressSearchMessage.value = ''
   addressSearchError.value = ''
-  try {
-    const result = await $fetch<GeocodingSearchResult>('/api/geocoding/search', {
-      query: { q: searchableAddress.value },
-    })
-    selectCoordinates(result.latitude, result.longitude)
-    map?.setView([result.latitude, result.longitude], 17)
-    addressSearchMessage.value = `พบตำแหน่งใกล้เคียง: ${result.displayName}`
+  await new Promise(resolve => setTimeout(resolve, 350))
+  if (disposed) return
+  const normalizedAddress = searchableAddress.value.toLocaleLowerCase('th')
+  const result = sampleLocations.find(location => location.keywords.some(keyword => normalizedAddress.includes(keyword.toLocaleLowerCase('th'))))
+  searchingAddress.value = false
+  if (!result) {
+    addressSearchError.value = `ข้อมูลตัวอย่างยังไม่มีพิกัดของ${resolvedAddressLabel.value}นี้ กรุณาปักหมุดบนแผนที่เอง`
+    return
   }
-  catch (error) {
-    const response = error as { statusCode?: number }
-    addressSearchError.value = response.statusCode === 404
-      ? `ไม่พบพิกัดจาก${resolvedAddressLabel.value} กรุณาเพิ่มรายละเอียดหรือปักหมุดเอง`
-      : 'ค้นหาพิกัดไม่สำเร็จ กรุณาลองอีกครั้งหรือปักหมุดเอง'
-  }
-  finally {
-    searchingAddress.value = false
-  }
+  selectCoordinates(result.latitude, result.longitude)
+  map?.setView([result.latitude, result.longitude], 17)
+  addressSearchMessage.value = `ตำแหน่งจากข้อมูลตัวอย่าง: ${result.displayName}`
 }
 
 watch(searchableAddress, () => {
@@ -192,18 +215,21 @@ onBeforeUnmount(() => {
 <template>
   <fieldset :aria-describedby="`${id}-help ${id}-status`" class="min-w-0">
     <legend class="text-sm font-semibold text-ink">สถานที่ฝึกสหกิจ <span class="text-danger" aria-hidden="true">*</span></legend>
-    <p :id="`${id}-help`" class="mt-1 text-xs leading-5 text-muted">ค้นหาจากที่อยู่ คลิกแผนที่ ลากหมุด หรือกรอกพิกัด แล้วตรวจสอบตำแหน่งก่อนบันทึก</p>
+    <p :id="`${id}-help`" class="mt-1 text-xs leading-5 text-muted">{{ showCoordinateInputs ? 'ค้นหาจากที่อยู่ คลิกแผนที่ ลากหมุด หรือกรอกพิกัด แล้วตรวจสอบตำแหน่งก่อนบันทึก' : 'ค้นหาจากที่อยู่ คลิกแผนที่ หรือลากหมุด แล้วตรวจสอบตำแหน่งก่อนบันทึก' }}</p>
     <div v-if="address !== undefined" class="mt-3 rounded-control border border-divider bg-surface p-3">
-      <p class="text-xs font-medium text-muted">ใช้{{ resolvedAddressLabel }}ค้นหาตำแหน่ง</p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs font-medium text-muted">ใช้{{ resolvedAddressLabel }}ค้นหาตำแหน่ง</p>
+        <UiBadge tone="neutral">ข้อมูลตัวอย่าง</UiBadge>
+      </div>
       <p class="mt-1 break-words text-sm leading-6 text-ink">{{ searchableAddress || `ยังไม่ได้กรอก${resolvedAddressLabel}` }}</p>
       <UiButton class="mt-3" variant="secondary" size="sm" :icon="Search" :loading="searchingAddress" :disabled="searchableAddress.length < 5 || loading" @click="searchAddress">
-        ค้นหาพิกัดจากที่อยู่
+        ค้นหาพิกัดจากข้อมูลตัวอย่าง
       </UiButton>
       <p v-if="searchableAddress.length < 5" class="mt-2 text-xs text-muted">กรอก{{ resolvedAddressLabel }}อย่างน้อย 5 ตัวอักษรก่อนค้นหา</p>
       <p v-if="addressSearchError" class="mt-2 text-xs text-danger" role="alert">{{ addressSearchError }}</p>
       <p v-else-if="addressSearchMessage" class="mt-2 text-xs leading-5 text-muted" role="status">{{ addressSearchMessage }}</p>
     </div>
-    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+    <div v-if="showCoordinateInputs" class="mt-3 grid gap-4 sm:grid-cols-2">
       <div><UiInput :model-value="coordinateText.latitude" label="ละติจูด" placeholder="เช่น 14.994" :error="coordinateError('latitude')" required @update:model-value="updateCoordinate('latitude', $event)" /></div>
       <div><UiInput :model-value="coordinateText.longitude" label="ลองจิจูด" placeholder="เช่น 103.103" :error="coordinateError('longitude')" required @update:model-value="updateCoordinate('longitude', $event)" /></div>
     </div>

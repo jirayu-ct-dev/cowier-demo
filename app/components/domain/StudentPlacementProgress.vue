@@ -25,6 +25,8 @@ const statusStep: Record<PlacementStatus, number> = {
   returned: 1,
   batched: 1,
   'letter-issued': 2,
+  'response-uploaded': 4,
+  'response-returned': 4,
   confirmed: 5,
   cancelled: 0,
 }

@@ -13,7 +13,7 @@ const { appointments } = useSupervisionAppointments()
 const { groups, getCompanies } = useSupervisionGroups()
 const { people } = usePeopleDirectory()
 const { studentEvaluations, companyEvaluations } = useSupervisionEvaluations()
-const { exportEvaluations } = useEvaluationExport()
+const { exportStudentEvaluations } = useEvaluationExport()
 const { showToast } = useToast()
 const exportFormat = ref('xlsx')
 const exporting = ref(false)
@@ -23,8 +23,8 @@ const handleExport = async () => {
   exporting.value = true
   exportError.value = ''
   try {
-    const count = await exportEvaluations(filteredAppointments.value, exportFormat.value)
-    showToast({ title: 'ส่งออกผลคะแนนแล้ว', description: `${count} แถวคะแนนรายเกณฑ์ · ${exportFormat.value.toUpperCase()}` })
+    const count = await exportStudentEvaluations(filteredAppointments.value, exportFormat.value)
+    showToast({ title: 'ส่งออกคะแนนนักศึกษาแล้ว', description: `${count} รายการประเมิน · ${exportFormat.value.toUpperCase()}` })
   }
   catch (cause) { exportError.value = cause instanceof Error ? cause.message : 'ส่งออกไม่สำเร็จ กรุณาลองใหม่' }
   finally { exporting.value = false }
@@ -134,8 +134,8 @@ watch(pageCount, (count) => { if (currentPage.value > count) currentPage.value =
       <h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">ตารางนิเทศ</h2>
       <p class="mt-1 text-sm leading-6 text-muted">ติดตามรายการนิเทศของทุกกลุ่ม อาจารย์ผู้เข้าร่วม นักศึกษา และความคืบหน้าการประเมิน</p>
       <div class="mt-3 flex justify-end">
-        <UiDialog :close-on-confirm="false" title="ส่งออกผลคะแนนประเมิน" description="ส่งออกแบบประเมินนักศึกษาและสถานประกอบการที่ส่งแล้ว ตามรอบ ครั้ง และตัวกรองปัจจุบันทั้งหมด ไม่จำกัดเฉพาะหน้าที่แสดง หนึ่งแถวต่อเกณฑ์">
-          <template #trigger><UiButton variant="secondary" :icon="Download" :disabled="effectiveViewState !== 'data'">ส่งออกผลประเมิน</UiButton></template>
+        <UiDialog :close-on-confirm="false" title="ส่งออกคะแนนประเมินนักศึกษา" description="ส่งออกเฉพาะแบบประเมินนักศึกษาที่ส่งแล้ว ตามรอบ ครั้ง และตัวกรองปัจจุบัน หนึ่งแถวต่อรายการ พร้อมชื่อ ตำแหน่ง บริษัท คะแนนเฉลี่ย และคะแนนทุกหัวข้อ">
+          <template #trigger><UiButton variant="secondary" :icon="Download" :disabled="effectiveViewState !== 'data'">ส่งออกคะแนนนักศึกษา</UiButton></template>
           <UiSelect v-model="exportFormat" :options="[{ value: 'xlsx', label: 'Excel (.xlsx)' }, { value: 'csv', label: 'CSV (.csv)' }]" label="รูปแบบไฟล์" />
           <p v-if="exportError" role="alert" class="mt-3 text-sm text-danger">{{ exportError }}</p>
           <template #cancel><UiButton variant="ghost">ปิด</UiButton></template>

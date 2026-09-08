@@ -7,7 +7,6 @@ import {
   Calculator,
   CalendarDays,
   ClipboardCheck,
-  ClipboardList,
   FileCheck2,
   GraduationCap,
   LayoutDashboard,
@@ -20,6 +19,7 @@ const emit = defineEmits<{ navigate: [] }>();
 const route = useRoute();
 const { scenario } = useScenario();
 const { canAccess } = useLecturerPermissions();
+const hideNavigationScrollbar = computed(() => scenario.value.role === "lecturer" || route.path.startsWith("/lecturer"));
 
 interface NavigationItem {
   label: string;
@@ -69,7 +69,6 @@ const navigationGroups = computed<NavigationGroup[]>(() => [
           label: "การฝึกงานของฉัน",
           items: [
             { label: "สมัครและยืนยันที่ฝึกงาน", to: "/student/applications", icon: BriefcaseBusiness, exact: false },
-            { label: "คำร้องขอหนังสือ (ระบบเดิม)", to: "/student/placements", icon: ClipboardList, exact: false },
             { label: "ตารางนิเทศ", to: "/student/supervision", icon: CalendarDays, exact: false },
           ],
         },
@@ -119,7 +118,7 @@ const isActive = (to: string, exact: boolean) => {
       <AppBrandLogo v-else class="h-auto w-full max-w-56 object-left" />
     </div>
 
-    <nav class="flex-1 space-y-5 overflow-y-auto" :class="collapsed ? 'px-2 py-3' : 'p-3'" aria-label="เมนูหลัก">
+    <nav class="flex-1 space-y-5 overflow-y-auto" :class="[collapsed ? 'px-2 py-3' : 'p-3', { 'scrollbar-hidden': hideNavigationScrollbar }]" aria-label="เมนูหลัก">
       <section
         v-for="group in navigationGroups"
         :key="group.label"
@@ -162,3 +161,14 @@ const isActive = (to: string, exact: boolean) => {
     <div v-else class="border-t border-white/10 px-2 py-4 text-center text-[10px] font-semibold text-white/45">BRU</div>
   </aside>
 </template>
+
+<style scoped>
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+</style>

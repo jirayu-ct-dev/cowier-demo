@@ -42,11 +42,11 @@ export interface CompanyEvaluation extends CompanyEvaluationInput {
 }
 
 export const evaluationRatingOptions = [
-  { value: '1', label: '1 · ต้องปรับปรุงอย่างมาก', shortLabel: 'ปรับปรุงมาก' },
-  { value: '2', label: '2 · ต้องปรับปรุง', shortLabel: 'ปรับปรุง' },
-  { value: '3', label: '3 · ผ่านตามเกณฑ์', shortLabel: 'ผ่านเกณฑ์' },
-  { value: '4', label: '4 · ดี', shortLabel: 'ดี' },
-  { value: '5', label: '5 · ดีเยี่ยม (ระดับสูงสุด)', shortLabel: 'ดีเยี่ยม' },
+  { value: '1', label: '1 · น้อยที่สุด', shortLabel: 'น้อยที่สุด' },
+  { value: '2', label: '2 · น้อย', shortLabel: 'น้อย' },
+  { value: '3', label: '3 · ปานกลาง', shortLabel: 'ปานกลาง' },
+  { value: '4', label: '4 · มาก', shortLabel: 'มาก' },
+  { value: '5', label: '5 · ดีมากที่สุด', shortLabel: 'ดีมากที่สุด' },
 ]
 
 export const companyRecommendationOptions = [
@@ -64,7 +64,6 @@ export const studentEvaluationCriteria: EvaluationCriterion[] = [
   { id: 'knowledge', label: 'การประยุกต์ใช้ความรู้กับงาน' },
   { id: 'work_quality', label: 'คุณภาพและความก้าวหน้าของงาน' },
   { id: 'problem_solving', label: 'การเรียนรู้และแก้ไขปัญหา' },
-  { id: 'safety', label: 'การปฏิบัติตามกฎและความปลอดภัย' },
 ]
 
 export const companyEvaluationCriteria: EvaluationCriterion[] = [
@@ -86,12 +85,12 @@ export const companyEvaluationCriteria: EvaluationCriterion[] = [
 const studentEvaluationSeed: StudentEvaluation[] = [
   {
     appointmentId: 'SA-006', studentId: '66123456701', lecturerId: 'L0012', status: 'submitted', submittedAt: '2026-08-20T17:00:00+07:00',
-    ratings: { responsibility: '5', ethics: '5', communication: '4', knowledge: '4', work_quality: '4', problem_solving: '4', safety: '5' },
+    ratings: { responsibility: '5', ethics: '5', communication: '4', knowledge: '4', work_quality: '4', problem_solving: '4' },
     strengths: 'รับผิดชอบงานและสื่อสารความคืบหน้าได้ดี', issues: 'ยังต้องฝึกจัดลำดับงานเร่งด่วน', suggestions: 'สรุปแผนงานรายสัปดาห์', followUp: 'ติดตามผลในการนิเทศครั้งถัดไป',
   },
   {
     appointmentId: 'SA-006', studentId: '66123456702', lecturerId: 'L0012', status: 'draft', submittedAt: null,
-    ratings: { responsibility: '4', ethics: '4', communication: '4', knowledge: '3', work_quality: '4', problem_solving: '3', safety: '5' },
+    ratings: { responsibility: '4', ethics: '4', communication: '4', knowledge: '3', work_quality: '4', problem_solving: '3' },
     strengths: 'เรียนรู้เครื่องมือทดสอบได้รวดเร็ว', issues: '', suggestions: '', followUp: '',
   },
 ]

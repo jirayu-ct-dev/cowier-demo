@@ -2,14 +2,18 @@
 import {
   ArrowDown,
   ArrowUp,
+  Building2,
   ChevronLeft,
   ChevronRight,
+  Download,
+  Files,
   MapPin,
   Pencil,
   Plus,
   RefreshCw,
   RotateCcw,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from '@lucide/vue'
@@ -24,6 +28,8 @@ useHead({ title: 'สมัครและยืนยันที่ฝึก�
 
 const { scenario } = useScenario()
 const { showToast } = useToast()
+const { currentAccount } = useAuthPrototype()
+const { findPerson } = usePeopleDirectory()
 const { requests, selectAndSubmit } = usePlacementRequestPreview()
 const currentRequest = computed(() => requests.value.find(item => item.application.id === latestApplication.value?.id))
 const {
@@ -85,6 +91,32 @@ const emptyForm = (): StudentApplicationFormValue => ({
 })
 const form = reactive<StudentApplicationFormValue>(emptyForm())
 const formErrors = reactive<ApplicationFormErrors>({})
+const currentStudent = computed(() => currentAccount.value
+  ? findPerson('student', currentAccount.value.username)
+  : undefined)
+const studentProfile = computed(() => ({
+  id: currentStudent.value?.id ?? currentAccount.value?.username ?? 'ไม่ระบุ',
+  name: currentStudent.value
+    ? `${currentStudent.value.prefix}${currentStudent.value.firstName} ${currentStudent.value.lastName}`
+    : currentAccount.value?.name ?? 'ไม่ระบุ',
+  section: currentStudent.value?.section ?? 'ไม่ระบุ',
+  cycle: currentStudent.value?.cycle ?? 'ไม่ระบุ',
+}))
+const fillExampleApplication = () => {
+  Object.assign(form, {
+    companyName: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด',
+    position: 'Frontend Developer',
+    companyLocation: '88/8 ถนนธานี ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000',
+    recipientName: 'ผู้จัดการฝ่ายทรัพยากรบุคคล',
+    letterAddress: 'บริษัท บุรีรัมย์ดิจิทัล จำกัด 88/8 ถนนธานี ตำบลในเมือง อำเภอเมืองบุรีรัมย์ จังหวัดบุรีรัมย์ 31000',
+    latitude: null,
+    longitude: null,
+    province: 'บุรีรัมย์',
+    appliedAt: today,
+    status: 'submitted',
+  })
+  clearFormErrors()
+}
 watch(() => form.companyName, () => { formErrors.companyName = undefined })
 watch(() => form.position, () => { formErrors.position = undefined })
 watch(() => form.companyLocation, () => { formErrors.companyLocation = undefined })
@@ -367,21 +399,50 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
       </div>
     </div>
 
-    <UiCard v-if="effectiveViewState === 'loading'" class="mb-6" aria-label="กำลังโหลดใบสมัครปัจจุบัน">
-      <UiSkeleton class="h-5 w-36" />
-      <UiSkeleton class="mt-4 h-8 w-64 max-w-full" />
-      <UiSkeleton class="mt-3 h-16 w-full" />
+    <UiCard v-if="effectiveViewState === 'loading'" class="mb-6" aria-label="กำลังโหลดข้อมูลที่ฝึกงาน">
+      <div class="flex items-start gap-3 border-b border-divider pb-5">
+        <UiSkeleton class="size-10 shrink-0" />
+        <div class="min-w-0 flex-1"><UiSkeleton class="h-5 w-36" /><UiSkeleton class="mt-2 h-4 w-56 max-w-full" /></div>
+      </div>
+      <UiSkeleton class="mt-5 h-8 w-64 max-w-full" />
+      <UiSkeleton class="mt-3 h-24 w-full" />
     </UiCard>
-    <UiCard v-else-if="effectiveViewState !== 'error' && effectiveViewState !== 'empty' && latestApplication" class="mb-6">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="min-w-0">
-          <p class="text-xs font-medium text-muted">{{ canCreateApplication ? 'บริษัทล่าสุด' : 'บริษัทที่กำลังดำเนินการ' }}</p>
-          <h3 class="mt-1 break-words text-xl font-bold text-ink">{{ latestApplication.companyName }}</h3>
-          <p class="mt-1 text-sm text-ink">{{ latestApplication.position }}</p>
+    <UiCard v-else-if="effectiveViewState === 'error'" class="mb-6">
+      <AppErrorState title="โหลดข้อมูลที่ฝึกงานไม่สำเร็จ" description="เกิดข้อผิดพลาดชั่วคราว กรุณาลองดึงข้อมูลอีกครั้ง" @retry="retry" />
+    </UiCard>
+    <UiCard v-else-if="effectiveViewState === 'empty' || !latestApplication" class="mb-6">
+      <AppEmptyState title="ยังไม่มีข้อมูลที่ฝึกงาน" description="กรอกข้อมูลบริษัท ตำแหน่ง และที่อยู่ เพื่อเริ่มติดตามการสมัครที่ฝึกงาน">
+        <UiButton :icon="Plus" @click="openAddDialog">กรอกข้อมูลที่ฝึกงาน</UiButton>
+      </AppEmptyState>
+    </UiCard>
+    <UiCard v-else-if="latestApplication" class="mb-6">
+      <div class="mb-5 flex flex-col gap-4 border-b border-divider pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex items-start gap-3">
+          <span class="grid size-10 shrink-0 place-items-center rounded-control bg-info-soft text-info"><Building2 :size="20" aria-hidden="true" /></span>
+          <div>
+            <h3 class="text-lg font-bold text-ink">ข้อมูลที่ฝึกงาน</h3>
+            <p class="mt-1 text-sm leading-6 text-muted">ข้อมูลบริษัท ตำแหน่ง และสถานะการสมัครล่าสุด</p>
+          </div>
         </div>
         <UiBadge class="shrink-0 self-start" :tone="trackedApplicationStatusMeta[latestApplication.status].tone">
           {{ trackedApplicationStatusMeta[latestApplication.status].label }}
         </UiBadge>
+      </div>
+      <section class="mb-5 rounded-control border border-divider bg-surface/60 p-4 sm:p-5" aria-labelledby="application-student-heading">
+        <h4 id="application-student-heading" class="font-semibold text-ink">ข้อมูลนักศึกษา</h4>
+        <dl class="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div><dt class="text-xs text-muted">ชื่อ–นามสกุล</dt><dd class="mt-1 font-semibold text-ink">{{ studentProfile.name }}</dd></div>
+          <div><dt class="text-xs text-muted">รหัสนักศึกษา</dt><dd class="mt-1 text-ink">{{ studentProfile.id }}</dd></div>
+          <div><dt class="text-xs text-muted">หมู่เรียน</dt><dd class="mt-1 text-ink">{{ studentProfile.section }}</dd></div>
+          <div><dt class="text-xs text-muted">รอบการศึกษา</dt><dd class="mt-1 text-ink">{{ studentProfile.cycle }}</dd></div>
+        </dl>
+      </section>
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <p class="text-xs font-medium text-muted">{{ canCreateApplication ? 'บริษัทล่าสุด' : 'บริษัทที่กำลังดำเนินการ' }}</p>
+          <h4 class="mt-1 break-words text-xl font-bold text-ink">{{ latestApplication.companyName }}</h4>
+          <p class="mt-1 text-sm text-ink">{{ latestApplication.position }}</p>
+        </div>
       </div>
       <div class="mt-5 grid gap-6 border-t border-divider pt-5 lg:grid-cols-2">
       <section class="min-w-0" aria-label="ข้อมูลสถานประกอบการ">
@@ -418,10 +479,41 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
           <UiButton variant="secondary" :icon="RefreshCw" @click="openStatusDialog(latestApplication)">อัปเดตผลการสมัคร</UiButton>
         </template>
       </div>
-      <div v-if="latestApplication.status === 'completed'" class="mt-4 space-y-4">
-        <p class="text-xs leading-5 text-muted">ต้นแบบคำร้อง: ข้อมูลและไฟล์อยู่ใน session นี้เท่านั้น รีโหลดหน้าแล้วหาย ยังไม่ได้ส่งเจ้าหน้าที่จริง</p>
-        <AppRequestDocuments v-if="currentRequest" :request="currentRequest" />
+    </UiCard>
+
+    <UiCard v-if="effectiveViewState === 'data' && latestApplication?.status === 'completed'" class="mb-6">
+      <div class="flex items-start gap-3 border-b border-divider pb-5">
+        <span class="grid size-10 shrink-0 place-items-center rounded-control bg-warning-soft text-warning"><Files :size="20" aria-hidden="true" /></span>
+        <div>
+          <h3 class="text-lg font-bold text-ink">หนังสือขอความอนุเคราะห์และหนังสือตอบรับ</h3>
+          <p class="mt-1 text-sm leading-6 text-muted">ดาวน์โหลดหนังสือที่เจ้าหน้าที่จัดทำ และส่งหนังสือตอบรับจากสถานประกอบการกลับเข้าระบบ</p>
+        </div>
       </div>
+      <div class="mt-5 divide-y divide-divider">
+        <section class="pb-5" aria-labelledby="sample-request-letter-heading">
+          <h4 id="sample-request-letter-heading" class="font-semibold text-ink">หนังสือขอความอนุเคราะห์</h4>
+          <p class="mt-1 text-sm leading-6 text-muted">ไฟล์ที่เจ้าหน้าที่จัดทำให้นักศึกษานำส่งสถานประกอบการ</p>
+          <div class="mt-4 flex flex-col gap-3 rounded-control border border-divider bg-surface/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+              <p class="text-xs font-medium text-muted">แนบไฟล์</p>
+              <p class="mt-1 break-words text-sm font-semibold text-ink">หนังสือขอความอนุเคราะห์เข้ารับนักศึกษาฝึกงาน (ตัวอย่าง).pdf</p>
+            </div>
+            <a href="/api/mock-documents/หนังสือขอความอนุเคราะห์เข้ารับนักศึกษาฝึกงาน (ตัวอย่าง).pdf" download class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-control border border-divider bg-canvas px-4 text-sm font-semibold text-ink hover:bg-surface">
+              <Download :size="17" aria-hidden="true" />ดาวน์โหลดไฟล์
+            </a>
+          </div>
+        </section>
+        <section class="pt-5" aria-labelledby="sample-response-letter-heading">
+          <h4 id="sample-response-letter-heading" class="font-semibold text-ink">แบบหนังสือตอบรับ</h4>
+          <p class="mt-1 text-sm leading-6 text-muted">แนบหนังสือตอบรับที่ได้รับจากสถานประกอบการ</p>
+          <label class="mt-4 block text-sm font-semibold text-ink">
+            แนบไฟล์
+            <input type="file" accept="application/pdf,.pdf" class="mt-2 block w-full min-w-0 rounded-control border border-divider bg-canvas p-3 text-sm" aria-describedby="sample-response-file-help">
+          </label>
+          <p id="sample-response-file-help" class="mt-2 text-xs leading-5 text-muted">รองรับไฟล์ PDF ขนาดไม่เกิน 5 MB · ช่องแนบตัวอย่างยังไม่ส่งไฟล์จริง</p>
+        </section>
+      </div>
+      <p class="mt-4 text-xs leading-5 text-muted">ข้อมูลและไฟล์ส่วนนี้เป็นข้อมูลตัวอย่างภายใน session เท่านั้น</p>
     </UiCard>
 
     <UiCard :padded="false">
@@ -473,34 +565,43 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
       </div>
 
       <template v-else>
-        <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[1280px] border-collapse text-left text-sm">
+        <div class="hidden overflow-hidden xl:block">
+          <table class="w-full table-fixed border-collapse text-left text-sm">
             <caption class="sr-only">รายการบริษัทที่นักศึกษาสมัครสหกิจ</caption>
+            <colgroup>
+              <col class="w-[18%]">
+              <col class="w-[19%]">
+              <col class="w-[19%]">
+              <col class="w-[9%]">
+              <col class="w-[10%]">
+              <col class="w-[12%]">
+              <col class="w-[13%]">
+            </colgroup>
             <thead class="bg-surface text-xs font-semibold tracking-wide text-muted uppercase">
               <tr>
-                <th scope="col" class="px-6 py-3">บริษัท / ตำแหน่ง</th>
-                <th scope="col" class="px-4 py-3">ที่อยู่ / พิกัดบริษัท</th>
-                <th scope="col" class="px-4 py-3">ผู้รับหนังสือ / ที่อยู่ออกหนังสือ</th>
-                <th scope="col" class="px-4 py-3" :aria-sort="sortDirection === 'asc' ? 'ascending' : 'descending'">
+                <th scope="col" class="px-4 py-3">บริษัท / ตำแหน่ง</th>
+                <th scope="col" class="px-3 py-3">ที่อยู่ / พิกัดบริษัท</th>
+                <th scope="col" class="px-3 py-3">ผู้รับหนังสือ / ที่อยู่ออกหนังสือ</th>
+                <th scope="col" class="px-3 py-3" :aria-sort="sortDirection === 'asc' ? 'ascending' : 'descending'">
                   <button type="button" class="inline-flex items-center gap-1 font-semibold hover:text-ink" :aria-label="`เรียงวันที่สมัคร${sortDirection === 'asc' ? 'จากใหม่ไปเก่า' : 'จากเก่าไปใหม่'}`" @click="toggleDateSort">
                     วันที่สมัคร <ArrowUp v-if="sortDirection === 'asc'" :size="15" aria-hidden="true" /><ArrowDown v-else :size="15" aria-hidden="true" />
                   </button>
                 </th>
-                <th scope="col" class="px-4 py-3">สถานะ</th>
-                <th scope="col" class="px-4 py-3">อัปเดตล่าสุด</th>
-                <th scope="col" class="w-44 px-4 py-3 text-right">จัดการ</th>
+                <th scope="col" class="px-3 py-3">สถานะ</th>
+                <th scope="col" class="px-3 py-3">อัปเดตล่าสุด</th>
+                <th scope="col" class="px-3 py-3 text-right">จัดการ</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
               <tr v-for="application in paginatedApplications" :key="application.id" class="transition-colors hover:bg-surface/70">
-                <td class="max-w-md px-6 py-4"><p class="font-semibold text-ink">{{ application.companyName }}</p><p class="mt-1 text-xs text-muted">{{ application.position }}</p></td>
-                <td class="max-w-xs break-words px-4 py-4 text-muted"><p>{{ application.companyLocation }}</p><p class="mt-1 text-xs">จังหวัด: {{ application.province || 'ยังไม่ระบุ' }}</p><a v-if="mapUrl(application)" :href="mapUrl(application)" target="_blank" rel="noopener noreferrer" class="mt-1 inline-flex min-h-9 items-center gap-1 font-semibold text-ink underline"><MapPin :size="15" />แสดงแผนที่<span class="sr-only"> (เปิดแท็บใหม่)</span></a></td>
-                <td class="max-w-xs break-words px-4 py-4"><p class="text-ink">{{ application.recipientName || 'ยังไม่ระบุผู้รับหนังสือ' }}</p><p class="mt-1 text-xs leading-5 text-muted">{{ application.letterAddress || 'ยังไม่ระบุที่อยู่' }}</p></td>
-                <td class="whitespace-nowrap px-4 py-4 text-muted">{{ formatDate(application.appliedAt) }}</td>
-                <td class="whitespace-nowrap px-4 py-4"><UiBadge :tone="trackedApplicationStatusMeta[application.status].tone">{{ trackedApplicationStatusMeta[application.status].label }}</UiBadge></td>
-                <td class="px-4 py-4 text-xs leading-5 text-muted">{{ formatUpdatedAt(application.updatedAt) }}</td>
-                <td class="px-4 py-4 text-right">
-                  <div class="flex min-w-36 flex-nowrap justify-end gap-1 [&>button]:shrink-0">
+                <td class="break-words px-4 py-4 align-top"><p class="font-semibold text-ink">{{ application.companyName }}</p><p class="mt-1 text-xs text-muted">{{ application.position }}</p></td>
+                <td class="break-words px-3 py-4 align-top text-muted"><p>{{ application.companyLocation }}</p><p class="mt-1 text-xs">จังหวัด: {{ application.province || 'ยังไม่ระบุ' }}</p><a v-if="mapUrl(application)" :href="mapUrl(application)" target="_blank" rel="noopener noreferrer" class="mt-1 inline-flex min-h-9 items-center gap-1 font-semibold text-ink underline"><MapPin :size="15" />แสดงแผนที่<span class="sr-only"> (เปิดแท็บใหม่)</span></a></td>
+                <td class="break-words px-3 py-4 align-top"><p class="text-ink">{{ application.recipientName || 'ยังไม่ระบุผู้รับหนังสือ' }}</p><p class="mt-1 text-xs leading-5 text-muted">{{ application.letterAddress || 'ยังไม่ระบุที่อยู่' }}</p></td>
+                <td class="break-words px-3 py-4 align-top text-muted">{{ formatDate(application.appliedAt) }}</td>
+                <td class="break-words px-3 py-4 align-top"><UiBadge :tone="trackedApplicationStatusMeta[application.status].tone">{{ trackedApplicationStatusMeta[application.status].label }}</UiBadge></td>
+                <td class="break-words px-3 py-4 align-top text-xs leading-5 text-muted">{{ formatUpdatedAt(application.updatedAt) }}</td>
+                <td class="px-3 py-4 text-right align-top">
+                  <div class="flex flex-wrap justify-end gap-1 [&>button]:shrink-0">
                     <button type="button" class="inline-grid size-11 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`แก้ไขข้อมูล ${application.companyName}`" title="แก้ไขข้อมูล" @click="openEditDialog(application)"><Pencil :size="18" aria-hidden="true" /></button>
                     <button type="button" class="inline-grid size-11 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink" :aria-label="`อัปเดตสถานะ ${application.companyName}`" title="อัปเดตสถานะ" @click="openStatusDialog(application)"><RefreshCw :size="18" aria-hidden="true" /></button>
                     <button v-if="application.status === 'rejected'" type="button" class="inline-grid size-11 place-items-center rounded-control text-danger hover:bg-danger-soft" :aria-label="`ลบรายการ ${application.companyName}`" title="ลบรายการ" @click="openDeleteDialog(application)"><Trash2 :size="18" aria-hidden="true" /></button>
@@ -511,7 +612,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
           </table>
         </div>
 
-        <div class="divide-y divide-divider md:hidden">
+        <div class="divide-y divide-divider xl:hidden">
           <article v-for="application in paginatedApplications" :key="application.id" class="p-5">
             <div class="flex flex-col gap-3">
               <div class="min-w-0"><p class="font-semibold leading-6 text-ink">{{ application.companyName }}</p><p class="mt-1 text-sm text-muted">{{ application.position }}</p></div>
@@ -559,6 +660,13 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
 
     <UiDialog v-model:open="applicationDialogOpen" size="lg" :title="editingId ? 'แก้ไขข้อมูลการสมัคร' : 'บันทึกข้อมูลการสมัคร'" description="บันทึกบริษัทที่สมัครและข้อมูลสำหรับจัดทำหนังสือขอความอนุเคราะห์">
       <form class="grid gap-5 sm:grid-cols-2" novalidate @submit.prevent="submitApplication">
+        <div v-if="!editingId" class="flex flex-wrap items-center justify-between gap-3 rounded-control border border-divider bg-surface p-4 sm:col-span-2">
+          <div>
+            <p class="text-sm font-semibold text-ink">ทดลองกรอกข้อมูลตัวอย่าง</p>
+            <p class="mt-1 text-xs leading-5 text-muted">เติมข้อมูลบริษัทและที่อยู่ แล้วกดค้นหาพิกัดจากข้อมูลตัวอย่างด้านล่าง</p>
+          </div>
+          <UiButton type="button" size="sm" variant="secondary" :icon="Sparkles" @click="fillExampleApplication">เติมข้อมูลตัวอย่าง</UiButton>
+        </div>
         <div class="sm:col-span-2"><UiInput v-model="form.companyName" label="ชื่อบริษัท / สถานประกอบการ" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" :error="formErrors.companyName" required /></div>
         <div class="sm:col-span-2"><UiInput v-model="form.position" label="ตำแหน่งที่สมัคร" placeholder="เช่น นักพัฒนาเว็บไซต์" :error="formErrors.position" required /></div>
         <div class="sm:col-span-2"><UiTextarea v-model="form.companyLocation" label="ที่อยู่บริษัท" placeholder="เลขที่ ถนน ตำบล อำเภอ จังหวัด และรหัสไปรษณีย์" :error="formErrors.companyLocation" required /></div>
@@ -567,7 +675,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
           <UiTextarea v-model="form.letterAddress" label="ที่อยู่สำหรับออกหนังสือ" placeholder="ชื่อบริษัท / สาขา เลขที่ ถนน ตำบล อำเภอ จังหวัด และรหัสไปรษณีย์" :error="formErrors.letterAddress" required />
           <UiButton class="mt-2" size="sm" variant="ghost" @click="form.letterAddress = form.companyLocation">ใช้ที่อยู่เดียวกับบริษัท</UiButton>
         </div>
-        <div class="sm:col-span-2"><AppLocationPicker :latitude="form.latitude" :longitude="form.longitude" :address="form.letterAddress" address-label="ที่อยู่สำหรับออกหนังสือ" :error="formErrors.latitude || formErrors.longitude" @validity="coordinatesValid = $event" @change="Object.assign(form, $event); formErrors.latitude = undefined; formErrors.longitude = undefined" /></div>
+        <div class="sm:col-span-2"><AppLocationPicker :latitude="form.latitude" :longitude="form.longitude" :address="form.letterAddress" address-label="ที่อยู่สำหรับออกหนังสือ" :error="formErrors.latitude || formErrors.longitude" :show-coordinate-inputs="false" @validity="coordinatesValid = $event" @change="Object.assign(form, $event); formErrors.latitude = undefined; formErrors.longitude = undefined" /></div>
         <template v-if="editingId">
           <UiSelect v-model="form.province" :options="formProvinceOptions" label="จังหวัด" placeholder="เลือกจังหวัด" :error="formErrors.province" required />
           <div><UiInput v-model="form.appliedAt" type="date" label="วันที่สมัคร" :error="formErrors.appliedAt" required /></div>

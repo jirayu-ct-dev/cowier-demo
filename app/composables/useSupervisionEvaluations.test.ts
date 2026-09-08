@@ -3,9 +3,16 @@ import { ref } from 'vue'
 import { companyEvaluationCriteria, evaluationRatingOptions, studentEvaluationCriteria, useSupervisionEvaluations } from './useSupervisionEvaluations'
 
 describe('evaluation form definitions', () => {
-  it('uses a five-level scale and identifies level five as the highest', () => {
+  it('uses the specified five-level rating descriptions', () => {
     expect(evaluationRatingOptions.map(option => option.value)).toEqual(['1', '2', '3', '4', '5'])
-    expect(evaluationRatingOptions.at(-1)?.label).toContain('ระดับสูงสุด')
+    expect(evaluationRatingOptions.map(option => option.label)).toEqual([
+      '1 · น้อยที่สุด',
+      '2 · น้อย',
+      '3 · ปานกลาง',
+      '4 · มาก',
+      '5 · ดีมากที่สุด',
+    ])
+    expect(evaluationRatingOptions.map(option => option.shortLabel)).toEqual(['น้อยที่สุด', 'น้อย', 'ปานกลาง', 'มาก', 'ดีมากที่สุด'])
   })
 
   it('covers workplace conditions, welfare, transport, and nearby accommodation', () => {
