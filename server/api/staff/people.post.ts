@@ -13,6 +13,7 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'PERSON_INVALID' })
   const input = parsed.data
   if (input.type === 'student' && !input.section) throw createError({ statusCode: 400, statusMessage: 'STUDENT_SECTION_REQUIRED' })
+  if (input.type === 'lecturer' && !input.gender) throw createError({ statusCode: 400, statusMessage: 'LECTURER_GENDER_REQUIRED' })
   const allowedPrefixes: readonly string[] = input.type === 'student' ? studentPersonPrefixes : lecturerPersonPrefixes
   if (!allowedPrefixes.includes(input.prefix)) throw createError({ statusCode: 400, statusMessage: 'PERSON_PREFIX_INVALID' })
   const config = useRuntimeConfig(event)
@@ -33,6 +34,7 @@ export default defineEventHandler(async (event) => {
       data: {
         username: input.id, passwordHash, role: input.type === 'student' ? 'STUDENT' : 'LECTURER', status: 'FIRST_LOGIN',
         namePrefix: input.prefix, firstName: input.firstName, lastName: input.lastName,
+        gender: input.gender === 'male' ? 'MALE' : input.gender === 'female' ? 'FEMALE' : null,
         section: input.type === 'student' ? input.section?.replace('หมู่ ', '') : null,
         cohortYear: input.type === 'student' ? cycle?.targetCohortYear ?? Number(`25${input.id.slice(0, 2)}`) : null,
         createdById: staff.id,

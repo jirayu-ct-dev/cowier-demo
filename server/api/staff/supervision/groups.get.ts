@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
     }),
     prisma.user.findMany({
       where: { role: 'LECTURER', status: 'ACTIVE', recordStatus: 'ACTIVE' },
-      select: { id: true, namePrefix: true, firstName: true, lastName: true },
+      select: { id: true, namePrefix: true, firstName: true, lastName: true, gender: true },
       orderBy: [{ firstName: 'asc' }, { id: 'asc' }],
       take: 1000,
     }),
@@ -54,6 +54,7 @@ export default defineEventHandler(async (event) => {
     lecturers: lecturers.map(lecturer => ({
       id: lecturer.id,
       name: `${lecturer.namePrefix}${lecturer.firstName} ${lecturer.lastName}`.trim(),
+      gender: lecturer.gender === 'MALE' ? 'male' as const : lecturer.gender === 'FEMALE' ? 'female' as const : null,
     })),
   }
 })

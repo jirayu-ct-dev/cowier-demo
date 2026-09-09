@@ -15,8 +15,8 @@ interface PersonUserRecord {
   namePrefix: string
   firstName: string
   lastName: string
+  gender: 'MALE' | 'FEMALE' | null
   section: string | null
-  canReviewPlacements: boolean
   cycleEnrollments: Array<{
     cycle: { label: string }
     placementRequests: Array<{ companyNameSnapshot: string }>
@@ -46,12 +46,12 @@ export const toPersonRecord = (person: PersonUserRecord, auditLogs: PersonAuditL
     prefix: person.namePrefix,
     firstName: person.firstName,
     lastName: person.lastName,
+    ...(person.gender ? { gender: person.gender === 'MALE' ? 'male' as const : 'female' as const } : {}),
     recordStatus: recordStatusMap[person.recordStatus],
     accountStatus: accountStatusMap[person.status],
     ...(enrollment ? { cycle: enrollment.cycle.label } : {}),
     ...(person.section ? { section: person.section.startsWith('หมู่ ') ? person.section : `หมู่ ${person.section}` } : {}),
     ...(enrollment?.placementRequests[0] ? { company: enrollment.placementRequests[0].companyNameSnapshot } : {}),
-    ...(person.role === 'LECTURER' ? { canReviewPlacements: person.canReviewPlacements } : {}),
     activities: auditLogs.map(log => ({
       id: log.id.toString(), action: log.action, detail: metadataDetail(log.metadata) || log.reason || '',
       actor: log.actor ? `${log.actor.namePrefix}${log.actor.firstName} ${log.actor.lastName}`.trim() : 'ระบบ',
@@ -62,7 +62,7 @@ export const toPersonRecord = (person: PersonUserRecord, auditLogs: PersonAuditL
 
 export const personSelect = {
   id: true, username: true, role: true, status: true, recordStatus: true,
-  namePrefix: true, firstName: true, lastName: true, section: true, canReviewPlacements: true,
+  namePrefix: true, firstName: true, lastName: true, gender: true, section: true,
   cycleEnrollments: {
     where: { enrollmentStatus: 'ACTIVE' as const }, orderBy: { joinedAt: 'desc' as const }, take: 1,
     select: {

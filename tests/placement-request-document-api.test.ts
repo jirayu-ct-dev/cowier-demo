@@ -24,8 +24,14 @@ vi.stubGlobal('createError', (details: { statusCode: number, statusMessage: stri
 
 const prisma = {
   placementRequest: {
-    findFirst: vi.fn(async () => ({ id: requestContext.id, status: currentStatus, enrollment: { studentId: student.id } })),
+    findFirst: vi.fn(async () => ({ id: requestContext.id, status: currentStatus, companyNameSnapshot: 'บริษัททดสอบ', enrollment: { studentId: student.id, student: { namePrefix: 'นาย', firstName: 'นักศึกษา', lastName: 'ทดสอบ' } } })),
     update: vi.fn(async ({ data }: { data: { status: string } }) => { currentStatus = data.status; return { id: requestContext.id } }),
+  },
+  user: {
+    findMany: vi.fn(async () => [{ id: 'staff-001' }, { id: 'staff-002' }]),
+  },
+  notification: {
+    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'NOTIFICATION-001', ...data })),
   },
   letterDocumentVersion: {
     findFirst: vi.fn(async ({ where }: { where: { id?: string } }) => where.id && createdDocument
@@ -49,6 +55,7 @@ beforeEach(() => {
   createdDocument = null
   fileMime = 'application/pdf'
   prisma.letterDocumentVersion.create.mockClear()
+  prisma.notification.create.mockClear()
 })
 afterAll(() => rm(storageRoot, { recursive: true, force: true }))
 
@@ -59,6 +66,13 @@ describe('placement request document API', () => {
     expect(currentStatus).toBe('WAITING_REVIEW')
     expect(prisma.letterDocumentVersion.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ documentType: 'COMPANY_RESPONSE', validationStatus: 'VALID', versionNumber: 1 }),
+    }))
+    expect(prisma.notification.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        type: 'COMPANY_RESPONSE_SUBMITTED',
+        placementRequestId: requestContext.id,
+        recipients: { create: [{ accountId: 'staff-001' }, { accountId: 'staff-002' }] },
+      }),
     }))
     const storageKey = String(createdDocument?.storageKey)
     await expect(readFile(join(storageRoot, storageKey), 'utf8')).resolves.toContain('%PDF-1.4')

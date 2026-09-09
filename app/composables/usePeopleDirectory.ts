@@ -24,12 +24,12 @@ export interface PersonRecord {
   prefix: PersonPrefix
   firstName: string
   lastName: string
+  gender?: 'male' | 'female'
   recordStatus: PersonRecordStatus
   accountStatus: AccountStatus
   cycle?: string
   section?: StudentSection
   company?: string
-  canReviewPlacements?: boolean
   activities: PersonActivity[]
 }
 
@@ -38,6 +38,7 @@ export interface PersonInput {
   prefix: PersonPrefix
   firstName: string
   lastName: string
+  gender?: 'male' | 'female'
   cycle?: string
   section?: StudentSection
 }
@@ -173,6 +174,7 @@ const initialPeople: PersonRecord[] = [
     prefix: 'ผศ.ดร.',
     firstName: 'สมชาย',
     lastName: 'ใจมั่น',
+    gender: 'male',
     recordStatus: 'active',
     accountStatus: 'active',
     activities: [{ id: 'ACT-005', action: 'เข้าสู่ระบบสำเร็จ', detail: 'เข้าสู่ระบบด้วยบัญชีอาจารย์', actor: 'ผศ.ดร.สมชาย ใจมั่น', occurredAt: '2026-08-30T07:55:00+07:00' }],
@@ -183,6 +185,7 @@ const initialPeople: PersonRecord[] = [
     prefix: 'อาจารย์',
     firstName: 'อรทัย',
     lastName: 'บุญช่วย',
+    gender: 'female',
     recordStatus: 'active',
     accountStatus: 'suspended',
     activities: [{ id: 'ACT-006', action: 'ระงับบัญชีชั่วคราว', detail: 'ระงับการสร้าง Session ใหม่', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-27T16:10:00+07:00' }],
@@ -193,6 +196,7 @@ const initialPeople: PersonRecord[] = [
     prefix: 'ดร.',
     firstName: 'กมลชนก',
     lastName: 'ศรีสวัสดิ์',
+    gender: 'female',
     recordStatus: 'active',
     accountStatus: 'active',
     activities: [{ id: 'ACT-008', action: 'สร้างข้อมูลและบัญชี', detail: 'บัญชีอาจารย์พร้อมใช้งาน', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-20T10:00:00+07:00' }],
@@ -203,6 +207,7 @@ const initialPeople: PersonRecord[] = [
     prefix: 'อาจารย์',
     firstName: 'วรัญญา',
     lastName: 'ทองใบ',
+    gender: 'female',
     recordStatus: 'active',
     accountStatus: 'active',
     activities: [{ id: 'ACT-009', action: 'สร้างข้อมูลและบัญชี', detail: 'บัญชีอาจารย์พร้อมใช้งาน', actor: 'นางสาวพิมพ์ชนก ใจดี', occurredAt: '2026-08-18T13:45:00+07:00' }],
@@ -377,8 +382,7 @@ export const usePeopleDirectory = () => {
   const persistAccountAction = async (
     person: PersonRecord,
     body: { action: 'suspend' | 'activate' | 'terminate' | 'restore' }
-      | { action: 'reset-password', temporaryPassword: string }
-      | { action: 'set-review-permission', enabled: boolean },
+      | { action: 'reset-password', temporaryPassword: string },
   ) => {
     const updated = personRecordSchema.parse(await requestAwareFetch(`/api/staff/people/${encodeURIComponent(person.id)}`, { method: 'PATCH', body }))
     Object.assign(person, updated)

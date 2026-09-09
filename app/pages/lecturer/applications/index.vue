@@ -13,12 +13,22 @@ definePageMeta({
 useHead({ title: 'การสมัครสหกิจของนักศึกษา' })
 
 const { scenario } = useScenario()
-const { people } = usePeopleDirectory()
+const { people, loadPersistedPeople } = usePeopleDirectory()
 const { applications, getStudentApplications, updateApplicationStatus } = useStudentApplications()
 const { showToast } = useToast()
 const staffApplicationsEndpoint: string = '/api/staff/student-applications'
 const { data: persistedApplications, status: applicationFetchStatus, error: applicationFetchError, refresh: refreshApplications } = await useFetch<StudentApplication[]>(staffApplicationsEndpoint, { immediate: scenario.value.role === 'staff' })
 watch(persistedApplications, (items) => { if (items && scenario.value.role === 'staff') applications.value = items }, { immediate: true })
+const { status: peopleFetchStatus, error: peopleFetchError, refresh: refreshPeople } = await useAsyncData(
+  'applications-students-directory',
+  () => loadPersistedPeople('student'),
+)
+watch(() => scenario.value.role, (role) => {
+  if (import.meta.client && (role === 'staff' || role === 'lecturer')) {
+    void refreshPeople()
+    if (role === 'staff') void refreshApplications()
+  }
+})
 const { studentCohort, studentSection, studentSemester } = useStudentCohortContext()
 const isStaffView = computed(() => scenario.value.role === 'staff')
 const pageDescription = computed(() => isStaffView.value
@@ -40,8 +50,8 @@ const studentFor = (studentId: string) => students.value.find(student => student
 const selectedStudent = computed(() => selectedStudentId.value ? studentFor(selectedStudentId.value) : undefined)
 const selectedApplications = computed(() => selectedStudentId.value ? getStudentApplications(selectedStudentId.value) : [])
 const effectiveViewState = computed(() => {
-  if (scenario.value.forceError || (isStaffView.value && applicationFetchError.value)) return 'error'
-  if (scenario.value.viewState === 'loading' || (isStaffView.value && applicationFetchStatus.value === 'pending')) return 'loading'
+  if (scenario.value.forceError || (isStaffView.value && (applicationFetchError.value || peopleFetchError.value))) return 'error'
+  if (scenario.value.viewState === 'loading' || (isStaffView.value && (applicationFetchStatus.value === 'pending' || peopleFetchStatus.value === 'pending'))) return 'loading'
   return scenario.value.viewState
 })
 const statusOptions = [
@@ -129,6 +139,7 @@ const resetTable = () => {
 const retry = async () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
+  await refreshPeople()
   if (isStaffView.value) await refreshApplications()
 }
 const toggleDateSort = () => {

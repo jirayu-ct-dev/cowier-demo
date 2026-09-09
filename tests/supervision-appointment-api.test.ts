@@ -36,7 +36,7 @@ const findMany = vi.fn(async () => ([{
 }]))
 const findGroupCompany = vi.fn(async () => ({ id: 'GROUP-COMPANY-1' }))
 const findLecturers = vi.fn(async () => [{ id: 'lecturer-001' }])
-const findPlacementRequests = vi.fn(async () => [{ id: 'REQUEST-1', enrollment: { student: { username: '66123456701' } } }])
+const findPlacementRequests = vi.fn(async () => [{ id: 'REQUEST-1', enrollment: { studentId: 'student-001', student: { username: '66123456701' } } }])
 const createAppointment = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'APPOINTMENT-NEW', status: 'PUBLISHED', ...data }))
 
 vi.stubGlobal('usePrisma', () => ({
@@ -146,6 +146,39 @@ describe('supervision appointment APIs', () => {
     ] })
   })
 
+  it('notifies students when staff republishes a postponed appointment', async () => {
+    user = { id: 'staff-001', role: 'staff' }
+    body = { action: 'update-schedule', date: '2026-09-21', period: 'afternoon', lecturerIds: ['lecturer-001'] }
+    findUnique.mockResolvedValueOnce({
+      id: 'APPOINTMENT-1', status: 'POSTPONED',
+      groupCompany: { group: { lecturers: [] } },
+      lecturers: [{ lecturerId: 'lecturer-001' }],
+      students: [{ placementRequest: { enrollment: { studentId: 'student-001' } } }],
+    })
+    const notificationCreate = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'NOTIFICATION-1', ...data }))
+    vi.stubGlobal('usePrisma', () => ({
+      supervisionAppointment: { findUnique, update: updateAppointment },
+      user: { findMany: findLecturers },
+      $transaction: vi.fn(async (callback: (transaction: unknown) => unknown) => callback({
+        supervisionAppointment: { update: updateAppointment },
+        supervisionAppointmentLecturer: {
+          deleteMany: vi.fn(async () => ({ count: 1 })),
+          createMany: vi.fn(async () => ({ count: 1 })),
+        },
+        notification: { create: notificationCreate },
+      })),
+    }))
+
+    await expect(updateResult({} as Parameters<typeof updateResult>[0])).resolves.toMatchObject({ status: 'published' })
+    expect(notificationCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        type: 'SUPERVISION_SCHEDULE_PUBLISHED',
+        appointmentId: 'APPOINTMENT-1',
+        recipients: { create: [{ accountId: 'student-001' }] },
+      }),
+    }))
+  })
+
   it('lets staff create and publish an appointment for confirmed students', async () => {
     user = { id: 'staff-001', role: 'staff' }
     body = {
@@ -155,6 +188,7 @@ describe('supervision appointment APIs', () => {
     }
     const transaction = vi.fn(async (callback: (transaction: unknown) => unknown) => callback({
       supervisionAppointment: { create: createAppointment },
+      notification: { create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'NOTIFICATION-1', ...data })) },
     }))
     vi.stubGlobal('usePrisma', () => ({
       supervisionGroupCompany: { findFirst: findGroupCompany },
@@ -170,6 +204,34 @@ describe('supervision appointment APIs', () => {
         groupCompanyId: 'GROUP-COMPANY-1', status: 'PUBLISHED',
         lecturers: { create: [{ lecturerId: 'lecturer-001', source: 'MANUAL', role: 'LEAD' }] },
         students: { create: [{ placementRequestId: 'REQUEST-1' }] },
+      }),
+    }))
+  })
+
+  it('notifies every student when staff publishes an appointment', async () => {
+    user = { id: 'staff-001', role: 'staff' }
+    body = {
+      cycleId: 'CYCLE-1', round: 1, groupId: 'GROUP-1', companyId: 'SITE-1',
+      studentIds: ['66123456701'], date: '2026-09-20', period: 'morning',
+      lecturerIds: ['lecturer-001'], publish: true,
+    }
+    const notificationCreate = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'NOTIFICATION-1', ...data }))
+    vi.stubGlobal('usePrisma', () => ({
+      supervisionGroupCompany: { findFirst: findGroupCompany },
+      user: { findMany: findLecturers },
+      placementRequest: { findMany: findPlacementRequests },
+      $transaction: vi.fn(async (callback: (transaction: unknown) => unknown) => callback({
+        supervisionAppointment: { create: createAppointment },
+        notification: { create: notificationCreate },
+      })),
+    }))
+
+    await expect(createSupervisionAppointment({} as Parameters<typeof createSupervisionAppointment>[0])).resolves.toMatchObject({ status: 'published' })
+    expect(notificationCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        type: 'SUPERVISION_SCHEDULE_PUBLISHED',
+        appointmentId: 'APPOINTMENT-NEW',
+        recipients: { create: [{ accountId: 'student-001' }] },
       }),
     }))
   })

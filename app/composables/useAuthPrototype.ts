@@ -6,7 +6,6 @@ export interface PrototypeAccount {
   role: ScenarioRole
   name: string
   status: PrototypeAccountStatus
-  canReviewPlacements?: boolean
 }
 
 export type PrototypeLoginResult =
@@ -27,7 +26,7 @@ interface PrototypeAuthState {
 
 const prototypeAccounts: PrototypeAccountRecord[] = [
   { id: 'staff-001', username: 'staff001', password: 'Cwie@2569', role: 'staff', name: 'นางสาวพิมพ์ชนก ใจดี', status: 'active' },
-  { id: 'lecturer-001', username: 'lecturer001', password: 'Cwie@2569', role: 'lecturer', name: 'อาจารย์ผู้ตรวจคำร้อง', status: 'active' },
+  { id: 'lecturer-001', username: 'lecturer001', password: 'Cwie@2569', role: 'lecturer', name: 'อาจารย์ผู้นิเทศ', status: 'active' },
   { id: 'student-001', username: '66123456701', password: 'Cwie@2569', role: 'student', name: 'นายธนกฤต พูนทรัพย์', status: 'active' },
   { id: 'student-025', username: '66123456725', password: 'Temp@2569', role: 'student', name: 'นางสาวณัฐณิชา แสงทอง', status: 'first-login' },
   { id: 'staff-002', username: 'staff002', password: 'Cwie@2569', role: 'staff', name: 'นายกิตติพงษ์ สุขใจ', status: 'suspended' },

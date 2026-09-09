@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
         companySiteId: input.companyId,
         enrollment: { cycleId: input.cycleId, student: { username: { in: studentIds } } },
       },
-      select: { id: true, enrollment: { select: { student: { select: { username: true } } } } },
+      select: { id: true, enrollment: { select: { studentId: true, student: { select: { username: true } } } } },
       take: 201,
     }),
   ])
@@ -43,27 +43,44 @@ export default defineEventHandler(async (event) => {
 
   const scheduledDate = new Date(`${input.date}T00:00:00.000Z`)
   const status = input.publish ? 'PUBLISHED' as const : 'DRAFT' as const
-  const created = await prisma.$transaction(async (transaction) => transaction.supervisionAppointment.create({
-    data: {
-      appointmentNo: `SUP-${input.cycleId}-${input.round}-${randomUUID().slice(0, 8)}`.slice(0, 50),
-      groupCompanyId: groupCompany.id,
-      scheduledDate,
-      period: input.period === 'morning' ? 'MORNING' : 'AFTERNOON',
-      status,
-      splitReason: input.splitReason || null,
-      createdById: user.id,
-      publishedAt: input.publish ? new Date() : null,
-      publishedById: input.publish ? user.id : null,
-      lecturers: {
-        create: lecturerIds.map((lecturerId, index) => ({
-          lecturerId,
-          source: 'MANUAL' as const,
-          role: index === 0 ? 'LEAD' as const : 'PARTICIPANT' as const,
-        })),
+  const created = await prisma.$transaction(async (transaction) => {
+    const appointment = await transaction.supervisionAppointment.create({
+      data: {
+        appointmentNo: `SUP-${input.cycleId}-${input.round}-${randomUUID().slice(0, 8)}`.slice(0, 50),
+        groupCompanyId: groupCompany.id,
+        scheduledDate,
+        period: input.period === 'morning' ? 'MORNING' : 'AFTERNOON',
+        status,
+        splitReason: input.splitReason || null,
+        createdById: user.id,
+        publishedAt: input.publish ? new Date() : null,
+        publishedById: input.publish ? user.id : null,
+        lecturers: {
+          create: lecturerIds.map((lecturerId, index) => ({
+            lecturerId,
+            source: 'MANUAL' as const,
+            role: index === 0 ? 'LEAD' as const : 'PARTICIPANT' as const,
+          })),
+        },
+        students: { create: requests.map(request => ({ placementRequestId: request.id })) },
       },
-      students: { create: requests.map(request => ({ placementRequestId: request.id })) },
-    },
-  }), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    })
+    if (input.publish) {
+      await transaction.notification.create({
+        data: {
+          type: 'SUPERVISION_SCHEDULE_PUBLISHED',
+          severity: 'INFO',
+          title: 'เผยแพร่ตารางนิเทศแล้ว',
+          body: `นิเทศครั้งที่ ${input.round} วันที่ ${input.date} ${input.period === 'morning' ? 'ช่วงเช้า' : 'ช่วงบ่าย'}`,
+          deepLink: '/student/supervision',
+          appointmentId: appointment.id,
+          createdById: user.id,
+          recipients: { create: requests.map(request => ({ accountId: request.enrollment.studentId })) },
+        },
+      })
+    }
+    return appointment
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
   setResponseStatus(event, 201)
   return { id: created.id, status: status === 'PUBLISHED' ? 'published' : 'draft' }
 })

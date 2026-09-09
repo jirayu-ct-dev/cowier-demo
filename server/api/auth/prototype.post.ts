@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const account = await usePrisma().user.findFirst({
     where: { role: roleToPrisma[body.data.role], status: 'ACTIVE', recordStatus: 'ACTIVE' },
     select: {
-      id: true, username: true, namePrefix: true, firstName: true, lastName: true, sessionVersion: true, canReviewPlacements: true,
+      id: true, username: true, namePrefix: true, firstName: true, lastName: true, sessionVersion: true,
     },
     orderBy: { createdAt: 'asc' },
   })
@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
     name: [account.namePrefix, account.firstName, account.lastName].filter(Boolean).join(' '),
     status: 'active',
     sessionVersion: account.sessionVersion,
-    canReviewPlacements: body.data.role === 'lecturer' ? account.canReviewPlacements : undefined,
   }
   await setUserSession(event, user)
   return { account: user }

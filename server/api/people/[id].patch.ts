@@ -4,7 +4,6 @@ import { requireUserSession } from '../../utils/session'
 
 export default defineEventHandler(async (event) => {
   const lecturer = await requireUserSession(event, ['lecturer'])
-  if (!lecturer.canReviewPlacements) throw createError({ statusCode: 403, statusMessage: 'FORBIDDEN' })
   const username = getRouterParam(event, 'id')
   if (!username) throw createError({ statusCode: 400, statusMessage: 'PERSON_ID_REQUIRED' })
   const parsed = lecturerStudentNameSchema.safeParse(await readBody(event))

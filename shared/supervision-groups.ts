@@ -64,4 +64,5 @@ export interface SupervisionGroupDto {
 export interface SupervisionLecturerDto {
   id: string
   name: string
+  gender: 'male' | 'female' | null
 }

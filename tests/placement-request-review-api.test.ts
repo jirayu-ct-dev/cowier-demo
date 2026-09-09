@@ -2,9 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const input = { outcome: 'confirm', reason: '' }
 const staff = { id: 'staff-001', username: 'staff001', role: 'staff' as const, name: 'เจ้าหน้าที่ทดสอบ', status: 'active' as const, sessionVersion: 1 }
+const auth = vi.hoisted(() => ({ role: 'staff' as 'staff' | 'lecturer' }))
 let requestStatus = 'WAITING_REVIEW'
 
-vi.mock('../server/utils/session', () => ({ requireUserSession: vi.fn(async () => staff) }))
+vi.mock('../server/utils/session', () => ({
+  requireUserSession: vi.fn(async (_event: unknown, roles?: readonly string[]) => {
+    if (roles && !roles.includes(auth.role)) throw Object.assign(new Error('FORBIDDEN'), { statusCode: 403, statusMessage: 'FORBIDDEN' })
+    return { ...staff, role: auth.role }
+  }),
+}))
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('getRouterParam', () => 'REQUEST-001')
 vi.stubGlobal('readBody', async () => input)
@@ -40,11 +46,18 @@ const { default: reviewRequest } = await import('../server/api/placement-request
 beforeEach(() => {
   input.outcome = 'confirm'
   input.reason = ''
+  auth.role = 'staff'
   requestStatus = 'WAITING_REVIEW'
-  prisma.notification.create.mockClear()
+  vi.clearAllMocks()
 })
 
 describe('placement request review API', () => {
+  it('rejects lecturers because request and document review belongs to staff', async () => {
+    auth.role = 'lecturer'
+    await expect(reviewRequest({} as Parameters<typeof reviewRequest>[0])).rejects.toMatchObject({ statusCode: 403, statusMessage: 'FORBIDDEN' })
+    expect(prisma.placementRequest.findFirst).not.toHaveBeenCalled()
+  })
+
   it('confirms a valid company response and notifies its student', async () => {
     await expect(reviewRequest({} as Parameters<typeof reviewRequest>[0])).resolves.toMatchObject({ status: 'confirmed' })
     expect(requestStatus).toBe('CONFIRMED')

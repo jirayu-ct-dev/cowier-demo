@@ -10,7 +10,6 @@ export interface AuthenticatedUser {
   name: string
   status: 'active' | 'first-login'
   sessionVersion: number
-  canReviewPlacements?: boolean
 }
 
 interface CwieSessionData {
@@ -42,7 +41,7 @@ export const getUserSession = async (event: H3Event) => {
 
   const account = await usePrisma().user.findUnique({
     where: { id: user.id },
-    select: { role: true, status: true, recordStatus: true, sessionVersion: true, canReviewPlacements: true },
+    select: { role: true, status: true, recordStatus: true, sessionVersion: true },
   })
   const roleMap = { STAFF: 'staff', LECTURER: 'lecturer', STUDENT: 'student' } as const
   const statusMap = { ACTIVE: 'active', FIRST_LOGIN: 'first-login' } as const
@@ -56,7 +55,7 @@ export const getUserSession = async (event: H3Event) => {
     await session.clear()
     return null
   }
-  return { ...user, canReviewPlacements: account.canReviewPlacements }
+  return user
 }
 
 export const requireUserSession = async (event: H3Event, roles?: readonly SessionRole[], allowFirstLogin = false) => {

@@ -7,7 +7,7 @@ import type { SupervisionAppointment } from './useSupervisionAppointments'
 describe('useEvaluationExport', () => {
   const click = vi.fn()
   const createObjectURL = vi.fn(() => 'blob:evaluation-export')
-  const currentAccount = ref({ id: 'lecturer-001', role: 'lecturer', name: 'อาจารย์ผู้ตรวจคำร้อง' })
+  const currentAccount = ref({ id: 'lecturer-001', role: 'lecturer', name: 'อาจารย์ผู้นิเทศ' })
   const submitted = (appointmentId: string, lecturerId: string): StudentEvaluation => ({
     appointmentId,
     studentId: 'S1',

@@ -97,6 +97,7 @@ beforeEach(() => {
   request.id = ''
   prisma.placementRequest.create.mockClear()
   prisma.notification.create.mockClear()
+  prisma.user.findMany.mockClear()
 })
 
 describe('student application API', () => {
@@ -139,6 +140,7 @@ describe('student application API', () => {
     request.body = { status: 'accepted' }
     await updateApplication(event)
     authenticatedUser = student
+    prisma.user.findMany.mockResolvedValueOnce([{ id: staff.id }, { id: 'staff-002' }])
     request.body = { status: 'completed' }
     await expect(updateApplication(event)).resolves.toMatchObject({ status: 'completed' })
     expect(prisma.placementRequest.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -147,9 +149,13 @@ describe('student application API', () => {
     expect(prisma.notification.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         type: 'PLACEMENT_REQUEST_SUBMITTED',
-        recipients: { create: [{ accountId: staff.id }] },
+        recipients: { create: [{ accountId: staff.id }, { accountId: 'staff-002' }] },
       }),
     }))
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { role: 'STAFF', status: 'ACTIVE', recordStatus: 'ACTIVE' },
+      select: { id: true },
+    })
     await expect(updateApplication(event)).resolves.toMatchObject({ status: 'completed' })
     expect(prisma.placementRequest.create).toHaveBeenCalledTimes(1)
     expect(prisma.notification.create).toHaveBeenCalledTimes(1)
@@ -157,13 +163,13 @@ describe('student application API', () => {
     await expect(updateApplication(event)).rejects.toMatchObject({ statusCode: 409, statusMessage: 'APPLICATION_SELECTION_LOCKED' })
   })
 
-  it('does not let a student record the company acceptance or rejection', async () => {
+  it('lets a student save edited application details together with the company response', async () => {
     const created = await createApplication(event)
     request.id = created.id
-    request.body = { status: 'accepted' }
-    await expect(updateApplication(event)).rejects.toMatchObject({ statusCode: 403, statusMessage: 'STATUS_CHANGE_NOT_ALLOWED' })
+    request.body = { ...input, appliedAt: created.appliedAt, status: 'accepted' }
+    await expect(updateApplication(event)).resolves.toMatchObject({ status: 'accepted' })
     request.body = { status: 'rejected' }
-    await expect(updateApplication(event)).rejects.toMatchObject({ statusCode: 403, statusMessage: 'STATUS_CHANGE_NOT_ALLOWED' })
+    await expect(updateApplication(event)).resolves.toMatchObject({ status: 'rejected' })
   })
 
   it('deletes only rejected records', async () => {
@@ -196,6 +202,14 @@ describe('student application API', () => {
     await updateApplication(event)
     authenticatedUser = staff
     request.body = { status: 'accepted' }
+    await expect(updateApplication(event)).rejects.toMatchObject({ statusCode: 409, statusMessage: 'APPLICATION_STATUS_TRANSITION_INVALID' })
+  })
+
+  it('does not let staff cancel an active student application', async () => {
+    const created = await createApplication(event)
+    request.id = created.id
+    authenticatedUser = staff
+    request.body = { status: 'cancelled' }
     await expect(updateApplication(event)).rejects.toMatchObject({ statusCode: 409, statusMessage: 'APPLICATION_STATUS_TRANSITION_INVALID' })
   })
 })

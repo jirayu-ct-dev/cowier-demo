@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
       id: true, status: true,
       groupCompany: { select: { group: { select: { lecturers: { select: { lecturerId: true } } } } } },
       lecturers: { select: { lecturerId: true } },
+      students: { select: { placementRequest: { select: { enrollment: { select: { studentId: true } } } } } },
     },
   })
   if (!appointment) throw createError({ statusCode: 404, statusMessage: 'SUPERVISION_APPOINTMENT_NOT_FOUND' })
@@ -58,6 +59,20 @@ export default defineEventHandler(async (event) => {
           status: appointment.status === 'POSTPONED' ? 'PUBLISHED' : appointment.status,
         },
       })
+      if (user.role === 'staff' && appointment.status === 'POSTPONED') {
+        await transaction.notification.create({
+          data: {
+            type: 'SUPERVISION_SCHEDULE_PUBLISHED',
+            severity: 'INFO',
+            title: 'เผยแพร่ตารางนิเทศแล้ว',
+            body: `อัปเดตกำหนดนิเทศวันที่ ${schedule.date} ${schedule.period === 'morning' ? 'ช่วงเช้า' : 'ช่วงบ่าย'}`,
+            deepLink: '/student/supervision',
+            appointmentId: appointment.id,
+            createdById: user.id,
+            recipients: { create: appointment.students.map(student => ({ accountId: student.placementRequest.enrollment.studentId })) },
+          },
+        })
+      }
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     return { id: appointment.id, status: appointment.status === 'POSTPONED' ? 'published' : appointment.status.toLowerCase() }
   }

@@ -33,26 +33,25 @@ export default defineEventHandler(async (event) => {
   const fullUpdate = 'companyName' in body.data ? body.data : null
   const isFullUpdate = Boolean(fullUpdate)
   if (isFullUpdate && user.role !== 'student') throw createError({ statusCode: 403, statusMessage: 'FORBIDDEN' })
-  if (isFullUpdate && nextStatus !== application.status) throw createError({ statusCode: 403, statusMessage: 'STATUS_CHANGE_NOT_ALLOWED' })
-  if (!isFullUpdate && user.role === 'student' && !['COMPLETED', 'CANCELLED'].includes(nextStatus)) {
-    throw createError({ statusCode: 403, statusMessage: 'STATUS_CHANGE_NOT_ALLOWED' })
-  }
   if (!isFullUpdate && user.role === 'staff' && nextStatus === 'COMPLETED') {
     throw createError({ statusCode: 403, statusMessage: 'STUDENT_CONFIRMATION_REQUIRED' })
   }
-  const staffTransitions: Partial<Record<typeof application.status, readonly typeof nextStatus[]>> = {
+  if (nextStatus === 'COMPLETED' && application.status !== 'ACCEPTED') {
+    throw createError({ statusCode: 409, statusMessage: 'COMPANY_ACCEPTANCE_REQUIRED' })
+  }
+  const applicationProgressTransitions: Partial<Record<typeof application.status, readonly typeof nextStatus[]>> = {
     SUBMITTED: ['WAITING_RESPONSE', 'RESPONDED', 'WAITING_INTERVIEW', 'ACCEPTED', 'REJECTED'],
     WAITING_RESPONSE: ['RESPONDED', 'WAITING_INTERVIEW', 'ACCEPTED', 'REJECTED'],
     RESPONDED: ['WAITING_INTERVIEW', 'ACCEPTED', 'REJECTED'],
     WAITING_INTERVIEW: ['ACCEPTED', 'REJECTED'],
     ACCEPTED: ['REJECTED'],
-    CANCELLED: ['REJECTED'],
   }
-  if (!isFullUpdate && user.role === 'staff' && !staffTransitions[application.status]?.includes(nextStatus)) {
+  const followsProgress = applicationProgressTransitions[application.status]?.includes(nextStatus) ?? false
+  const isStudentCancellation = user.role === 'student' && nextStatus === 'CANCELLED'
+  const isStudentConfirmation = user.role === 'student' && application.status === 'ACCEPTED' && nextStatus === 'COMPLETED'
+  const isStaffCancellationClosure = user.role === 'staff' && application.status === 'CANCELLED' && nextStatus === 'REJECTED'
+  if (nextStatus !== application.status && !followsProgress && !isStudentCancellation && !isStudentConfirmation && !isStaffCancellationClosure) {
     throw createError({ statusCode: 409, statusMessage: 'APPLICATION_STATUS_TRANSITION_INVALID' })
-  }
-  if (nextStatus === 'COMPLETED' && application.status !== 'ACCEPTED') {
-    throw createError({ statusCode: 409, statusMessage: 'COMPANY_ACCEPTANCE_REQUIRED' })
   }
 
   try {

@@ -20,6 +20,9 @@ export default defineEventHandler(async (event) => {
   if (details.success && current.role === 'STUDENT' && !details.data.section) {
     throw createError({ statusCode: 400, statusMessage: 'STUDENT_SECTION_REQUIRED' })
   }
+  if (details.success && current.role === 'LECTURER' && !details.data.gender) {
+    throw createError({ statusCode: 400, statusMessage: 'LECTURER_GENDER_REQUIRED' })
+  }
   if (details.success) {
     const allowedPrefixes: readonly string[] = current.role === 'STUDENT' ? studentPersonPrefixes : lecturerPersonPrefixes
     if (!allowedPrefixes.includes(details.data.prefix)) throw createError({ statusCode: 400, statusMessage: 'PERSON_PREFIX_INVALID' })
@@ -42,6 +45,7 @@ export default defineEventHandler(async (event) => {
         where: { id: current.id },
         data: {
           username: input.id, namePrefix: input.prefix, firstName: input.firstName, lastName: input.lastName,
+          gender: input.gender === 'male' ? 'MALE' : input.gender === 'female' ? 'FEMALE' : null,
           section: current.role === 'STUDENT' ? input.section?.replace('หมู่ ', '') : null,
         },
       })
@@ -71,11 +75,6 @@ export default defineEventHandler(async (event) => {
           where: { id: current.id }, data: { passwordHash: await hashPassword(input.temporaryPassword), status: 'FIRST_LOGIN', sessionVersion: { increment: 1 } },
         })
         action = 'รีเซ็ตรหัสผ่าน'; detail = 'ยกเลิก Session เดิมและบังคับเปลี่ยนรหัสผ่าน'
-      }
-      else if (input.action === 'set-review-permission') {
-        if (current.role !== 'LECTURER') throw createError({ statusCode: 400, statusMessage: 'LECTURER_REQUIRED' })
-        await transaction.user.update({ where: { id: current.id }, data: { canReviewPlacements: input.enabled } })
-        action = 'กำหนดสิทธิ์ตรวจคำร้อง'; detail = input.enabled ? 'อนุญาต' : 'ไม่อนุญาต'
       }
       else {
         const state = {

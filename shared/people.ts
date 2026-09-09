@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const personTypeSchema = z.enum(['student', 'lecturer'])
+export const personGenderSchema = z.enum(['male', 'female'])
 export const personPrefixSchema = z.enum(['นาย', 'นาง', 'นางสาว', 'อาจารย์', 'ดร.', 'ผศ.', 'ผศ.ดร.', 'รศ.', 'รศ.ดร.', 'ศ.', 'ศ.ดร.'])
 export const studentPersonPrefixes = ['นาย', 'นาง', 'นางสาว'] as const
 export const lecturerPersonPrefixes = ['อาจารย์', 'ดร.', 'ผศ.', 'ผศ.ดร.', 'รศ.', 'รศ.ดร.', 'ศ.', 'ศ.ดร.'] as const
@@ -10,6 +11,7 @@ export const personInputSchema = z.object({
   prefix: personPrefixSchema,
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().max(100),
+  gender: personGenderSchema.optional(),
   cycle: z.string().trim().max(150).optional(),
   section: z.enum(['หมู่ 1', 'หมู่ 2']).optional(),
 }).strict()
@@ -20,7 +22,6 @@ export const personAccountActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('terminate') }).strict(),
   z.object({ action: z.literal('restore') }).strict(),
   z.object({ action: z.literal('reset-password'), temporaryPassword: z.string().min(8).max(200) }).strict(),
-  z.object({ action: z.literal('set-review-permission'), enabled: z.boolean() }).strict(),
 ])
 
 export const lecturerStudentNameSchema = z.object({
@@ -40,7 +41,6 @@ export const personRecordSchema = personInputSchema.extend({
   recordStatus: z.enum(['active', 'inactive']),
   accountStatus: z.enum(['first-login', 'active', 'suspended', 'terminated']),
   company: z.string().optional(),
-  canReviewPlacements: z.boolean().optional(),
   activities: z.array(personActivitySchema),
 })
 

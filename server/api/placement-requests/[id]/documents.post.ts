@@ -22,7 +22,17 @@ export default defineEventHandler(async (event) => {
   const prisma = usePrisma()
   const request = await prisma.placementRequest.findFirst({
     where: { id: requestId, ...(user.role === 'student' ? { enrollment: { studentId: user.id } } : {}) },
-    select: { id: true, status: true, enrollment: { select: { studentId: true } } },
+    select: {
+      id: true,
+      status: true,
+      companyNameSnapshot: true,
+      enrollment: {
+        select: {
+          studentId: true,
+          student: { select: { namePrefix: true, firstName: true, lastName: true } },
+        },
+      },
+    },
   })
   if (!request) throw createError({ statusCode: 404, statusMessage: 'PLACEMENT_REQUEST_NOT_FOUND' })
   const allowed = documentType === 'OUTGOING_REQUEST'
@@ -57,6 +67,25 @@ export default defineEventHandler(async (event) => {
         where: { id: request.id },
         data: { status: documentType === 'OUTGOING_REQUEST' ? 'WAITING_RESPONSE' : 'WAITING_REVIEW' },
       })
+      if (documentType === 'COMPANY_RESPONSE') {
+        const staffAccounts = await transaction.user.findMany({
+          where: { role: 'STAFF', status: 'ACTIVE', recordStatus: 'ACTIVE' },
+          select: { id: true },
+          take: 201,
+        })
+        await transaction.notification.create({
+          data: {
+            type: 'COMPANY_RESPONSE_SUBMITTED',
+            severity: 'INFO',
+            title: 'มีหนังสือตอบรับใหม่รอตรวจสอบ',
+            body: `${request.enrollment.student.namePrefix}${request.enrollment.student.firstName} ${request.enrollment.student.lastName} · ${request.companyNameSnapshot}`,
+            deepLink: `/staff/requests?request=${request.id}`,
+            placementRequestId: request.id,
+            createdById: user.id,
+            recipients: { create: staffAccounts.map(account => ({ accountId: account.id })) },
+          },
+        })
+      }
       return created
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     return {

@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     select: {
       id: true, username: true, passwordHash: true, role: true, status: true, recordStatus: true,
       namePrefix: true, firstName: true, lastName: true, failedLoginCount: true, failedWindowAt: true, lockedUntil: true,
-      sessionVersion: true, canReviewPlacements: true,
+      sessionVersion: true,
     },
   })
   if (account?.lockedUntil && account.lockedUntil > new Date()) {
@@ -69,7 +69,6 @@ export default defineEventHandler(async (event) => {
     name: [account.namePrefix, account.firstName, account.lastName].filter(Boolean).join(' '),
     status,
     sessionVersion: account.sessionVersion,
-    canReviewPlacements: account.role === 'LECTURER' ? account.canReviewPlacements : undefined,
   }
   await Promise.all([
     setUserSession(event, user),

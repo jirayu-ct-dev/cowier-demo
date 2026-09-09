@@ -22,6 +22,7 @@ const detailOpen = ref(false)
 const selectedAppointmentId = ref<string | null>(null)
 const appointmentsLoading = ref(true)
 const appointmentsLoadError = ref(false)
+let appointmentsLoadInFlight = false
 
 const currentStudentId = computed(() => currentAccount.value?.username ?? '')
 const effectiveViewState = computed(() => scenario.value.forceError || appointmentsLoadError.value
@@ -129,18 +130,32 @@ const retry = () => {
   scenario.value.viewState = 'data'
   void loadAppointments()
 }
-const loadAppointments = async () => {
-  appointmentsLoading.value = true
+const loadAppointments = async (silent = false) => {
+  if (appointmentsLoadInFlight) return
+  appointmentsLoadInFlight = true
+  if (!silent) appointmentsLoading.value = true
   appointmentsLoadError.value = false
   try {
     await loadPersistedAppointments(selectedCycle.value.id, 1)
     await loadPersistedAppointments(selectedCycle.value.id, 2)
   }
   catch { appointmentsLoadError.value = true }
-  finally { appointmentsLoading.value = false }
+  finally {
+    appointmentsLoadInFlight = false
+    if (!silent) appointmentsLoading.value = false
+  }
 }
-onMounted(loadAppointments)
-watch(() => selectedCycle.value.id, loadAppointments)
+let appointmentsPollingTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  void loadAppointments()
+  appointmentsPollingTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !appointmentsLoading.value) void loadAppointments(true)
+  }, 15_000)
+})
+onBeforeUnmount(() => {
+  if (appointmentsPollingTimer) clearInterval(appointmentsPollingTimer)
+})
+watch(() => selectedCycle.value.id, () => { void loadAppointments() })
 const openDetails = (appointmentId: string) => {
   selectedAppointmentId.value = appointmentId
   detailOpen.value = true

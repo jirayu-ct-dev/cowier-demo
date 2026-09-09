@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import { canTransitionRequest, pdfMetadataSchema, returnReasonSchema } from '../shared/placement-requests'
+import { canTransitionRequest, pdfMetadataSchema, returnReasonSchema, studentRequestStatusMeta } from '../shared/placement-requests'
 import { canCreateStudentApplication, type StudentApplicationRecord } from '../shared/student-applications'
 import { usePlacementRequestPreview } from '../app/composables/usePlacementRequestPreview'
 
@@ -96,6 +96,7 @@ describe('request preview guards', () => {
     expect(returnReasonSchema.safeParse(' ').success).toBe(false)
   })
   it('allows only the next document actions', () => {
+    expect(studentRequestStatusMeta.submitted.label).toBe('รอรับเอกสาร')
     expect(canTransitionRequest('submitted', 'issue')).toBe(true)
     expect(canTransitionRequest('submitted', 'upload')).toBe(false)
     expect(canTransitionRequest('letter-issued', 'upload')).toBe(true)
@@ -103,5 +104,17 @@ describe('request preview guards', () => {
     expect(canTransitionRequest('returned', 'confirm')).toBe(false)
     expect(canTransitionRequest('signed-uploaded', 'return')).toBe(true)
     expect(canTransitionRequest('confirmed', 'upload')).toBe(false)
+  })
+  it('retains the uploaded response metadata and advances the request status', async () => {
+    const store = usePlacementRequestPreview()
+    const request = { id: application.placementRequestId!, cycleId: 'CYCLE-2569-2', studentName: 'นักศึกษาทดสอบ', application: { ...application }, status: 'letter-issued' as const, submittedAt: application.updatedAt, updatedAt: application.updatedAt }
+    const document = { id: 'DOCUMENT-test', name: 'หนังสือตอบรับ.pdf', dataUrl: '/api/placement-requests/REQUEST-test/documents/DOCUMENT-test', version: 1, uploadedAt: new Date().toISOString() }
+    store.requests.value = [request]
+    vi.mocked($fetch).mockResolvedValueOnce(document)
+
+    await store.attach(request.id, new File(['pdf'], document.name, { type: 'application/pdf' }), 'signedDocument')
+
+    expect(request.signedDocument).toEqual(document)
+    expect(request.status).toBe('signed-uploaded')
   })
 })

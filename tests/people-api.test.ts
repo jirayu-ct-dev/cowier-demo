@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let body: Record<string, unknown> = {}
 let query = { type: 'student' }
-let sessionUser = { id: 'staff-001', role: 'staff', canReviewPlacements: false }
+let sessionUser = { id: 'staff-001', role: 'staff' }
 const person = {
   id: 'student-internal-1', username: '66123456701', role: 'STUDENT', status: 'ACTIVE', recordStatus: 'ACTIVE',
-  namePrefix: 'นาย', firstName: 'ธนกฤต', lastName: 'พูนทรัพย์', section: '1', canReviewPlacements: false,
+  namePrefix: 'นาย', firstName: 'ธนกฤต', lastName: 'พูนทรัพย์', gender: null, section: '1',
   cycleEnrollments: [{ cycle: { label: 'ภาคเรียนที่ 2/2569' }, placementRequests: [{ companyNameSnapshot: 'บริษัท ตัวอย่าง จำกัด' }] }],
   auditLogs: [],
 }
@@ -58,7 +58,7 @@ const { default: listSharedPeople } = await import('../server/api/people.get')
 beforeEach(() => {
   body = {}
   query = { type: 'student' }
-  sessionUser = { id: 'staff-001', role: 'staff', canReviewPlacements: false }
+  sessionUser = { id: 'staff-001', role: 'staff' }
   vi.clearAllMocks()
 })
 
@@ -94,6 +94,14 @@ describe('people APIs', () => {
     expect(createUser).not.toHaveBeenCalled()
   })
 
+  it('requires explicit gender when creating a lecturer', async () => {
+    body = { type: 'lecturer', id: 'new-lecturer', prefix: 'อาจารย์', firstName: 'ทดสอบ', lastName: 'ระบบ' }
+    await expect(createPerson({} as Parameters<typeof createPerson>[0])).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: 'LECTURER_GENDER_REQUIRED',
+    })
+  })
+
   it('transfers an existing active enrollment before moving a student to another cycle', async () => {
     body = {
       id: '66123456701', prefix: 'นาย', firstName: 'ธนกฤต', lastName: 'พูนทรัพย์',
@@ -116,15 +124,8 @@ describe('people APIs', () => {
     })
   })
 
-  it('stores lecturer review permission in the database', async () => {
-    body = { action: 'set-review-permission', enabled: true }
-    findUser.mockResolvedValueOnce({ id: 'lecturer-1', username: 'L0012', role: 'LECTURER', status: 'ACTIVE', recordStatus: 'ACTIVE' })
-    await updatePerson({} as Parameters<typeof updatePerson>[0])
-    expect(updateUser).toHaveBeenCalledWith({ where: { id: 'lecturer-1' }, data: { canReviewPlacements: true } })
-  })
-
-  it('allows a permitted lecturer to update only a student name', async () => {
-    sessionUser = { id: 'lecturer-1', role: 'lecturer', canReviewPlacements: true }
+  it('keeps lecturer student-name editing separate from document-review permission', async () => {
+    sessionUser = { id: 'lecturer-1', role: 'lecturer' }
     body = { prefix: 'นาย', firstName: 'ชื่อใหม่', lastName: 'นามสกุลใหม่' }
     await lecturerUpdateStudent({} as Parameters<typeof lecturerUpdateStudent>[0])
     expect(updateUser).toHaveBeenCalledWith({
@@ -134,7 +135,7 @@ describe('people APIs', () => {
   })
 
   it('does not expose audit activity when a lecturer loads the shared directory', async () => {
-    sessionUser = { id: 'lecturer-1', role: 'lecturer', canReviewPlacements: true }
+    sessionUser = { id: 'lecturer-1', role: 'lecturer' }
     const result = await listSharedPeople({} as Parameters<typeof listSharedPeople>[0])
     expect(findAudits).not.toHaveBeenCalled()
     expect(result.people[0]?.activities).toEqual([])

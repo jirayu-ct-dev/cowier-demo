@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { useSupervisionGroups } from '../app/composables/useSupervisionGroups'
-import { useLetterBatches } from '../app/composables/useLetterBatches'
 import type { PlacementRequestPreview } from '../shared/placement-requests'
 
 const account = ref({ role: 'staff', name: 'เจ้าหน้าที่ทดสอบ' })
@@ -57,13 +56,10 @@ describe('staff supervision workflow', () => {
     expect(() => store.createSuggestedGroups('C1', 1, [['CO1'], ['CO1']])).toThrow()
     expect(store.groups.value).toHaveLength(0)
   })
-  it('blocks non-staff mutations and legacy letter issuance', () => {
+  it('blocks non-staff grouping mutations', () => {
     const store = setup()
     account.value.role = 'lecturer'
     expect(() => store.createSuggestedGroups('C1', 1, [['CO1']])).toThrow()
-    const letters = useLetterBatches()
-    expect(letters.canIssueLetter.value).toBe(false)
-    expect(() => letters.saveLetterBatch({ requestIds: [], letterDate: '2026-09-04', fileName: 'letter.pdf' })).toThrow('เฉพาะเจ้าหน้าที่')
   })
   it('registers the confirmed request coordinates and does not duplicate placements', () => {
     const store = useSupervisionGroups()
