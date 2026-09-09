@@ -13,7 +13,7 @@ import {
 import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 import { getPageCount, paginateItems } from "~/utils/table";
 
-definePageMeta({ title: "ตรวจคำร้อง", middleware: "letter-workflow", alias: ['/staff/letters'] });
+definePageMeta({ title: "ตรวจคำร้อง", middleware: "letter-workflow" });
 useHead({ title: "ตรวจคำร้องและผลตอบกลับ" });
 
 type ViewState = "data" | "loading" | "empty" | "error";

@@ -1,3 +1,6 @@
+import { peopleResponseSchema, personRecordSchema } from '#shared/people'
+import { requestAwareFetch } from '../utils/requestAwareFetch'
+
 export type PersonType = 'student' | 'lecturer'
 export const personPrefixValues = ['นาย', 'นาง', 'นางสาว', 'อาจารย์', 'ดร.', 'ผศ.', 'ผศ.ดร.', 'รศ.', 'รศ.ดร.', 'ศ.', 'ศ.ดร.'] as const
 export type PersonPrefix = typeof personPrefixValues[number]
@@ -16,6 +19,7 @@ export interface PersonActivity {
 
 export interface PersonRecord {
   id: string
+  accountId?: string
   type: PersonType
   prefix: PersonPrefix
   firstName: string
@@ -25,6 +29,7 @@ export interface PersonRecord {
   cycle?: string
   section?: StudentSection
   company?: string
+  canReviewPlacements?: boolean
   activities: PersonActivity[]
 }
 
@@ -236,6 +241,7 @@ export const personPrefixOptions: Record<PersonType, Array<{ value: PersonPrefix
 }
 
 export const getPersonFullName = (person: Pick<PersonRecord, 'prefix' | 'firstName' | 'lastName'>) => `${person.prefix}${person.firstName} ${person.lastName}`
+export const getPersonAccountId = (person: Pick<PersonRecord, 'id' | 'accountId'>) => person.accountId ?? person.id
 
 export const accountStatusMeta: Record<AccountStatus, { label: string, tone: 'neutral' | 'success' | 'warning' | 'danger' }> = {
   'first-login': { label: 'รอเข้าสู่ระบบครั้งแรก', tone: 'warning' },
@@ -258,10 +264,10 @@ export const studentApplicationStatusMeta: Record<StudentApplicationStatus, { la
 }
 
 export const usePeopleDirectory = () => {
-  const people = useState<PersonRecord[]>('people-directory-v2', cloneInitialPeople)
+  const people = useState<PersonRecord[]>('people-directory-v2', () => import.meta.dev ? cloneInitialPeople() : [])
   const { scenario, recordEvent } = useScenario()
 
-  const findPerson = (type: PersonType, id: string) => people.value.find(person => person.type === type && person.id === id)
+  const findPerson = (type: PersonType, id: string) => people.value.find(person => person.type === type && (person.id === id || person.accountId === id))
   const getStudentApplicationHistory = (id: string) => applicationHistory[id] || []
 
   const addActivity = (person: PersonRecord, action: string, detail: string) => {
@@ -350,6 +356,41 @@ export const usePeopleDirectory = () => {
     return { created, updated }
   }
 
+  const loadPersistedPeople = async (type: PersonType) => {
+    const { people: records } = peopleResponseSchema.parse(await requestAwareFetch('/api/people', { query: { type } }))
+    people.value = [...people.value.filter(person => person.type !== type), ...records]
+    return records
+  }
+
+  const persistCreatePerson = async (type: PersonType, input: PersonInput) => {
+    const person = personRecordSchema.parse(await requestAwareFetch('/api/staff/people', { method: 'POST', body: { type, ...input } }))
+    people.value.unshift(person)
+    return person
+  }
+
+  const persistUpdatePerson = async (person: PersonRecord, input: PersonInput) => {
+    const updated = personRecordSchema.parse(await requestAwareFetch(`/api/staff/people/${encodeURIComponent(person.id)}`, { method: 'PATCH', body: input }))
+    Object.assign(person, updated)
+    return person
+  }
+
+  const persistAccountAction = async (
+    person: PersonRecord,
+    body: { action: 'suspend' | 'activate' | 'terminate' | 'restore' }
+      | { action: 'reset-password', temporaryPassword: string }
+      | { action: 'set-review-permission', enabled: boolean },
+  ) => {
+    const updated = personRecordSchema.parse(await requestAwareFetch(`/api/staff/people/${encodeURIComponent(person.id)}`, { method: 'PATCH', body }))
+    Object.assign(person, updated)
+    return person
+  }
+
+  const persistLecturerStudentName = async (person: PersonRecord, input: Pick<PersonInput, 'prefix' | 'firstName' | 'lastName'>) => {
+    const updated = personRecordSchema.parse(await requestAwareFetch(`/api/people/${encodeURIComponent(person.id)}`, { method: 'PATCH', body: input }))
+    Object.assign(person, updated)
+    return person
+  }
+
   return {
     people,
     findPerson,
@@ -362,5 +403,10 @@ export const usePeopleDirectory = () => {
     restorePerson,
     resetPassword,
     importPeople,
+    loadPersistedPeople,
+    persistCreatePerson,
+    persistUpdatePerson,
+    persistAccountAction,
+    persistLecturerStudentName,
   }
 }

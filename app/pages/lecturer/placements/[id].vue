@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 import type { PlacementReviewRequest } from "~/composables/useLetterBatches";
 
-definePageMeta({ title: "ดำเนินการคำร้อง", middleware: "letter-workflow", alias: ['/staff/letters/:id'] });
+definePageMeta({ title: "ดำเนินการคำร้อง", middleware: "letter-workflow" });
 
 type FormErrorKey = "requestIds" | "letterDate" | "fileName";
 

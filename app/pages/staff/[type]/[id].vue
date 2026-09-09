@@ -9,16 +9,14 @@ const route = useRoute()
 const { showToast } = useToast()
 const {
   findPerson,
-  updatePerson,
-  suspendAccount,
-  activateAccount,
-  terminatePerson,
-  restorePerson,
-  resetPassword,
+  loadPersistedPeople,
+  persistUpdatePerson,
+  persistAccountAction,
 } = usePeopleDirectory()
 
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 if (!['students', 'lecturers'].includes(String(route.params.type))) throw createError({ statusCode: 404, statusMessage: 'Page not found' })
+await loadPersistedPeople(personType.value)
 const person = computed(() => findPerson(personType.value, String(route.params.id)))
 if (!person.value) throw createError({ statusCode: 404, statusMessage: 'ไม่พบข้อมูลบุคคล' })
 const context = computed(() => personType.value === 'student'
@@ -77,7 +75,7 @@ const save = async () => {
   isSaving.value = true
   try {
     const oldId = person.value.id
-    updatePerson(person.value, result.data)
+    await persistUpdatePerson(person.value, result.data)
     isEditing.value = false
     showToast({ title: 'บันทึกข้อมูลแล้ว', description: 'ระบบบันทึกค่าเดิมและค่าใหม่ในประวัติ' })
     if (oldId !== person.value.id) await navigateTo(`/staff/${route.params.type}/${person.value.id}`, { replace: true })
@@ -88,27 +86,33 @@ const save = async () => {
     isSaving.value = false
   }
 }
-const performAction = (action: () => void, title: string, description: string) => {
-  action()
-  showToast({ title, description })
+const performAction = async (action: 'suspend' | 'activate' | 'terminate' | 'restore', title: string, description: string) => {
+  if (!person.value || isSaving.value) return
+  isSaving.value = true
+  try {
+    await persistAccountAction(person.value, { action })
+    showToast({ title, description })
+  }
+  catch { showToast({ title: 'บันทึกสถานะไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' }) }
+  finally { isSaving.value = false }
 }
 const handleSuspendAccount = () => {
   if (!person.value) return
-  performAction(() => suspendAccount(person.value!), 'ระงับบัญชีแล้ว', 'ผู้ใช้จะเข้าสู่ระบบไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง')
+  void performAction('suspend', 'ระงับบัญชีแล้ว', 'ผู้ใช้จะเข้าสู่ระบบไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง')
 }
 const handleActivateAccount = () => {
   if (!person.value) return
-  performAction(() => activateAccount(person.value!), 'เปิดใช้งานบัญชีแล้ว', 'ผู้ใช้สามารถเข้าสู่ระบบได้อีกครั้ง')
+  void performAction('activate', 'เปิดใช้งานบัญชีแล้ว', 'ผู้ใช้สามารถเข้าสู่ระบบได้อีกครั้ง')
 }
 const handleTerminatePerson = () => {
   if (!person.value) return
-  performAction(() => terminatePerson(person.value!), 'ยุติการใช้งานแล้ว', 'ข้อมูลและประวัติเดิมยังคงอยู่ในระบบ')
+  void performAction('terminate', 'ยุติการใช้งานแล้ว', 'ข้อมูลและประวัติเดิมยังคงอยู่ในระบบ')
 }
 const handleRestorePerson = () => {
   if (!person.value) return
-  performAction(() => restorePerson(person.value!), 'เปิดใช้งานข้อมูลแล้ว', 'ข้อมูลและบัญชีกลับมาใช้งานได้อีกครั้ง')
+  void performAction('restore', 'เปิดใช้งานข้อมูลแล้ว', 'ข้อมูลและบัญชีกลับมาใช้งานได้อีกครั้ง')
 }
-const confirmPasswordReset = () => {
+const confirmPasswordReset = async () => {
   temporaryPasswordError.value = ''
   if (temporaryPassword.value.length < 8 || !/[A-Za-zก-๙]/.test(temporaryPassword.value) || !/\d/.test(temporaryPassword.value)) {
     temporaryPasswordError.value = 'รหัสผ่านชั่วคราวต้องมีอย่างน้อย 8 ตัวอักษร และประกอบด้วยตัวอักษรกับตัวเลข'
@@ -119,10 +123,15 @@ const confirmPasswordReset = () => {
     return
   }
   if (!person.value) return
-  resetPassword(person.value)
-  resetDialogOpen.value = false
-  temporaryPassword.value = ''
-  showToast({ title: 'รีเซ็ตรหัสผ่านแล้ว', description: 'Session เดิมถูกยกเลิกและผู้ใช้ต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป' })
+  isSaving.value = true
+  try {
+    await persistAccountAction(person.value, { action: 'reset-password', temporaryPassword: temporaryPassword.value })
+    resetDialogOpen.value = false
+    temporaryPassword.value = ''
+    showToast({ title: 'รีเซ็ตรหัสผ่านแล้ว', description: 'Session เดิมถูกยกเลิกและผู้ใช้ต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป' })
+  }
+  catch { temporaryPasswordError.value = 'รีเซ็ตรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง' }
+  finally { isSaving.value = false }
 }
 const formatDateTime = (date: string) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(date))
 </script>

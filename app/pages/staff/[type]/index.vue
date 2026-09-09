@@ -11,7 +11,7 @@ definePageMeta({ title: 'ข้อมูลบุคคล', middleware: 'staff-
 const route = useRoute()
 const { scenario } = useScenario()
 const { showToast } = useToast()
-const { people } = usePeopleDirectory()
+const { people, loadPersistedPeople, persistAccountAction } = usePeopleDirectory()
 const { exportPeople } = usePeopleImport()
 const { studentCohort, studentCohortOptions, studentSection, studentSectionOptions, studentSemester, ensureAvailableStudentFilters } = useStudentCohortContext()
 const { getPermissions, setPermission } = useLecturerPermissions()
@@ -19,6 +19,11 @@ const { getPermissions, setPermission } = useLecturerPermissions()
 const personType = computed<PersonType>(() => route.params.type === 'lecturers' ? 'lecturer' : 'student')
 const isValidType = computed(() => ['students', 'lecturers'].includes(String(route.params.type)))
 if (!isValidType.value) throw createError({ statusCode: 404, statusMessage: 'Page not found' })
+const { status: peopleFetchStatus, error: peopleFetchError, refresh: refreshPeople } = await useAsyncData(
+  () => `staff-people-${personType.value}`,
+  () => loadPersistedPeople(personType.value),
+  { watch: [personType] },
+)
 
 const context = computed(() => personType.value === 'student'
   ? { title: 'ข้อมูลนักศึกษา', singular: 'นักศึกษา', idLabel: 'รหัสนักศึกษา' }
@@ -39,7 +44,9 @@ const isExporting = ref(false)
 const permissionsDialogOpen = ref(false)
 const editingLecturer = ref<PersonRecord | null>(null)
 const permissionDraft = ref(false)
-const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
+const effectiveViewState = computed(() => scenario.value.forceError || peopleFetchError.value
+  ? 'error'
+  : peopleFetchStatus.value === 'pending' ? 'loading' : scenario.value.viewState)
 
 const recordStatusOptions = [
   { value: 'all', label: 'ทุกสถานะข้อมูล' },
@@ -61,6 +68,7 @@ const exportFormatOptions = [
 const exportDescription = computed(() => personType.value === 'student'
   ? 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ นามสกุล รุ่น หมู่เรียน สถานประกอบการ และตำแหน่งที่ฝึก'
   : 'ไฟล์จะมีรหัส คำนำหน้าชื่อ ชื่อ และนามสกุล')
+const canReviewPlacements = (person: PersonRecord) => person.canReviewPlacements ?? getPermissions(person.id).placements
 
 const filteredPeople = computed(() => {
   if (scenario.value.viewState === 'empty') return []
@@ -115,6 +123,7 @@ const resetTable = () => {
 const retry = () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
+  void refreshPeople()
 }
 const handleExport = async () => {
   if (isExporting.value) return
@@ -133,14 +142,18 @@ const handleExport = async () => {
 }
 const openPermissions = (person: PersonRecord) => {
   editingLecturer.value = person
-  permissionDraft.value = getPermissions(person.id).placements
+  permissionDraft.value = person.canReviewPlacements ?? getPermissions(person.id).placements
   permissionsDialogOpen.value = true
 }
-const savePermissions = () => {
+const savePermissions = async () => {
   if (!editingLecturer.value) return
-  setPermission(editingLecturer.value.id, permissionDraft.value)
-  showToast({ title: 'บันทึกสิทธิ์แล้ว', description: `กำหนดสิทธิ์การใช้งานให้ ${getPersonFullName(editingLecturer.value)}` })
-  permissionsDialogOpen.value = false
+  try {
+    await persistAccountAction(editingLecturer.value, { action: 'set-review-permission', enabled: permissionDraft.value })
+    setPermission(editingLecturer.value.id, permissionDraft.value)
+    showToast({ title: 'บันทึกสิทธิ์แล้ว', description: `กำหนดสิทธิ์การใช้งานให้ ${getPersonFullName(editingLecturer.value)}` })
+    permissionsDialogOpen.value = false
+  }
+  catch { showToast({ title: 'บันทึกสิทธิ์ไม่สำเร็จ', description: 'กรุณาลองอีกครั้ง' }) }
 }
 </script>
 
@@ -236,7 +249,7 @@ const savePermissions = () => {
                 </td>
                 <td v-if="personType === 'lecturer'" class="px-4 py-4"><UiBadge :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></td>
                 <td v-if="personType === 'lecturer'" class="px-4 py-4">
-                  <UiBadge :tone="getPermissions(person.id).placements ? 'success' : 'neutral'">{{ getPermissions(person.id).placements ? 'อนุญาต' : 'ไม่อนุญาต' }}</UiBadge>
+                  <UiBadge :tone="canReviewPlacements(person) ? 'success' : 'neutral'">{{ canReviewPlacements(person) ? 'อนุญาต' : 'ไม่อนุญาต' }}</UiBadge>
                 </td>
                 <td class="px-4 py-4"><div class="flex flex-wrap gap-2"><UiButton v-if="personType === 'lecturer'" size="sm" variant="secondary" :aria-label="`กำหนดสิทธิ์ของ ${getPersonFullName(person)}`" @click="openPermissions(person)">กำหนดสิทธิ์</UiButton><NuxtLink :to="`/staff/${route.params.type}/${person.id}`" class="inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-control border border-divider bg-canvas px-3 text-sm font-semibold text-ink hover:bg-surface" :aria-label="`ดูข้อมูล ${getPersonFullName(person)}`">ดูข้อมูล</NuxtLink></div></td>
               </tr>
@@ -254,7 +267,7 @@ const savePermissions = () => {
             <div v-if="personType === 'lecturer'" class="mt-4 space-y-3 border-t border-divider pt-3">
               <div><p class="text-xs text-muted">สถานะบัญชี</p><UiBadge class="mt-1" :tone="accountStatusMeta[person.accountStatus].tone">{{ accountStatusMeta[person.accountStatus].label }}</UiBadge></div>
               <div class="border-t border-divider pt-3">
-                <div><p class="text-xs text-muted">สิทธิ์ตรวจคำร้อง</p><UiBadge class="mt-1" :tone="getPermissions(person.id).placements ? 'success' : 'neutral'">{{ getPermissions(person.id).placements ? 'อนุญาต' : 'ไม่อนุญาต' }}</UiBadge></div>
+                <div><p class="text-xs text-muted">สิทธิ์ตรวจคำร้อง</p><UiBadge class="mt-1" :tone="canReviewPlacements(person) ? 'success' : 'neutral'">{{ canReviewPlacements(person) ? 'อนุญาต' : 'ไม่อนุญาต' }}</UiBadge></div>
               </div>
             </div>
             <div class="mt-4 flex items-end justify-between gap-3 border-t border-divider pt-3">

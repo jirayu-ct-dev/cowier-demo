@@ -11,7 +11,8 @@ export const useLecturerPermissions = () => {
 
   const normalizeId = (id: string) => id === 'lecturer-001' ? 'L0012' : id
   const getPermissions = (id: string) => permissions.value[normalizeId(id)] ?? { placements: false }
-  const canAccess = (feature: LecturerFeature = 'placements') => currentAccount.value?.role === 'lecturer' && getPermissions(currentAccount.value.id)[feature]
+  const canAccess = (feature: LecturerFeature = 'placements') => currentAccount.value?.role === 'lecturer'
+    && (feature === 'placements' ? currentAccount.value.canReviewPlacements ?? getPermissions(currentAccount.value.id)[feature] : false)
   const setPermission = (id: string, enabled: boolean) => {
     permissions.value[normalizeId(id)] = { placements: enabled }
   }

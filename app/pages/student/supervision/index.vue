@@ -6,11 +6,11 @@ import type { SupervisionAppointment, SupervisionAppointmentStatus } from '~/com
 definePageMeta({ title: 'ตารางนิเทศของฉัน', middleware: 'student-prototype' })
 useHead({ title: 'ตารางนิเทศของฉัน' })
 
-const currentStudentId = '66123456701'
 const { scenario } = useScenario()
+const { currentAccount } = useAuthPrototype()
 const { people } = usePeopleDirectory()
 const { getCompanies } = useSupervisionGroups()
-const { appointments } = useSupervisionAppointments()
+const { appointments, loadPersistedAppointments } = useSupervisionAppointments()
 const { selectedCycle } = useCoopCycles()
 
 const searchQuery = ref('')
@@ -20,8 +20,13 @@ const currentPage = ref(1)
 const pageSize = ref('10')
 const detailOpen = ref(false)
 const selectedAppointmentId = ref<string | null>(null)
+const appointmentsLoading = ref(true)
+const appointmentsLoadError = ref(false)
 
-const effectiveViewState = computed(() => scenario.value.forceError ? 'error' : scenario.value.viewState)
+const currentStudentId = computed(() => currentAccount.value?.username ?? '')
+const effectiveViewState = computed(() => scenario.value.forceError || appointmentsLoadError.value
+  ? 'error'
+  : appointmentsLoading.value ? 'loading' : scenario.value.viewState)
 const companies = computed(() => getCompanies(selectedCycle.value.id))
 const visibleStatuses: SupervisionAppointmentStatus[] = ['published', 'postponed', 'completed', 'cancelled']
 const roundOptions = [
@@ -42,10 +47,21 @@ const pageSizeOptions = [
   { value: '50', label: '50' },
 ]
 
-const company = (companyId: string) => companies.value.find(item => item.id === companyId) ?? null
+const company = (companyId: string) => {
+  const stored = companies.value.find(item => item.id === companyId)
+  if (stored) return stored
+  const display = appointments.value.find(item => item.companyId === companyId)?.display
+  return display
+    ? {
+        id: companyId, cycleId: selectedCycle.value.id, name: display.companyName, branch: display.branchName, province: display.province,
+        region: '', address: display.address, contactName: '', contactPhone: '', status: 'active' as const, studentCount: display.students.length,
+        students: display.students.map(student => ({ id: student.id, studentId: student.id, studentName: student.name, prefix: '', firstName: student.name, lastName: '', section: '', position: student.position })),
+      }
+    : null
+}
 const lecturerName = (lecturerId: string) => {
-  const lecturer = people.value.find(person => person.type === 'lecturer' && person.id === lecturerId)
-  return lecturer ? getPersonFullName(lecturer) : lecturerId
+  const lecturer = people.value.find(person => person.type === 'lecturer' && (person.id === lecturerId || person.accountId === lecturerId))
+  return lecturer ? getPersonFullName(lecturer) : appointments.value.flatMap(item => item.display?.lecturers ?? []).find(item => item.id === lecturerId)?.name ?? lecturerId
 }
 const appointmentLecturerIds = (appointment: SupervisionAppointment) => appointment.status === 'completed' && appointment.result.actualLecturerIds.length
   ? appointment.result.actualLecturerIds
@@ -60,7 +76,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
 
 const studentAppointments = computed(() => appointments.value
   .filter(item => item.cycleId === selectedCycle.value.id
-    && item.studentIds.includes(currentStudentId)
+    && item.studentIds.includes(currentStudentId.value)
     && visibleStatuses.includes(item.status)))
 const filteredAppointments = computed(() => {
   if (scenario.value.viewState === 'empty') return []
@@ -111,7 +127,20 @@ const resetTable = () => {
 const retry = () => {
   scenario.value.forceError = false
   scenario.value.viewState = 'data'
+  void loadAppointments()
 }
+const loadAppointments = async () => {
+  appointmentsLoading.value = true
+  appointmentsLoadError.value = false
+  try {
+    await loadPersistedAppointments(selectedCycle.value.id, 1)
+    await loadPersistedAppointments(selectedCycle.value.id, 2)
+  }
+  catch { appointmentsLoadError.value = true }
+  finally { appointmentsLoading.value = false }
+}
+onMounted(loadAppointments)
+watch(() => selectedCycle.value.id, loadAppointments)
 const openDetails = (appointmentId: string) => {
   selectedAppointmentId.value = appointmentId
   detailOpen.value = true

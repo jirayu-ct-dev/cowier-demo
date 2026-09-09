@@ -19,6 +19,7 @@ import {
 } from '@lucide/vue'
 import { format } from 'date-fns'
 import { studentApplicationFormSchema as applicationSchema } from '#shared/student-applications'
+import type { PlacementRequestPreview } from '#shared/placement-requests'
 import type { StudentApplication, StudentApplicationFormValue, TrackedApplicationStatus } from '~/composables/useStudentApplications'
 import { createStudentApplicationSchema } from '~/composables/useStudentApplications'
 import { getPageCount, paginateItems } from '~/utils/table'
@@ -31,6 +32,8 @@ const { showToast } = useToast()
 const { currentAccount } = useAuthPrototype()
 const { findPerson } = usePeopleDirectory()
 const { requests, selectAndSubmit } = usePlacementRequestPreview()
+const { data: persistedRequests, refresh: refreshPlacementRequests } = await useFetch<PlacementRequestPreview[]>('/api/student/placement-requests')
+watch(persistedRequests, (items) => { if (items) requests.value = items }, { immediate: true })
 const currentRequest = computed(() => requests.value.find(item => item.application.id === latestApplication.value?.id))
 const {
   applications: applicationStore,
@@ -336,6 +339,7 @@ const confirmSelection = async () => {
   isSavingStatus.value = true
   try {
     await selectAndSubmit(application, updateApplicationStatus)
+    await refreshPlacementRequests()
     selectionDialogOpen.value = false
     showToast({ title: 'ยืนยันสถานประกอบการแล้ว', description: 'ข้อมูลถูกส่งเข้าคิวของเจ้าหน้าที่ทันที ขั้นตอนต่อไปคือรอเจ้าหน้าที่ออกหนังสือ' })
   }
@@ -473,7 +477,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', {
         <div><dt class="text-xs text-muted">อัปเดตล่าสุด</dt><dd class="mt-1 text-ink">{{ formatUpdatedAt(latestApplication.updatedAt) }}</dd></div>
       </dl>
       <div class="mt-5 flex flex-wrap gap-2 border-t border-divider pt-4">
-        <UiButton v-if="!canCreateApplication && !currentRequest" :loading="isSavingStatus" @click="selectionDialogOpen = true">{{ latestApplication.status === 'completed' ? 'ส่งคำร้องขอหนังสือ (ทดลอง)' : 'เลือกบริษัทนี้และส่งคำร้อง (ทดลอง)' }}</UiButton>
+        <UiButton v-if="!canCreateApplication && !currentRequest && ['accepted', 'completed'].includes(latestApplication.status)" :loading="isSavingStatus" @click="selectionDialogOpen = true">{{ latestApplication.status === 'completed' ? 'เปิดคำร้องที่ส่งแล้ว' : 'ยืนยันบริษัทและส่งให้เจ้าหน้าที่' }}</UiButton>
         <template v-if="latestApplication.status !== 'completed'">
           <UiButton variant="secondary" :icon="Pencil" @click="openEditDialog(latestApplication)">แก้ไขข้อมูล</UiButton>
           <UiButton variant="secondary" :icon="RefreshCw" @click="openStatusDialog(latestApplication)">อัปเดตผลการสมัคร</UiButton>

@@ -4,6 +4,7 @@ import type { Component } from 'vue'
 import { requestStatusMeta } from '#shared/placement-requests'
 import { getPageCount, paginateItems } from '~/utils/table'
 import { summarizeStudentPlacements } from '~/utils/studentPlacementSummary'
+import type { StudentPlacementSummary } from '~/utils/studentPlacementSummary'
 
 definePageMeta({ title: 'ภาพรวมระบบ' })
 useHead({ title: 'ภาพรวมระบบ' })
@@ -102,6 +103,30 @@ const cycleOptions = dashboardCycles.map(cycle => ({ value: cycle.id, label: `${
 const dashboardCycle = computed(() => canSelectDashboardCycle.value
   ? dashboardCycles.find(cycle => cycle.id === dashboardCycleId.value) ?? dashboardCycles[0]!
   : selectedCycle.value)
+interface StaffBackendDashboard {
+  students: StudentPlacementSummary
+  cards: { waitingLetters: number, waitingReview: number, unassignedRoundOne: number, publishedAppointments: number }
+}
+const staffBackendDashboard = ref<StaffBackendDashboard | null>(null)
+const loadStaffDashboard = async () => {
+  if (scenario.value.role !== 'staff') return
+  try {
+    const [stats, requests] = await Promise.all([
+      $fetch<StaffBackendDashboard>('/api/staff/dashboard', { query: { cycleId: dashboardCycleId.value } }),
+      $fetch<typeof placementPreviewRequests.value>('/api/staff/placement-requests', { query: { page: 1, pageSize: 100, cycleId: dashboardCycleId.value } }),
+    ])
+    staffBackendDashboard.value = stats
+    placementPreviewRequests.value = [
+      ...placementPreviewRequests.value.filter(request => request.cycleId !== dashboardCycleId.value),
+      ...requests.filter(request => request.cycleId === dashboardCycleId.value),
+    ]
+  }
+  catch {
+    staffBackendDashboard.value = null
+  }
+}
+watch([() => scenario.value.role, dashboardCycleId], () => { if (import.meta.client) void loadStaffDashboard() })
+onMounted(loadStaffDashboard)
 const dashboard = computed<DashboardData>(() => {
   if (scenario.value.role === 'student') return currentCycleDashboard.student
   if (scenario.value.role === 'staff') return staffDashboard.value
@@ -112,6 +137,7 @@ const staffPlacementSummary = computed(() => summarizeStudentPlacements(
   placementPreviewRequests.value,
   dashboardCycle.value.id,
 ))
+const effectiveStaffPlacementSummary = computed(() => staffBackendDashboard.value?.students ?? staffPlacementSummary.value)
 const staffRequests = computed(() => placementPreviewRequests.value
   .filter(request => request.cycleId === dashboardCycle.value.id))
 const staffRequestItems = computed<DashboardData['recentItems']>(() => staffRequests.value.map(request => ({
@@ -125,10 +151,10 @@ const staffRequestItems = computed<DashboardData['recentItems']>(() => staffRequ
 })))
 const staffDashboard = computed<DashboardData>(() => ({
   summary: [
-    { label: 'คำร้องรอออกหนังสือ', value: String(staffRequests.value.filter(request => request.status === 'submitted').length), hint: '', icon: ClipboardList },
-    { label: 'เอกสารลงนามรอตรวจ', value: String(staffRequests.value.filter(request => request.status === 'signed-uploaded').length), hint: '', icon: FileCheck2 },
-    { label: 'รอจัดกลุ่มนิเทศ ครั้งที่ 1', value: String(getUnassignedCompanies(dashboardCycle.value.id, 1).length), hint: '', icon: UsersRound },
-    { label: 'นัดนิเทศที่เผยแพร่', value: String(appointments.value.filter(item => item.cycleId === dashboardCycle.value.id && item.status === 'published').length), hint: '', icon: CalendarDays },
+    { label: 'คำร้องรอออกหนังสือ', value: String(staffBackendDashboard.value?.cards.waitingLetters ?? staffRequests.value.filter(request => request.status === 'submitted').length), hint: '', icon: ClipboardList },
+    { label: 'เอกสารลงนามรอตรวจ', value: String(staffBackendDashboard.value?.cards.waitingReview ?? staffRequests.value.filter(request => request.status === 'signed-uploaded').length), hint: '', icon: FileCheck2 },
+    { label: 'รอจัดกลุ่มนิเทศ ครั้งที่ 1', value: String(staffBackendDashboard.value?.cards.unassignedRoundOne ?? getUnassignedCompanies(dashboardCycle.value.id, 1).length), hint: '', icon: UsersRound },
+    { label: 'นัดนิเทศที่เผยแพร่', value: String(staffBackendDashboard.value?.cards.publishedAppointments ?? appointments.value.filter(item => item.cycleId === dashboardCycle.value.id && item.status === 'published').length), hint: '', icon: CalendarDays },
   ],
   recentTitle: 'คำร้องล่าสุด',
   primaryLabel: 'นักศึกษา',
@@ -387,7 +413,7 @@ onBeforeUnmount(() => {
         </section>
         <StudentPlacementDonut
           class="h-full"
-          :summary="staffPlacementSummary"
+          :summary="effectiveStaffPlacementSummary"
           :cycle-label="dashboardCycle.label"
         />
       </div>

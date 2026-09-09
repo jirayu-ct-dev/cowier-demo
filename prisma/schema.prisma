@@ -347,7 +347,7 @@ model Province {
   id        Int        @id @default(autoincrement())
   code      String     @unique @db.VarChar(10)
   nameTh    String     @unique @db.VarChar(100)
-  region    RegionCode
+  region    RegionCode?
   createdAt DateTime   @default(now()) @db.DateTime(3)
   updatedAt DateTime   @updatedAt @db.DateTime(3)
 
@@ -417,12 +417,15 @@ model StudentApplication {
   companySiteId       String?                  @db.VarChar(30)
   companyNameSnapshot String                   @db.VarChar(255)
   companyLocation     String?                  @db.VarChar(500)
+  recipientNameSnapshot String                 @db.VarChar(255)
+  letterAddressSnapshot String                 @db.Text
   latitude            Decimal?                 @db.Decimal(10, 7)
   longitude           Decimal?                 @db.Decimal(10, 7)
   provinceSnapshot    String                   @db.VarChar(100)
   positionTitle       String                   @db.VarChar(150)
   appliedDate         DateTime                 @db.Date
   status              TrackedApplicationStatus @default(SUBMITTED)
+  activeSlotKey       String?                  @unique @db.VarChar(30)
   details             String?                  @db.Text
   responseDate        DateTime?                @db.Date
   createdAt           DateTime                 @default(now()) @db.DateTime(3)
@@ -430,6 +433,7 @@ model StudentApplication {
 
   enrollment  CycleEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
   companySite CompanySite?    @relation(fields: [companySiteId], references: [id], onDelete: SetNull)
+  placementRequest PlacementRequest?
 
   @@index([enrollmentId, appliedDate])
   @@index([status, provinceSnapshot])
@@ -445,11 +449,17 @@ model StudentApplication {
 model PlacementRequest {
   id                 String                 @id @default(cuid()) @db.VarChar(30)
   requestNo          String                 @unique @db.VarChar(50)
+  studentApplicationId String               @unique @db.VarChar(30)
   enrollmentId       String                 @db.VarChar(30)
-  companySiteId      String                 @db.VarChar(30)
+  companySiteId      String?                @db.VarChar(30)
+  companyNameSnapshot String                @db.VarChar(255)
+  companyLocationSnapshot String            @db.Text
+  provinceSnapshot  String                 @db.VarChar(100)
+  latitude           Decimal?               @db.Decimal(10, 7)
+  longitude          Decimal?               @db.Decimal(10, 7)
   positionTitle      String                 @db.VarChar(150)
   details            String?                @db.Text
-  recipientName      String                 @db.VarChar(150)
+  recipientName      String                 @db.VarChar(255)
   recipientRole      String                 @db.VarChar(150)
   letterAddress      String                 @db.Text
   status             PlacementRequestStatus @default(DRAFT)
@@ -468,12 +478,14 @@ model PlacementRequest {
   updatedAt          DateTime               @updatedAt @db.DateTime(3)
 
   enrollment       CycleEnrollment                 @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
-  companySite      CompanySite                     @relation(fields: [companySiteId], references: [id], onDelete: Restrict)
+  studentApplication StudentApplication             @relation(fields: [studentApplicationId], references: [id], onDelete: Restrict)
+  companySite      CompanySite?                    @relation(fields: [companySiteId], references: [id], onDelete: SetNull)
   statusHistory    PlacementRequestStatusHistory[]
   batchMemberships LetterBatchMember[]
   confirmedBy      User?                           @relation("PlacementConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
   supervisionItems SupervisionAppointmentStudent[]
   notifications    Notification[]
+  documents        LetterDocumentVersion[]
 
   @@index([enrollmentId, status])
   @@index([companySiteId, status])
@@ -561,7 +573,8 @@ model LetterBatchMember {
 
 model LetterDocumentVersion {
   id                String                @id @default(cuid()) @db.VarChar(30)
-  batchId           String                @db.VarChar(30)
+  batchId           String?               @db.VarChar(30)
+  placementRequestId String?              @db.VarChar(30)
   documentType      LetterDocumentType
   versionNumber     Int
   status            DocumentVersionStatus @default(ACTIVE)
@@ -581,12 +594,15 @@ model LetterDocumentVersion {
   reviewedAt        DateTime?             @db.DateTime(3)
   reviewNote        String?               @db.Text
 
-  batch      LetterBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  batch      LetterBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  placementRequest PlacementRequest? @relation(fields: [placementRequestId], references: [id], onDelete: Restrict)
   uploadedBy User        @relation("LetterDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
   reviewedBy User?       @relation("LetterDocumentReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@unique([batchId, documentType, versionNumber])
+  @@unique([placementRequestId, documentType, versionNumber], map: "letter_docs_request_type_version_key")
   @@index([batchId, documentType, status])
+  @@index([placementRequestId, documentType, status], map: "letter_docs_request_type_status_idx")
   @@index([sha256])
   @@index([uploadedById])
   @@index([reviewedById])
@@ -743,7 +759,6 @@ model StudentEvaluation {
   knowledgeScore       Int?             @db.UnsignedTinyInt
   workQualityScore     Int?             @db.UnsignedTinyInt
   problemSolvingScore  Int?             @db.UnsignedTinyInt
-  safetyScore          Int?             @db.UnsignedTinyInt
   strengths            String?          @db.LongText
   issues               String?          @db.LongText
   suggestions          String?          @db.LongText
@@ -763,18 +778,25 @@ model StudentEvaluation {
 model CompanyEvaluation {
   id                          String                 @id @default(cuid()) @db.VarChar(30)
   appointmentId               String                 @unique @db.VarChar(30)
-  evaluatorLecturerId         String                 @db.VarChar(30)
+  evaluatorId                 String                 @db.VarChar(30)
   rubricVersion               Int                    @default(1)
   status                      EvaluationStatus       @default(DRAFT)
   workRelevanceScore          Int?                   @db.UnsignedTinyInt
   workChallengeScore          Int?                   @db.UnsignedTinyInt
+  learningOpportunityScore    Int?                   @db.UnsignedTinyInt
   supervisorReadinessScore    Int?                   @db.UnsignedTinyInt
   studentSupportScore         Int?                   @db.UnsignedTinyInt
-  environmentSafetyScore      Int?                   @db.UnsignedTinyInt
+  environmentScore            Int?                   @db.UnsignedTinyInt
+  safetyScore                 Int?                   @db.UnsignedTinyInt
   resourceReadinessScore      Int?                   @db.UnsignedTinyInt
+  allowanceScore              Int?                   @db.UnsignedTinyInt
+  transportationScore         Int?                   @db.UnsignedTinyInt
+  publicTransportScore        Int?                   @db.UnsignedTinyInt
+  nearbyAccommodationScore    Int?                   @db.UnsignedTinyInt
   universityCoordinationScore Int?                   @db.UnsignedTinyInt
   recommendation              CompanyRecommendation?
   observations                String?                @db.LongText
+  companyRequirements         String?                @db.LongText
   issues                      String?                @db.LongText
   suggestions                 String?                @db.LongText
   submittedAt                 DateTime?              @db.DateTime(3)
@@ -782,9 +804,9 @@ model CompanyEvaluation {
   updatedAt                   DateTime               @updatedAt @db.DateTime(3)
 
   appointment SupervisionAppointment @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
-  evaluator   User                   @relation(fields: [evaluatorLecturerId], references: [id], onDelete: Restrict)
+  evaluator   User                   @relation(fields: [evaluatorId], references: [id], onDelete: Restrict)
 
-  @@index([evaluatorLecturerId, status])
+  @@index([evaluatorId, status])
   @@map("company_evaluations")
 }
 

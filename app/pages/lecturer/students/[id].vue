@@ -7,7 +7,10 @@ useHead({ title: 'รายละเอียดนักศึกษา' })
 
 const route = useRoute()
 const { showToast } = useToast()
-const { findPerson, getStudentApplicationHistory, updatePerson } = usePeopleDirectory()
+const { canAccess } = useLecturerPermissions()
+const canEdit = computed(() => canAccess('placements'))
+const { findPerson, getStudentApplicationHistory, loadPersistedPeople, persistLecturerStudentName } = usePeopleDirectory()
+await loadPersistedPeople('student')
 const student = computed(() => findPerson('student', String(route.params.id)))
 if (!student.value) throw createError({ statusCode: 404, statusMessage: 'ไม่พบข้อมูลนักศึกษา' })
 const applications = computed(() => getStudentApplicationHistory(String(route.params.id)))
@@ -24,7 +27,7 @@ const save = async () => {
   if (!student.value) return
   isSaving.value = true
   try {
-    updatePerson(student.value, { id: student.value.id, cycle: student.value.cycle, ...result.data })
+    await persistLecturerStudentName(student.value, result.data)
     isEditing.value = false
     showToast({ title: 'แก้ไขชื่อ–นามสกุลแล้ว', description: 'ระบบบันทึกผู้ดำเนินการ ค่าเดิม และค่าใหม่ในประวัติ' })
   } catch {
@@ -37,7 +40,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat('th-TH', { day: 'nu
 <template>
   <div v-if="student">
     <button type="button" class="mb-4 inline-flex min-h-10 items-center gap-2 rounded-control px-2 text-sm font-semibold text-muted hover:bg-canvas hover:text-ink" @click="navigateTo('/lecturer/students')"><ArrowLeft :size="17" aria-hidden="true" />กลับไปข้อมูลนักศึกษา</button>
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ getPersonFullName(student) }}</h2><p class="mt-1 text-sm text-muted">รหัสนักศึกษา {{ student.id }}</p></div><UiButton v-if="!isEditing" :icon="Pencil" @click="startEditing">แก้ไขชื่อ–นามสกุล</UiButton></div>
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ getPersonFullName(student) }}</h2><p class="mt-1 text-sm text-muted">รหัสนักศึกษา {{ student.id }}</p></div><UiButton v-if="!isEditing && canEdit" :icon="Pencil" @click="startEditing">แก้ไขชื่อ–นามสกุล</UiButton></div>
     <div class="grid gap-6 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.7fr)]">
       <UiCard class="self-start">
         <div class="flex items-center justify-between gap-3"><h3 class="text-lg font-bold text-ink">ข้อมูลนักศึกษา</h3><UiBadge :tone="recordStatusMeta[student.recordStatus].tone">{{ recordStatusMeta[student.recordStatus].label }}</UiBadge></div>

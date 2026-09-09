@@ -6,7 +6,7 @@ import type { PersonInput, PersonType } from '~/composables/usePeopleDirectory'
 definePageMeta({ title: 'เพิ่มข้อมูลบุคคล', middleware: 'staff-prototype' })
 
 const route = useRoute()
-const { createPerson } = usePeopleDirectory()
+const { persistCreatePerson } = usePeopleDirectory()
 const { cycles } = useCoopCycles()
 const { showToast } = useToast()
 
@@ -50,7 +50,7 @@ const submit = async () => {
 
   isSubmitting.value = true
   try {
-    const person = createPerson(personType.value, result.data)
+    const person = await persistCreatePerson(personType.value, result.data)
     showToast({ title: `เพิ่ม${context.value.singular}แล้ว`, description: `สร้างบัญชี ${person.id} และรอเข้าสู่ระบบครั้งแรก` })
     await navigateTo(`/staff/${route.params.type}/${person.id}`)
   } catch (error) {

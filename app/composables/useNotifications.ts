@@ -23,28 +23,32 @@ const notificationsSeed: AppNotification[] = [
 export const useNotifications = () => {
   const { scenario, recordEvent } = useScenario()
   const notifications = useState<AppNotification[]>('app-notifications-v1', () => structuredClone(notificationsSeed))
+  const { data, status, error, refresh } = useFetch<AppNotification[]>('/api/notifications', { key: 'account-notifications' })
+  watch(data, (items) => { if (items) notifications.value = items }, { immediate: true })
+  watch(() => scenario.value.role, () => { void refresh() })
   const roleNotifications = computed(() => notifications.value
     .filter(item => item.role === scenario.value.role)
     .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)))
   const unreadCount = computed(() => roleNotifications.value.filter(item => !item.readAt).length)
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     const notification = notifications.value.find(item => item.id === id && item.role === scenario.value.role)
     if (!notification || notification.readAt) return
-    notification.readAt = new Date().toISOString()
+    const result = await $fetch<{ readAt: string }>(`/api/notifications/${id}/read`, { method: 'PATCH' })
+    notification.readAt = result.readAt
     recordEvent(`อ่านการแจ้งเตือน: ${notification.title}`)
   }
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     const unread = roleNotifications.value.filter(item => !item.readAt)
     if (!unread.length) return
-    const readAt = new Date().toISOString()
+    const { readAt } = await $fetch<{ readAt: string }>('/api/notifications/read-all', { method: 'PATCH' })
     unread.forEach((item) => { item.readAt = readAt })
     recordEvent(`อ่านการแจ้งเตือนทั้งหมด ${unread.length} รายการ`)
   }
   const openNotification = async (notification: AppNotification) => {
-    markAsRead(notification.id)
+    await markAsRead(notification.id)
     await navigateTo(notification.to)
   }
 
-  return { notifications, roleNotifications, unreadCount, markAsRead, markAllAsRead, openNotification }
+  return { notifications, roleNotifications, unreadCount, fetchStatus: status, fetchError: error, refreshNotifications: refresh, markAsRead, markAllAsRead, openNotification }
 }

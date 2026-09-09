@@ -19,19 +19,19 @@ const save = async () => {
   busy.value = true
   try {
     await attach(props.request.id, file.value, props.staff ? 'letter' : 'signedDocument')
-    showToast({ title: 'บันทึกไฟล์ในต้นแบบแล้ว' })
+    showToast({ title: 'บันทึกไฟล์แล้ว' })
   }
   catch (cause) { error.value = cause instanceof Error ? cause.message : 'บันทึกไม่สำเร็จ' }
   finally { busy.value = false }
 }
-const finishReview = (outcome: 'return' | 'confirm') => {
+const finishReview = async (outcome: 'return' | 'confirm') => {
   if (busy.value) return
   if (outcome === 'return') {
     const result = returnReasonSchema.safeParse(reason.value)
     if (!result.success) { error.value = result.error.issues[0]?.message ?? ''; return }
   }
   busy.value = true
-  try { review(props.request.id, outcome, reason.value); showToast({ title: 'บันทึกผลตรวจในต้นแบบแล้ว' }) }
+  try { await review(props.request.id, outcome, reason.value); showToast({ title: 'บันทึกผลตรวจแล้ว' }) }
   catch (cause) { error.value = cause instanceof Error ? cause.message : 'บันทึกไม่สำเร็จ' }
   finally { busy.value = false }
 }
@@ -50,8 +50,8 @@ const finishReview = (outcome: 'return' | 'confirm') => {
         {{ staff ? 'แนบหนังสือขอความอนุเคราะห์' : 'อัปโหลดหนังสือตอบรับจากสถานประกอบการ' }}
         <input :key="inputKey" type="file" accept="application/pdf,.pdf" class="mt-2 block w-full min-w-0 rounded-control border border-divider p-3 text-sm" :disabled="busy" :aria-invalid="!!error" :aria-describedby="`pdf-help-${request.id}${error ? ` pdf-error-${request.id}` : ''}`" @change="pickFile">
       </label>
-      <p :id="`pdf-help-${request.id}`" class="text-xs text-muted">PDF ไม่เกิน 5 MB · เก็บชั่วคราวในต้นแบบ ไม่ใช่การส่งเอกสารจริง</p>
-      <UiButton type="submit" :loading="busy">{{ staff ? 'ส่งหนังสือให้นักศึกษา (ทดลอง)' : 'ส่งหนังสือตอบรับให้เจ้าหน้าที่ (ทดลอง)' }}</UiButton>
+      <p :id="`pdf-help-${request.id}`" class="text-xs text-muted">PDF ไม่เกิน 5 MB · ระบบตรวจชนิดไฟล์และเก็บประวัติเวอร์ชัน</p>
+      <UiButton type="submit" :loading="busy">{{ staff ? 'ส่งหนังสือให้นักศึกษา' : 'ส่งหนังสือตอบรับให้เจ้าหน้าที่' }}</UiButton>
     </form>
     <div v-if="staff && request.status === 'signed-uploaded'" class="space-y-3">
       <UiTextarea v-model="reason" label="จุดที่ต้องแก้ไข (กรณีส่งกลับ)" :error="error" />
